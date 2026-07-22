@@ -1,28 +1,68 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 export default function VerifyPage() {
+  const [code, setCode] = useState('')
+  const [loading, setLoading] = useState(false)
   const [resending, setResending] = useState(false)
   const [resent, setResent] = useState(false)
   const [error, setError] = useState(null)
 
+  const handleVerify = async (e) => {
+    e.preventDefault()
+    setError(null)
+
+    if (code.length < 6) {
+      setError('Please enter the verification code from your email.')
+      return
+    }
+
+    setLoading(true)
+    const supabase = createClient()
+    const email = sessionStorage.getItem('verifyEmail')
+
+    if (!email) {
+      setError('Session expired. Please sign up again.')
+      setLoading(false)
+      return
+    }
+
+    const { error } = await supabase.auth.verifyOtp({
+      email,
+      token: code,
+      type: 'signup',
+    })
+
+    if (error) {
+      setError('Invalid or expired code. Please try again.')
+      setLoading(false)
+      return
+    }
+
+    sessionStorage.removeItem('verifyEmail')
+    window.location.href = '/chat'
+  }
+
   const handleResend = async () => {
     setResending(true)
     setError(null)
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    
-    if (!user) {
-      setError('No account found. Please sign up again.')
+    setResent(false)
+
+    const email = sessionStorage.getItem('verifyEmail')
+
+    if (!email) {
+      setError('Session expired. Please sign up again.')
       setResending(false)
       return
     }
 
+    const supabase = createClient()
+
     const { error } = await supabase.auth.resend({
       type: 'signup',
-      email: user.email,
+      email,
     })
 
     if (error) {
@@ -53,17 +93,14 @@ export default function VerifyPage() {
         boxShadow: '4px 4px 0 #0a0a0a',
         textAlign: 'center',
       }}>
-        {/* Stickman illustration */}
-        <div style={{ marginBottom: '24px' }}>
-          <svg width="80" height="100" viewBox="0 0 80 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="40" cy="18" r="14" stroke="#0a0a0a" strokeWidth="1.5" fill="#FFB800"/>
-            <line x1="40" y1="32" x2="40" y2="65" stroke="#0a0a0a" strokeWidth="1.5" strokeLinecap="round"/>
-            <line x1="20" y1="45" x2="60" y2="45" stroke="#0a0a0a" strokeWidth="1.5" strokeLinecap="round"/>
-            <line x1="40" y1="65" x2="25" y2="88" stroke="#0a0a0a" strokeWidth="1.5" strokeLinecap="round"/>
-            <line x1="40" y1="65" x2="55" y2="88" stroke="#0a0a0a" strokeWidth="1.5" strokeLinecap="round"/>
-            {/* envelope in hand */}
-            <rect x="55" y="35" width="22" height="16" rx="3" stroke="#0a0a0a" strokeWidth="1.5" fill="white"/>
-            <path d="M55 38 L66 46 L77 38" stroke="#0a0a0a" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
+
+        {/* Envelope icon */}
+        <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'center' }}>
+          <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="4" y="14" width="56" height="38" rx="4" stroke="#0a0a0a" strokeWidth="1.5" fill="#FFF8E1"/>
+            <path d="M4 18 L32 38 L60 18" stroke="#0a0a0a" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
+            <line x1="4" y1="52" x2="22" y2="34" stroke="#0a0a0a" strokeWidth="1.5" strokeLinecap="round"/>
+            <line x1="60" y1="52" x2="42" y2="34" stroke="#0a0a0a" strokeWidth="1.5" strokeLinecap="round"/>
           </svg>
         </div>
 
@@ -80,7 +117,7 @@ export default function VerifyPage() {
           lineHeight: '1.6',
           marginBottom: '32px',
         }}>
-          We sent you a verification link. Click it to activate your account. Check your spam folder if you don't see it.
+          We sent a 6 digit verification code to your email. Enter it below to activate your account.
         </p>
 
         {error && (
@@ -92,6 +129,7 @@ export default function VerifyPage() {
             marginBottom: '20px',
             fontSize: '13px',
             color: '#EF4444',
+            textAlign: 'left',
           }}>
             {error}
           </div>
@@ -106,39 +144,81 @@ export default function VerifyPage() {
             marginBottom: '20px',
             fontSize: '13px',
             color: '#22C55E',
+            textAlign: 'left',
           }}>
-            Verification email resent successfully.
+            Verification code resent successfully.
           </div>
         )}
+
+        <form onSubmit={handleVerify} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <input
+            type="text"
+            inputMode="numeric"
+            maxLength={6}
+            placeholder="000000"
+            value={code}
+            onChange={e => setCode(e.target.value.replace(/[^0-9]/g, ''))}
+            style={{
+              width: '100%',
+              padding: '16px',
+              border: '1.5px solid #e5e5e5',
+              borderRadius: '8px',
+              fontSize: '28px',
+              fontFamily: 'inherit',
+              fontWeight: '800',
+              letterSpacing: '12px',
+              textAlign: 'center',
+              outline: 'none',
+              color: '#0a0a0a',
+              background: '#fff',
+            }}
+            onFocus={e => e.target.style.borderColor = '#0a0a0a'}
+            onBlur={e => e.target.style.borderColor = '#e5e5e5'}
+          />
+
+          <button
+            type="submit"
+            disabled={loading || code.length !== 6}
+            style={{
+              width: '100%',
+              padding: '13px',
+              background: loading || code.length !== 6 ? '#525252' : '#0a0a0a',
+              color: '#fff',
+              border: '1.5px solid #0a0a0a',
+              borderRadius: '8px',
+              fontSize: '14px',
+              fontWeight: '700',
+              cursor: loading || code.length !== 6 ? 'not-allowed' : 'pointer',
+              fontFamily: 'inherit',
+              boxShadow: loading || code.length !== 6 ? 'none' : '3px 3px 0 #FFB800',
+            }}
+          >
+            {loading ? 'Verifying...' : 'Verify account'}
+          </button>
+        </form>
 
         <button
           onClick={handleResend}
           disabled={resending || resent}
           style={{
-            width: '100%',
-            padding: '13px',
-            background: resending || resent ? '#525252' : '#0a0a0a',
-            color: '#fff',
-            border: '1.5px solid #0a0a0a',
-            borderRadius: '8px',
-            fontSize: '14px',
-            fontWeight: '700',
+            background: 'none',
+            border: 'none',
+            fontSize: '13px',
+            color: '#525252',
             cursor: resending || resent ? 'not-allowed' : 'pointer',
+            marginTop: '20px',
             fontFamily: 'inherit',
-            boxShadow: resending || resent ? 'none' : '3px 3px 0 #FFB800',
-            marginBottom: '16px',
+            textDecoration: 'underline',
           }}
         >
-          {resending ? 'Sending...' : resent ? 'Email sent' : 'Resend verification email'}
+          {resending ? 'Sending...' : resent ? 'Code sent' : 'Resend code'}
         </button>
 
-        <a href="/login" style={{
-          fontSize: '13px',
-          color: '#525252',
-          textDecoration: 'none',
-        }}>
-          Back to sign in
-        </a>
+        <p style={{ marginTop: '12px' }}>
+          <a href="/login" style={{ fontSize: '13px', color: '#525252', textDecoration: 'none' }}>
+            Back to sign in
+          </a>
+        </p>
       </div>
     </div>
   )

@@ -92,6 +92,7 @@ export default function SignupPage() {
       return
     }
 
+    sessionStorage.setItem('verifyEmail', formData.email)
     window.location.href = '/verify'
   }
 
