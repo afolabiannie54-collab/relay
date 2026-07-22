@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/afola/Downloads/**)",
+      "Bash(cp \"/c/Users/afola/Downloads/relaylogodark.png\" \"/c/Users/afola/relay/public/icons/logo-dark.png\")",
+      "Bash(cp \"/c/Users/afola/Downloads/relaylogolight.png\" \"/c/Users/afola/relay/public/icons/logo-light.png\")",
+      "Bash(netstat -ano)",
+      "Bash(npm run *)",
+      "Bash(curl -s http://localhost:3000/signup -o /tmp/signup.html)",
+      "Read(//tmp/**)"
+    ]
+  }
+}
