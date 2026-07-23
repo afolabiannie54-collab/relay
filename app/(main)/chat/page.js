@@ -64,6 +64,14 @@ export default function ChatPage() {
     return msg.content || ''
   }
 
+  const getUnreadCount = (conv) => {
+    if (!conv.last_read_at || !conv.last_message) return 0
+    if (new Date(conv.last_message.created_at) > new Date(conv.last_read_at)) {
+      return 1
+    }
+    return 0
+  }
+
   if (loading) {
     return (
       <div style={{
@@ -189,15 +197,30 @@ export default function ChatPage() {
                         {formatTime(lastMessage?.created_at)}
                       </span>
                     </div>
-                    <p style={{
-                      fontSize: '13px',
-                      color: '#A3A3A3',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                    }}>
-                      {lastMessage?.sender_id === profile?.id ? 'You: ' : ''}{getLastMessagePreview(lastMessage)}
-                    </p>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <p style={{
+                        fontSize: '13px',
+                        color: getUnreadCount(conv) > 0 ? '#0a0a0a' : '#A3A3A3',
+                        fontWeight: getUnreadCount(conv) > 0 ? '600' : '400',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        flex: 1,
+                      }}>
+                        {lastMessage?.sender_id === profile?.id ? 'You: ' : ''}{getLastMessagePreview(lastMessage)}
+                      </p>
+                      {getUnreadCount(conv) > 0 && conv.last_message?.sender_id !== profile?.id && (
+                        <div style={{
+                          width: '8px',
+                          height: '8px',
+                          background: '#FFB800',
+                          borderRadius: '50%',
+                          border: '1.5px solid #0a0a0a',
+                          flexShrink: 0,
+                          marginLeft: '8px',
+                        }} />
+                      )}
+                    </div>
                   </div>
                 </div>
               </Link>

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import Avatar from '@/components/shared/Avatar'
 import { getOwnProfile } from '@/actions/users'
+import { PresenceProvider } from '@/lib/presence-context'
 
 export default function MainLayout({ children }) {
   const pathname = usePathname()
@@ -31,6 +32,7 @@ export default function MainLayout({ children }) {
   }
 
   return (
+    <PresenceProvider userId={profile?.id}>
     <div style={{
       display: 'flex',
       height: '100vh',
@@ -196,5 +198,6 @@ export default function MainLayout({ children }) {
         }
       `}</style>
     </div>
+    </PresenceProvider>
   )
 }

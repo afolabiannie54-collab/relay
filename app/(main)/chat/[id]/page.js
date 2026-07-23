@@ -7,6 +7,8 @@ import Avatar from '@/components/shared/Avatar'
 import { getMessages, sendMessage, getConversation, markConversationRead, editMessage, deleteMessage } from '@/actions/messages'
 import { getOwnProfile } from '@/actions/users'
 import { createClient } from '@/lib/supabase/client'
+import { useReadReceipts } from '@/hooks/useReadReceipts'
+import { useOnlineUsers } from '@/lib/presence-context'
 
 export default function ConversationPage() {
   const { id } = useParams()
@@ -21,10 +23,13 @@ export default function ConversationPage() {
   const [editContent, setEditContent] = useState('')
   const [replyTo, setReplyTo] = useState(null)
   const [typingUsers, setTypingUsers] = useState([])
+  const { onlineUsers } = useOnlineUsers()
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
   const typingTimeout = useRef(null)
   const channelRef = useRef(null)
+
+  useReadReceipts(id, profile?.id, messages)
 
   useEffect(() => {
     async function load() {
@@ -185,6 +190,21 @@ export default function ConversationPage() {
     return date.toLocaleDateString([], { month: 'long', day: 'numeric' })
   }
 
+  const formatLastSeen = (lastSeen) => {
+    if (!lastSeen) return ''
+    const date = new Date(lastSeen)
+    const now = new Date()
+    const diff = now - date
+    const minutes = Math.floor(diff / 60000)
+    const hours = Math.floor(diff / 3600000)
+    const days = Math.floor(diff / 86400000)
+    if (minutes < 1) return 'just now'
+    if (minutes < 60) return `${minutes}m ago`
+    if (hours < 24) return `${hours}h ago`
+    if (days < 7) return `${days}d ago`
+    return date.toLocaleDateString()
+  }
+
   // Group messages by date
   const groupedMessages = messages.reduce((groups, msg) => {
     const date = new Date(msg.created_at).toDateString()
@@ -244,9 +264,16 @@ export default function ConversationPage() {
             <Avatar src={otherParticipant.avatar_url} name={otherParticipant.display_name} size={38} />
             <div>
               <p style={{ fontSize: '15px', fontWeight: '700', color: '#0a0a0a' }}>
-                {otherParticipant.display_name}
+                {otherParticipant?.display_name}
               </p>
-              <p style={{ fontSize: '12px', color: '#A3A3A3' }}>@{otherParticipant.username}</p>
+              <p style={{ fontSize: '12px', color: '#A3A3A3' }}>
+                {onlineUsers.includes(otherParticipant?.id)
+                  ? <span style={{ color: '#22C55E' }}>● Online</span>
+                  : otherParticipant?.last_seen
+                    ? `Last seen ${formatLastSeen(otherParticipant.last_seen)}`
+                    : `@${otherParticipant?.username}`
+                }
+              </p>
             </div>
           </Link>
         )}
