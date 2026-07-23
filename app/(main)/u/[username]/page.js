@@ -2,6 +2,7 @@ import { getProfileByUsername } from '@/actions/users'
 import { createClient } from '@/lib/supabase/server'
 import Avatar from '@/components/shared/Avatar'
 import Link from 'next/link'
+import MessageButton from '@/components/profile/MessageButton'
 
 export default async function ProfilePage({ params }) {
   const { username } = await params
@@ -33,7 +34,7 @@ export default async function ProfilePage({ params }) {
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔍</div>
           <h1 style={{ fontSize: '20px', fontWeight: '800', marginBottom: '8px' }}>User not found</h1>
           <p style={{ fontSize: '14px', color: '#525252', marginBottom: '24px' }}>
-            @{username} doesn't exist or may have been deleted.
+            @{username} does not exist or may have been deleted.
           </p>
           <Link href="/chat" style={{
             display: 'inline-block',
@@ -64,7 +65,6 @@ export default async function ProfilePage({ params }) {
     const minutes = Math.floor(diff / 60000)
     const hours = Math.floor(diff / 3600000)
     const days = Math.floor(diff / 86400000)
-
     if (minutes < 1) return 'Just now'
     if (minutes < 60) return `${minutes}m ago`
     if (hours < 24) return `${hours}h ago`
@@ -78,7 +78,6 @@ export default async function ProfilePage({ params }) {
       background: '#F5F5F5',
       fontFamily: "'Inter', -apple-system, sans-serif",
     }}>
-      {/* Top nav */}
       <div style={{
         background: '#fff',
         borderBottom: '1.5px solid #0a0a0a',
@@ -91,9 +90,6 @@ export default async function ProfilePage({ params }) {
         zIndex: 10,
       }}>
         <Link href="/chat" style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '6px',
           textDecoration: 'none',
           color: '#0a0a0a',
           fontSize: '14px',
@@ -104,11 +100,7 @@ export default async function ProfilePage({ params }) {
         <span style={{ fontSize: '16px', fontWeight: '700' }}>Profile</span>
       </div>
 
-      <div style={{
-        maxWidth: '600px',
-        margin: '0 auto',
-        padding: '32px 24px',
-      }}>
+      <div style={{ maxWidth: '600px', margin: '0 auto', padding: '32px 24px' }}>
         <div style={{
           background: '#fff',
           border: '1.5px solid #0a0a0a',
@@ -116,32 +108,18 @@ export default async function ProfilePage({ params }) {
           padding: '32px',
           boxShadow: '4px 4px 0 #0a0a0a',
         }}>
-          {/* Avatar and name */}
           <div style={{
             display: 'flex',
             alignItems: 'flex-start',
             gap: '20px',
             marginBottom: '24px',
           }}>
-            <Avatar
-              src={profile.avatar_url}
-              name={profile.display_name}
-              size={80}
-            />
+            <Avatar src={profile.avatar_url} name={profile.display_name} size={80} />
             <div style={{ flex: 1 }}>
-              <h1 style={{
-                fontSize: '22px',
-                fontWeight: '800',
-                color: '#0a0a0a',
-                marginBottom: '2px',
-              }}>
+              <h1 style={{ fontSize: '22px', fontWeight: '800', color: '#0a0a0a', marginBottom: '2px' }}>
                 {profile.display_name}
               </h1>
-              <p style={{
-                fontSize: '14px',
-                color: '#A3A3A3',
-                marginBottom: '8px',
-              }}>
+              <p style={{ fontSize: '14px', color: '#A3A3A3', marginBottom: '8px' }}>
                 @{profile.username}
               </p>
               {profile.last_seen && (
@@ -152,7 +130,6 @@ export default async function ProfilePage({ params }) {
             </div>
           </div>
 
-          {/* Bio */}
           {profile.bio && (
             <div style={{
               padding: '16px',
@@ -167,16 +144,10 @@ export default async function ProfilePage({ params }) {
             </div>
           )}
 
-          {/* Member since */}
-          <p style={{
-            fontSize: '12px',
-            color: '#A3A3A3',
-            marginBottom: '24px',
-          }}>
+          <p style={{ fontSize: '12px', color: '#A3A3A3', marginBottom: '24px' }}>
             Member since {new Date(profile.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
           </p>
 
-          {/* Actions */}
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
             {isOwnProfile ? (
               <Link href="/settings/profile" style={{
@@ -192,33 +163,7 @@ export default async function ProfilePage({ params }) {
                 Edit profile
               </Link>
             ) : (
-              <>
-                <Link href={`/chat?user=${profile.id}`} style={{
-                  padding: '10px 20px',
-                  background: '#0a0a0a',
-                  color: '#fff',
-                  borderRadius: '8px',
-                  textDecoration: 'none',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  boxShadow: '3px 3px 0 #FFB800',
-                }}>
-                  Message
-                </Link>
-                <button style={{
-                  padding: '10px 20px',
-                  background: '#fff',
-                  color: '#EF4444',
-                  border: '1.5px solid #EF4444',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
-                }}>
-                  Block
-                </button>
-              </>
+              <MessageButton receiverId={profile.id} displayName={profile.display_name} />
             )}
           </div>
         </div>
