@@ -4,12 +4,15 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Avatar from '@/components/shared/Avatar'
-import { getMessages, sendMessage, getConversation, markConversationRead, editMessage, deleteMessage } from '@/actions/messages'
+import { getMessages, sendMessage, getConversation, markConversationRead, editMessage, deleteMessage, uploadMedia } from '@/actions/messages'
 import { getGroupInfo } from '@/actions/groups'
 import { getOwnProfile } from '@/actions/users'
 import { createClient } from '@/lib/supabase/client'
 import { useReadReceipts } from '@/hooks/useReadReceipts'
 import { useOnlineUsers } from '@/lib/presence-context'
+import MediaMessage from '@/components/chat/MediaMessage'
+import AudioRecorder from '@/components/chat/MediaRecorder'
+import CameraCapture from '@/components/chat/CameraCapture'
 
 export default function ConversationPage() {
   const { id } = useParams()
@@ -25,6 +28,9 @@ export default function ConversationPage() {
   const [editContent, setEditContent] = useState('')
   const [replyTo, setReplyTo] = useState(null)
   const [typingUsers, setTypingUsers] = useState([])
+  const [mediaPreview, setMediaPreview] = useState(null)
+  const [showRecorder, setShowRecorder] = useState(false)
+  const [showCamera, setShowCamera] = useState(false)
   const { onlineUsers } = useOnlineUsers()
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
@@ -196,6 +202,57 @@ export default function ConversationPage() {
     return new Date(timestamp).toLocaleDateString([], { month: 'long', day: 'numeric' })
   }
 
+  const handleMediaUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const imageTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+    const isImage = imageTypes.includes(file.type)
+
+    if (isImage) {
+      const previewUrl = URL.createObjectURL(file)
+      setMediaPreview({ file, previewUrl, isImage: true })
+    } else {
+      setMediaPreview({ file, isImage: false })
+    }
+    e.target.value = ''
+  }
+
+  const handleConfirmMediaUpload = async () => {
+    if (!mediaPreview) return
+    const formData = new FormData()
+    formData.append('file', mediaPreview.file)
+    if (replyTo?.id) formData.append('replyToId', replyTo.id)
+    setSending(true)
+    const result = await uploadMedia(id, formData)
+    if (result.error) {
+      alert(result.error)
+    } else {
+      setReplyTo(null)
+    }
+    if (mediaPreview.previewUrl) URL.revokeObjectURL(mediaPreview.previewUrl)
+    setMediaPreview(null)
+    setSending(false)
+  }
+
+  const handleRecordingComplete = async (file) => {
+    setShowRecorder(false)
+    const formData = new FormData()
+    formData.append('file', file)
+    if (replyTo?.id) formData.append('replyToId', replyTo.id)
+    setSending(true)
+    const result = await uploadMedia(id, formData)
+    if (result.error) alert(result.error)
+    else setReplyTo(null)
+    setSending(false)
+  }
+
+  const handleCameraCapture = async (file) => {
+    setShowCamera(false)
+    const previewUrl = URL.createObjectURL(file)
+    setMediaPreview({ file, previewUrl, isImage: true })
+  }
+
   const formatLastSeen = (lastSeen) => {
     if (!lastSeen) return ''
     const date = new Date(lastSeen)
@@ -241,6 +298,13 @@ export default function ConversationPage() {
       fontFamily: "'Inter', -apple-system, sans-serif",
       background: '#fff',
     }}>
+      {showCamera && (
+        <CameraCapture
+          onCapture={handleCameraCapture}
+          onCancel={() => setShowCamera(false)}
+        />
+      )}
+
       {/* Header */}
       <div style={{
         padding: '12px 16px',
@@ -458,6 +522,8 @@ export default function ConversationPage() {
                           Cancel
                         </button>
                       </div>
+                    ) : (msg.type === 'image' || msg.type === 'audio' || msg.type === 'file') ? (
+                      <MediaMessage message={msg} isOwn={isOwn} />
                     ) : (
                       <div
                         style={{
@@ -513,7 +579,7 @@ export default function ConversationPage() {
                           Delete
                         </button>
                       )}
-                      {isOwn && !isDeleted && (
+                      {isOwn && !isDeleted && msg.type === 'text' && (
                         <button
                           onClick={() => { setEditingId(msg.id); setEditContent(msg.content) }}
                           style={{
@@ -641,6 +707,112 @@ export default function ConversationPage() {
         </div>
       )}
 
+      {showRecorder && (
+        <AudioRecorder
+          onRecordingComplete={handleRecordingComplete}
+          onCancel={() => setShowRecorder(false)}
+        />
+      )}
+
+      {mediaPreview && (
+        <div style={{
+          padding: '12px 16px',
+          background: '#F5F5F5',
+          borderTop: '1px solid #E5E5E5',
+          flexShrink: 0,
+        }}>
+          <div style={{
+            background: '#fff',
+            border: '1.5px solid #0a0a0a',
+            borderRadius: '12px',
+            padding: '12px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+          }}>
+            {mediaPreview.isImage ? (
+              <img
+                src={mediaPreview.previewUrl}
+                alt="Preview"
+                style={{
+                  width: '60px',
+                  height: '60px',
+                  objectFit: 'cover',
+                  borderRadius: '8px',
+                  border: '1px solid #E5E5E5',
+                }}
+              />
+            ) : (
+              <div style={{
+                width: '44px',
+                height: '44px',
+                background: '#F5F5F5',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '22px',
+                flexShrink: 0,
+              }}>
+                📄
+              </div>
+            )}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{
+                fontSize: '13px',
+                fontWeight: '600',
+                color: '#0a0a0a',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                marginBottom: '2px',
+              }}>
+                {mediaPreview.file.name}
+              </p>
+              <p style={{ fontSize: '11px', color: '#A3A3A3' }}>
+                {(mediaPreview.file.size / 1024).toFixed(1)} KB
+              </p>
+            </div>
+            <button
+              onClick={handleConfirmMediaUpload}
+              disabled={sending}
+              style={{
+                padding: '8px 16px',
+                background: '#0a0a0a',
+                color: '#fff',
+                border: '1.5px solid #0a0a0a',
+                borderRadius: '8px',
+                fontSize: '13px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                boxShadow: '2px 2px 0 #FFB800',
+                flexShrink: 0,
+              }}
+            >
+              {sending ? 'Sending...' : 'Send'}
+            </button>
+            <button
+              onClick={() => {
+                if (mediaPreview.previewUrl) URL.revokeObjectURL(mediaPreview.previewUrl)
+                setMediaPreview(null)
+              }}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '20px',
+                color: '#A3A3A3',
+                padding: '4px',
+                flexShrink: 0,
+              }}
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Input */}
       <div style={{
         padding: '12px 16px',
@@ -651,6 +823,72 @@ export default function ConversationPage() {
         background: '#fff',
         flexShrink: 0,
       }}>
+        <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+          <input
+            type="file"
+            id="media-upload"
+            accept="image/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
+            onChange={handleMediaUpload}
+            style={{ display: 'none' }}
+          />
+          <label
+            htmlFor="media-upload"
+            style={{
+              width: '40px',
+              height: '40px',
+              background: '#fff',
+              border: '1.5px solid #0a0a0a',
+              borderRadius: '10px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              fontSize: '18px',
+              flexShrink: 0,
+            }}
+            title="Attach file"
+          >
+            📎
+          </label>
+          <button
+            onClick={() => setShowCamera(true)}
+            style={{
+              width: '40px',
+              height: '40px',
+              background: '#fff',
+              border: '1.5px solid #0a0a0a',
+              borderRadius: '10px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              fontSize: '18px',
+              flexShrink: 0,
+            }}
+            title="Camera"
+          >
+            📷
+          </button>
+          <button
+            onClick={() => setShowRecorder(true)}
+            style={{
+              width: '40px',
+              height: '40px',
+              background: '#fff',
+              border: '1.5px solid #0a0a0a',
+              borderRadius: '10px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              fontSize: '18px',
+              flexShrink: 0,
+            }}
+            title="Voice message"
+          >
+            🎙️
+          </button>
+        </div>
         <textarea
           ref={inputRef}
           value={content}

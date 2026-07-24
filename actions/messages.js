@@ -351,3 +351,124 @@ export async function getExistingConversation(otherUserId) {
   if (error || !data) return { conversationId: null }
   return { conversationId: data }
 }
+
+export async function uploadMedia(conversationId, formData) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) return { error: 'Not authenticated' }
+
+  const file = formData.get('file')
+  if (!file) return { error: 'No file provided' }
+
+  const replyToId = formData.get('replyToId') || null
+
+  // Validate file type and size
+  const imageTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+  const audioTypes = ['audio/mpeg', 'audio/mp4', 'audio/wav', 'audio/ogg', 'audio/webm']
+  const fileTypes = [
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'text/plain',
+    'application/zip',
+  ]
+
+  let messageType = null
+  let maxSize = 0
+
+  if (imageTypes.includes(file.type)) {
+    messageType = 'image'
+    maxSize = 10 * 1024 * 1024
+  } else if (audioTypes.includes(file.type)) {
+    messageType = 'audio'
+    maxSize = 10 * 1024 * 1024
+  } else if (fileTypes.includes(file.type)) {
+    messageType = 'file'
+    maxSize = 50 * 1024 * 1024
+  } else {
+    return { error: 'Unsupported file type' }
+  }
+
+  if (file.size > maxSize) {
+    const limitMB = maxSize / (1024 * 1024)
+    return { error: `File too large. Maximum size is ${limitMB}MB` }
+  }
+
+  // Verify participant
+  const { data: participant } = await supabase
+    .from('conversation_participants')
+    .select('role')
+    .eq('conversation_id', conversationId)
+    .eq('user_id', user.id)
+    .single()
+
+  if (!participant) return { error: 'Not a participant' }
+
+  // Get sender display name
+  const { data: profile } = await supabase
+    .from('users')
+    .select('display_name')
+    .eq('id', user.id)
+    .single()
+
+  // Upload to Supabase Storage
+  const ext = file.name.split('.').pop()
+  const path = `${conversationId}/${user.id}/${Date.now()}.${ext}`
+
+  const { error: uploadError } = await supabase.storage
+    .from('media')
+    .upload(path, file)
+
+  if (uploadError) return { error: uploadError.message }
+
+  const { data: { publicUrl } } = supabase.storage
+    .from('media')
+    .getPublicUrl(path)
+
+  // Create message
+  const messageData = {
+    conversation_id: conversationId,
+    sender_id: user.id,
+    sender_name_snapshot: profile.display_name,
+    content: file.name,
+    type: messageType,
+  }
+
+  if (replyToId) messageData.reply_to_id = replyToId
+
+  const { data: message, error: msgError } = await supabase
+    .from('messages')
+    .insert(messageData)
+    .select()
+    .single()
+
+  if (msgError) return { error: msgError.message }
+
+  // Create media record
+  await supabase.from('media').insert({
+    message_id: message.id,
+    url: publicUrl,
+    type: messageType,
+    mime_type: file.type,
+    filename: file.name,
+    size: file.size,
+  })
+
+  return { success: true, data: message }
+}
+
+export async function getMediaForMessage(messageId) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('media')
+    .select('*')
+    .eq('message_id', messageId)
+    .single()
+
+  if (error) return { error: error.message }
+  return { data }
+}
