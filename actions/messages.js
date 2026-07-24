@@ -120,6 +120,12 @@ export async function getConversation(conversationId) {
 
   if (!participant) return { error: 'Not a participant' }
 
+  const { data: conversationRow } = await supabase
+    .from('conversations')
+    .select('type')
+    .eq('id', conversationId)
+    .single()
+
   const { data: participants, error } = await supabase
     .from('conversation_participants')
     .select(`
@@ -138,7 +144,7 @@ export async function getConversation(conversationId) {
     ...p.users,
   })) || []
 
-  return { data: { participants: otherParticipants, role: participant.role } }
+  return { data: { participants: otherParticipants, role: participant.role, type: conversationRow?.type } }
 }
 
 export async function getMessages(conversationId, page = 0) {

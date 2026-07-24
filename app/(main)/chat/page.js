@@ -103,20 +103,36 @@ export default function ChatPage() {
         justifyContent: 'space-between',
       }}>
         <h1 style={{ fontSize: '20px', fontWeight: '800', color: '#0a0a0a' }}>Messages</h1>
-        <Link href="/search" style={{
-          width: '36px',
-          height: '36px',
-          border: '1.5px solid #0a0a0a',
-          borderRadius: '8px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          textDecoration: 'none',
-          fontSize: '16px',
-          background: '#fff',
-        }}>
-          ✏️
-        </Link>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <Link href="/groups/create" style={{
+            width: '36px',
+            height: '36px',
+            border: '1.5px solid #0a0a0a',
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            textDecoration: 'none',
+            fontSize: '16px',
+            background: '#fff',
+          }}>
+            👥
+          </Link>
+          <Link href="/search" style={{
+            width: '36px',
+            height: '36px',
+            border: '1.5px solid #0a0a0a',
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            textDecoration: 'none',
+            fontSize: '16px',
+            background: '#fff',
+          }}>
+            ✏️
+          </Link>
+        </div>
       </div>
 
       {/* Conversation list */}
@@ -152,10 +168,10 @@ export default function ChatPage() {
         ) : (
           conversations.map(conv => {
             const lastMessage = conv.last_message
-            const isGroup = conv.conversation?.type === 'group'
+            const isGroup = conv.type === 'group'
             const otherUser = conv.other_participants?.[0]
-            const displayName = isGroup ? conv.group?.name : otherUser?.display_name
-            const avatarUrl = isGroup ? conv.group?.avatar_url : otherUser?.avatar_url
+            const displayName = isGroup ? conv.group_info?.name : otherUser?.display_name
+            const avatarUrl = isGroup ? conv.group_info?.avatar_url : otherUser?.avatar_url
 
             return (
               <Link

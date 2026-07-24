@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Avatar from '@/components/shared/Avatar'
 import { getMessages, sendMessage, getConversation, markConversationRead, editMessage, deleteMessage } from '@/actions/messages'
+import { getGroupInfo } from '@/actions/groups'
 import { getOwnProfile } from '@/actions/users'
 import { createClient } from '@/lib/supabase/client'
 import { useReadReceipts } from '@/hooks/useReadReceipts'
@@ -15,6 +16,7 @@ export default function ConversationPage() {
   const router = useRouter()
   const [messages, setMessages] = useState([])
   const [conversation, setConversation] = useState(null)
+  const [groupInfo, setGroupInfo] = useState(null)
   const [profile, setProfile] = useState(null)
   const [content, setContent] = useState('')
   const [loading, setLoading] = useState(true)
@@ -40,6 +42,11 @@ export default function ConversationPage() {
       ])
       if (msgsResult.data) setMessages(msgsResult.data)
       if (convResult.data) setConversation(convResult.data)
+      const isGroup = convResult.data?.type === 'group'
+      if (isGroup) {
+        const groupResult = await getGroupInfo(id)
+        if (groupResult.data) setGroupInfo(groupResult.data)
+      }
       if (profileResult.data) setProfile(profileResult.data)
       setLoading(false)
       await markConversationRead(id)
@@ -181,13 +188,12 @@ export default function ConversationPage() {
   }
 
   const formatDate = (timestamp) => {
-    const date = new Date(timestamp)
-    const now = new Date()
-    const diff = now - date
-    const days = Math.floor(diff / 86400000)
-    if (days === 0) return 'Today'
-    if (days === 1) return 'Yesterday'
-    return date.toLocaleDateString([], { month: 'long', day: 'numeric' })
+    const msgDate = new Date(timestamp).toDateString()
+    const today = new Date().toDateString()
+    const yesterday = new Date(Date.now() - 86400000).toDateString()
+    if (msgDate === today) return 'Today'
+    if (msgDate === yesterday) return 'Yesterday'
+    return new Date(timestamp).toLocaleDateString([], { month: 'long', day: 'numeric' })
   }
 
   const formatLastSeen = (lastSeen) => {
@@ -259,7 +265,19 @@ export default function ConversationPage() {
         >
           ←
         </button>
-        {otherParticipant && (
+        {groupInfo ? (
+          <Link href={`/groups/${id}/settings`} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
+            <Avatar src={groupInfo.avatar_url} name={groupInfo.name} size={38} />
+            <div>
+              <p style={{ fontSize: '15px', fontWeight: '700', color: '#0a0a0a' }}>
+                {groupInfo.name}
+              </p>
+              <p style={{ fontSize: '12px', color: '#A3A3A3' }}>
+                {groupInfo.members?.length} members
+              </p>
+            </div>
+          </Link>
+        ) : otherParticipant ? (
           <Link href={`/u/${otherParticipant.username}`} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
             <Avatar src={otherParticipant.avatar_url} name={otherParticipant.display_name} size={38} />
             <div>
@@ -276,7 +294,7 @@ export default function ConversationPage() {
               </p>
             </div>
           </Link>
-        )}
+        ) : null}
       </div>
 
       {/* Messages */}
@@ -311,6 +329,15 @@ export default function ConversationPage() {
               const showAvatar = !isOwn && (i === 0 || msgs[i - 1]?.sender_id !== msg.sender_id)
 
               if (isSystem) {
+                const escapedName = profile?.display_name?.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') || ''
+                const systemText = escapedName ? msg.content
+                  ?.replace(new RegExp(`^${escapedName} `), 'You ')
+                  ?.replace(new RegExp(` ${escapedName} is `), ' you are ')
+                  ?.replace(new RegExp(` ${escapedName}$`), ' you')
+                  ?.replace(new RegExp(` ${escapedName} `), ' you ')
+                  ?.replace('You is ', 'You are ')
+                  : msg.content
+
                 return (
                   <div key={msg.id} style={{
                     textAlign: 'center',
@@ -318,7 +345,7 @@ export default function ConversationPage() {
                     fontSize: '12px',
                     color: '#A3A3A3',
                   }}>
-                    {msg.content}
+                    {systemText}
                   </div>
                 )
               }
@@ -367,7 +394,7 @@ export default function ConversationPage() {
                         maxWidth: '100%',
                       }}>
                         <p style={{ fontWeight: '700', marginBottom: '2px', fontSize: '11px' }}>
-                          {msg.reply.sender_name_snapshot}
+                          {msg.reply.sender_name_snapshot === profile?.display_name ? 'You' : msg.reply.sender_name_snapshot}
                         </p>
                         <p style={{
                           whiteSpace: 'nowrap',

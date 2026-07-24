@@ -9,23 +9,24 @@ function getInitials(name) {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
 }
 
-function getAvatarColor(name) {
-  if (!name) return '#A3A3A3'
+function getAvatarColor(name, id) {
+  const seed = id || name
+  if (!seed) return '#A3A3A3'
   const colors = [
     '#FFB800', '#FF4D6D', '#8B5CF6', '#3B82F6',
     '#22C55E', '#F59E0B', '#EF4444', '#06B6D4',
     '#EC4899', '#14B8A6', '#F97316', '#6366F1',
   ]
   let hash = 0
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash)
+  for (let i = 0; i < seed.length; i++) {
+    hash = seed.charCodeAt(i) + ((hash << 5) - hash)
   }
   return colors[Math.abs(hash) % colors.length]
 }
 
-export default function Avatar({ src, name, size = 40, className }) {
+export default function Avatar({ src, name, size = 40, userId }) {
   const initials = getInitials(name)
-  const bgColor = getAvatarColor(name)
+  const bgColor = getAvatarColor(name, userId)
   const fontSize = size * 0.38
 
   if (src) {
