@@ -73,6 +73,13 @@ export async function acceptMessageRequest(requestId) {
     body: 'You can now chat freely.',
   })
 
+  sendPushNotification(
+    request.sender_id,
+    `${accepterProfile.display_name} accepted your message request`,
+    'You can now chat freely.',
+    `/chat/${request.conversation_id}`
+  )
+
   // Remove from hidden conversations
   await supabase
     .from('conversation_hidden')
@@ -135,6 +142,22 @@ export async function getConversations() {
 
   if (error) return { error: error.message }
   return { data: data || [] }
+}
+
+export async function getUnreadChatsCount() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) return { count: 0 }
+
+  const { data, error } = await supabase.rpc('get_user_conversations', {
+    p_user_id: user.id,
+  })
+
+  if (error || !data) return { count: 0 }
+
+  const count = data.filter(c => c.unread_count > 0).length
+  return { count }
 }
 
 export async function getConversation(conversationId) {
@@ -273,7 +296,9 @@ export async function sendMessage(conversationId, content, replyToId = null) {
     .eq('conversation_id', conversationId)
     .eq('user_id', user.id)
 
-  // Parse mentions and create notifications
+  // Parse mentions, create notifications, and push mentioned users directly
+  // (skip them in the generic participant push below to avoid double-notifying)
+  const mentionedUserIds = new Set()
   if (content && content.includes('@')) {
     const mentionMatches = content.match(/@([a-z0-9_]+)/g) || []
     for (const mention of mentionMatches) {
@@ -284,7 +309,9 @@ export async function sendMessage(conversationId, content, replyToId = null) {
         .eq('username', username)
         .single()
 
-      if (mentionedUser && mentionedUser.id !== user.id) {
+      if (mentionedUser && mentionedUser.id !== user.id && !mentionedUserIds.has(mentionedUser.id)) {
+        mentionedUserIds.add(mentionedUser.id)
+
         await supabase.from('notifications').insert({
           user_id: mentionedUser.id,
           type: 'mention',
@@ -292,11 +319,19 @@ export async function sendMessage(conversationId, content, replyToId = null) {
           title: `${profile.display_name} mentioned you`,
           body: content.trim().slice(0, 100),
         })
+
+        sendPushNotification(
+          mentionedUser.id,
+          `${profile.display_name} mentioned you`,
+          content.trim().slice(0, 100),
+          `/chat/${conversationId}`
+        )
       }
     }
   }
 
-  // Send push notifications to other participants
+  // Send push notifications to other participants (not logged, and not
+  // re-sent to anyone already notified above via mention)
   const { data: participants } = await supabase
     .from('conversation_participants')
     .select('user_id')
@@ -306,6 +341,7 @@ export async function sendMessage(conversationId, content, replyToId = null) {
   if (participants?.length) {
     const preview = content.trim().slice(0, 60)
     for (const p of participants) {
+      if (mentionedUserIds.has(p.user_id)) continue
       sendPushNotification(
         p.user_id,
         profile.display_name,

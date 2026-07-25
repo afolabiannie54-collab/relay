@@ -7,6 +7,7 @@ import Avatar from '@/components/shared/Avatar'
 import { getOwnProfile } from '@/actions/users'
 import { PresenceProvider } from '@/lib/presence-context'
 import { getRequestsCount } from '@/actions/notifications'
+import { getUnreadChatsCount } from '@/actions/messages'
 import { createClient } from '@/lib/supabase/client'
 import { usePushNotifications } from '@/hooks/usePushNotifications'
 
@@ -65,9 +66,11 @@ export default function MainLayout({ children }) {
   }, [profile?.id])
 
   useEffect(() => {
-    if (pathname.startsWith('/chat')) {
-      setUnreadChatsCount(0)
+    async function loadChatsUnread() {
+      const result = await getUnreadChatsCount()
+      setUnreadChatsCount(result.count || 0)
     }
+    loadChatsUnread()
 
     if (!profile?.id) return
 
@@ -79,15 +82,21 @@ export default function MainLayout({ children }) {
         event: 'INSERT',
         schema: 'public',
         table: 'messages',
-      }, (payload) => {
-        if (payload.new.sender_id !== profile.id && payload.new.type !== 'system') {
-          setUnreadChatsCount(prev => prev + 1)
-        }
+      }, () => {
+        loadChatsUnread()
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'conversation_participants',
+        filter: `user_id=eq.${profile.id}`,
+      }, () => {
+        loadChatsUnread()
       })
       .subscribe()
 
     return () => supabase.removeChannel(channel)
-  }, [profile?.id, pathname])
+  }, [profile?.id])
 
   const navItems = [
     { href: '/chat', label: 'Chats', icon: '💬', badge: unreadChatsCount },

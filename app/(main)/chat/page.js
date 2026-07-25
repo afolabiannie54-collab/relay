@@ -64,13 +64,7 @@ export default function ChatPage() {
     return msg.content || ''
   }
 
-  const getUnreadCount = (conv) => {
-    if (!conv.last_read_at || !conv.last_message) return 0
-    if (new Date(conv.last_message.created_at) > new Date(conv.last_read_at)) {
-      return 1
-    }
-    return 0
-  }
+  const getUnreadCount = (conv) => conv.unread_count || 0
 
   if (loading) {
     return (
@@ -225,16 +219,25 @@ export default function ChatPage() {
                       }}>
                         {lastMessage?.sender_id === profile?.id ? 'You: ' : ''}{getLastMessagePreview(lastMessage)}
                       </p>
-                      {getUnreadCount(conv) > 0 && conv.last_message?.sender_id !== profile?.id && (
+                      {getUnreadCount(conv) > 0 && (
                         <div style={{
-                          width: '8px',
-                          height: '8px',
+                          minWidth: '20px',
+                          height: '20px',
+                          padding: '0 6px',
                           background: '#FFB800',
-                          borderRadius: '50%',
+                          borderRadius: '100px',
                           border: '1.5px solid #0a0a0a',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '11px',
+                          fontWeight: '800',
+                          color: '#0a0a0a',
                           flexShrink: 0,
                           marginLeft: '8px',
-                        }} />
+                        }}>
+                          {getUnreadCount(conv) > 99 ? '99+' : getUnreadCount(conv)}
+                        </div>
                       )}
                     </div>
                   </div>

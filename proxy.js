@@ -31,7 +31,10 @@ export async function proxy(request) {
 
   // Public routes — anyone can access
   const publicRoutes = ['/', '/login', '/signup', '/verify', '/reset-password', '/setup-username']
-  const isPublicRoute = publicRoutes.some(route => pathname === route || pathname.startsWith('/api/auth'))
+  // API routes handle their own auth internally and must never be redirected to
+  // an HTML login page — a redirect turns a JSON POST into a broken 307/405 loop,
+  // which is exactly what was breaking server-to-server push notification calls.
+  const isPublicRoute = pathname.startsWith('/api') || publicRoutes.some(route => pathname === route)
 
   // Auth routes — logged in users should not access
   const authRoutes = ['/login', '/signup', '/verify', '/reset-password']
