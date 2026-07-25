@@ -69,6 +69,7 @@ export default async function SettingsPage() {
             items: [
               { label: 'Edit profile', href: '/settings/profile' },
               { label: 'Privacy settings', href: '/settings/privacy' },
+              { label: 'Notifications', href: '/notifications' },
             ]
           },
           {

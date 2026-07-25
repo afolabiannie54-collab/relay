@@ -1,5 +1,6 @@
 'use server'
 
+import { sendPushNotification } from '@/lib/utils/sendPushNotification'
 import { createClient } from '@/lib/supabase/server'
 
 export async function sendMessageRequest(receiverId, content) {
@@ -15,6 +16,22 @@ export async function sendMessageRequest(receiverId, content) {
 
   if (error) return { error: error.message }
   if (data.error) return { error: data.error, conversationId: data.conversationId }
+
+  // Notify receiver of message request
+  const { data: senderProfile } = await supabase
+    .from('users')
+    .select('display_name')
+    .eq('id', user.id)
+    .single()
+
+  if (senderProfile) {
+    sendPushNotification(
+      receiverId,
+      'New message request',
+      `${senderProfile.display_name} wants to chat with you`,
+      '/requests'
+    )
+  }
 
   return { success: true, conversationId: data.conversationId }
 }
@@ -40,6 +57,21 @@ export async function acceptMessageRequest(requestId) {
     .from('message_requests')
     .update({ status: 'accepted', updated_at: new Date().toISOString() })
     .eq('id', requestId)
+
+  // Notify the original sender that their request was accepted
+  const { data: accepterProfile } = await supabase
+    .from('users')
+    .select('display_name')
+    .eq('id', user.id)
+    .single()
+
+  await supabase.from('notifications').insert({
+    user_id: request.sender_id,
+    type: 'message_request',
+    reference_id: request.conversation_id,
+    title: `${accepterProfile.display_name} accepted your message request`,
+    body: 'You can now chat freely.',
+  })
 
   // Remove from hidden conversations
   await supabase
@@ -240,6 +272,48 @@ export async function sendMessage(conversationId, content, replyToId = null) {
     .update({ last_read_at: new Date().toISOString() })
     .eq('conversation_id', conversationId)
     .eq('user_id', user.id)
+
+  // Parse mentions and create notifications
+  if (content && content.includes('@')) {
+    const mentionMatches = content.match(/@([a-z0-9_]+)/g) || []
+    for (const mention of mentionMatches) {
+      const username = mention.slice(1)
+      const { data: mentionedUser } = await supabase
+        .from('users')
+        .select('id')
+        .eq('username', username)
+        .single()
+
+      if (mentionedUser && mentionedUser.id !== user.id) {
+        await supabase.from('notifications').insert({
+          user_id: mentionedUser.id,
+          type: 'mention',
+          reference_id: conversationId,
+          title: `${profile.display_name} mentioned you`,
+          body: content.trim().slice(0, 100),
+        })
+      }
+    }
+  }
+
+  // Send push notifications to other participants
+  const { data: participants } = await supabase
+    .from('conversation_participants')
+    .select('user_id')
+    .eq('conversation_id', conversationId)
+    .neq('user_id', user.id)
+
+  if (participants?.length) {
+    const preview = content.trim().slice(0, 60)
+    for (const p of participants) {
+      sendPushNotification(
+        p.user_id,
+        profile.display_name,
+        preview,
+        `/chat/${conversationId}`
+      )
+    }
+  }
 
   return { success: true, data }
 }

@@ -6,10 +6,16 @@ import { usePathname } from 'next/navigation'
 import Avatar from '@/components/shared/Avatar'
 import { getOwnProfile } from '@/actions/users'
 import { PresenceProvider } from '@/lib/presence-context'
+import { getRequestsCount } from '@/actions/notifications'
+import { createClient } from '@/lib/supabase/client'
+import { usePushNotifications } from '@/hooks/usePushNotifications'
 
 export default function MainLayout({ children }) {
   const pathname = usePathname()
   const [profile, setProfile] = useState(null)
+  const [pendingRequestsCount, setPendingRequestsCount] = useState(0)
+
+  usePushNotifications(profile?.id)
 
   useEffect(() => {
     async function load() {
@@ -19,10 +25,48 @@ export default function MainLayout({ children }) {
     load()
   }, [])
 
+  useEffect(() => {
+    async function loadCount() {
+      const requestsResult = await getRequestsCount()
+      setPendingRequestsCount(requestsResult.count || 0)
+    }
+    loadCount()
+
+    if (!profile?.id) return
+
+    const supabase = createClient()
+
+    const requestsChannel = supabase
+      .channel('requests-count')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'message_requests',
+        filter: `receiver_id=eq.${profile.id}`,
+      }, async () => {
+        const result = await getRequestsCount()
+        setPendingRequestsCount(result.count || 0)
+      })
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'group_invites',
+        filter: `invitee_id=eq.${profile.id}`,
+      }, async () => {
+        const result = await getRequestsCount()
+        setPendingRequestsCount(result.count || 0)
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(requestsChannel)
+    }
+  }, [profile?.id])
+
   const navItems = [
     { href: '/chat', label: 'Chats', icon: '💬' },
     { href: '/search', label: 'Search', icon: '🔍' },
-    { href: '/requests', label: 'Requests', icon: '📨' },
+    { href: '/requests', label: 'Requests', icon: '📨', badge: pendingRequestsCount },
     { href: '/settings', label: 'Settings', icon: '⚙️' },
   ]
 
@@ -95,9 +139,27 @@ export default function MainLayout({ children }) {
                   fontSize: '14px',
                   fontWeight: isActive(item.href) ? '700' : '500',
                   color: '#0a0a0a',
+                  flex: 1,
                 }}>
                   {item.label}
                 </span>
+                {item.badge > 0 && (
+                  <div style={{
+                    minWidth: '18px',
+                    height: '18px',
+                    background: '#FFB800',
+                    border: '1.5px solid #0a0a0a',
+                    borderRadius: '100px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '10px',
+                    fontWeight: '800',
+                    padding: '0 4px',
+                  }}>
+                    {item.badge > 99 ? '99+' : item.badge}
+                  </div>
+                )}
               </div>
             </Link>
           ))}
@@ -176,8 +238,31 @@ export default function MainLayout({ children }) {
                 alignItems: 'center',
                 gap: '4px',
                 padding: '6px',
+                position: 'relative',
               }}>
-                <span style={{ fontSize: '20px' }}>{item.icon}</span>
+                <div style={{ position: 'relative' }}>
+                  <span style={{ fontSize: '20px' }}>{item.icon}</span>
+                  {item.badge > 0 && (
+                    <div style={{
+                      position: 'absolute',
+                      top: '-4px',
+                      right: '-6px',
+                      minWidth: '14px',
+                      height: '14px',
+                      background: '#FFB800',
+                      border: '1px solid #0a0a0a',
+                      borderRadius: '100px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '8px',
+                      fontWeight: '800',
+                      padding: '0 3px',
+                    }}>
+                      {item.badge > 99 ? '99+' : item.badge}
+                    </div>
+                  )}
+                </div>
                 <span style={{
                   fontSize: '10px',
                   fontWeight: isActive(item.href) ? '700' : '500',
