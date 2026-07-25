@@ -3,13 +3,25 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { getPrivacySettings, updatePrivacySettings } from '@/actions/users'
+import { usePushNotifications } from '@/hooks/usePushNotifications'
+import { getOwnProfile } from '@/actions/users'
 
 export default function PrivacySettingsPage() {
   const [settings, setSettings] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState(null)
+  const [profile, setProfile] = useState(null)
+
+  useEffect(() => {
+    async function loadProfile() {
+      const result = await getOwnProfile()
+      if (result.data) setProfile(result.data)
+    }
+    loadProfile()
+  }, [])
+
+  const { permission, subscribed, loading: pushLoading, subscribe, unsubscribe } = usePushNotifications(profile?.id)
 
   useEffect(() => {
     async function load() {
@@ -20,33 +32,30 @@ export default function PrivacySettingsPage() {
     load()
   }, [])
 
-  const handleToggle = (key) => {
-    setSettings(prev => ({ ...prev, [key]: !prev[key] }))
-  }
-
-  const handleSelect = (key, value) => {
-    setSettings(prev => ({ ...prev, [key]: value }))
-  }
-
-  const handleSave = async () => {
-    setSaving(true)
-    setError(null)
-    setSuccess(false)
-
+  const handleAutoSave = async (updatedSettings) => {
     const data = new FormData()
-    Object.entries(settings).forEach(([key, value]) => {
+    Object.entries(updatedSettings).forEach(([key, value]) => {
       data.append(key, String(value))
     })
-
     const result = await updatePrivacySettings(data)
-
     if (result.error) {
       setError(result.error)
     } else {
-      setSuccess(true)
-      setTimeout(() => setSuccess(false), 3000)
+      setSuccess('Saved')
+      setTimeout(() => setSuccess(null), 1500)
     }
-    setSaving(false)
+  }
+
+  const handleToggle = async (key) => {
+    const updatedSettings = { ...settings, [key]: !settings[key] }
+    setSettings(updatedSettings)
+    await handleAutoSave(updatedSettings)
+  }
+
+  const handleSelect = async (key, value) => {
+    const updatedSettings = { ...settings, [key]: value }
+    setSettings(updatedSettings)
+    await handleAutoSave(updatedSettings)
   }
 
   const Toggle = ({ value, onChange }) => (
@@ -167,6 +176,70 @@ export default function PrivacySettingsPage() {
             {error}
           </div>
         )}
+
+        <div style={{
+          background: '#fff',
+          border: '1.5px solid #0a0a0a',
+          borderRadius: '16px',
+          overflow: 'hidden',
+          boxShadow: '4px 4px 0 #0a0a0a',
+          marginBottom: '20px',
+        }}>
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid #F5F5F5' }}>
+            <p style={{ fontSize: '15px', fontWeight: '700', marginBottom: '4px' }}>Push notifications</p>
+            <p style={{ fontSize: '13px', color: '#A3A3A3' }}>
+              {permission === 'denied'
+                ? 'Notifications blocked. Enable them in your browser settings.'
+                : subscribed
+                ? 'Push notifications are enabled on this device.'
+                : 'Get notified about messages and mentions even when the app is closed.'}
+            </p>
+          </div>
+          <div style={{ padding: '16px 20px' }}>
+            {permission === 'denied' ? (
+              <p style={{ fontSize: '13px', color: '#EF4444' }}>
+                Go to browser settings → Site settings → Notifications → Allow relaymsg.vercel.app
+              </p>
+            ) : subscribed ? (
+              <button
+                onClick={unsubscribe}
+                disabled={pushLoading}
+                style={{
+                  padding: '9px 18px',
+                  background: '#fff',
+                  color: '#EF4444',
+                  border: '1.5px solid #EF4444',
+                  borderRadius: '8px',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                }}
+              >
+                {pushLoading ? 'Disabling...' : 'Disable on this device'}
+              </button>
+            ) : (
+              <button
+                onClick={subscribe}
+                disabled={pushLoading}
+                style={{
+                  padding: '9px 18px',
+                  background: '#0a0a0a',
+                  color: '#fff',
+                  border: '1.5px solid #0a0a0a',
+                  borderRadius: '8px',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                  boxShadow: '2px 2px 0 #FFB800',
+                }}
+              >
+                {pushLoading ? 'Enabling...' : 'Enable on this device'}
+              </button>
+            )}
+          </div>
+        </div>
 
         {/* Privacy */}
         <p style={{
@@ -293,26 +366,6 @@ export default function PrivacySettingsPage() {
             />
           </div>
         </div>
-
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          style={{
-            width: '100%',
-            padding: '14px',
-            background: saving ? '#525252' : '#0a0a0a',
-            color: '#fff',
-            border: '1.5px solid #0a0a0a',
-            borderRadius: '8px',
-            fontSize: '14px',
-            fontWeight: '700',
-            cursor: saving ? 'not-allowed' : 'pointer',
-            fontFamily: 'inherit',
-            boxShadow: saving ? 'none' : '3px 3px 0 #FFB800',
-          }}
-        >
-          {saving ? 'Saving...' : 'Save settings'}
-        </button>
       </div>
     </div>
   )
