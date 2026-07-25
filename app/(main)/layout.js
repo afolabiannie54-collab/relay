@@ -7,6 +7,7 @@ import Avatar from '@/components/shared/Avatar'
 import { getOwnProfile } from '@/actions/users'
 import { PresenceProvider } from '@/lib/presence-context'
 import { getRequestsCount } from '@/actions/notifications'
+import { getConversations } from '@/actions/messages'
 import { createClient } from '@/lib/supabase/client'
 import { usePushNotifications } from '@/hooks/usePushNotifications'
 
@@ -14,6 +15,7 @@ export default function MainLayout({ children }) {
   const pathname = usePathname()
   const [profile, setProfile] = useState(null)
   const [pendingRequestsCount, setPendingRequestsCount] = useState(0)
+  const [unreadChatsCount, setUnreadChatsCount] = useState(0)
 
   usePushNotifications(profile?.id)
 
@@ -29,6 +31,15 @@ export default function MainLayout({ children }) {
     async function loadCount() {
       const requestsResult = await getRequestsCount()
       setPendingRequestsCount(requestsResult.count || 0)
+
+      const { data: conversations } = await getConversations()
+      if (conversations) {
+        const unread = conversations.filter(c => {
+          if (!c.last_message || !c.last_read_at) return c.last_message != null
+          return new Date(c.last_message.created_at) > new Date(c.last_read_at)
+        }).length
+        setUnreadChatsCount(unread)
+      }
     }
     loadCount()
 
@@ -64,7 +75,7 @@ export default function MainLayout({ children }) {
   }, [profile?.id])
 
   const navItems = [
-    { href: '/chat', label: 'Chats', icon: '💬' },
+    { href: '/chat', label: 'Chats', icon: '💬', badge: unreadChatsCount },
     { href: '/search', label: 'Search', icon: '🔍' },
     { href: '/requests', label: 'Requests', icon: '📨', badge: pendingRequestsCount },
     { href: '/settings', label: 'Settings', icon: '⚙️' },

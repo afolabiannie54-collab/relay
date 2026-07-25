@@ -8,6 +8,8 @@ webpush.setVapidDetails(
   process.env.VAPID_PRIVATE_KEY
 )
 
+export const runtime = 'nodejs'
+
 export async function POST(request) {
   try {
     const { userId, title, body, url } = await request.json()
