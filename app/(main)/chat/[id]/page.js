@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Avatar from '@/components/shared/Avatar'
-import { getMessages, sendMessage, getConversation, markConversationRead, editMessage, deleteMessage, uploadMedia } from '@/actions/messages'
+import { getMessages, sendMessage, getConversation, markConversationRead, editMessage, deleteMessage, uploadMedia, getReactions, toggleReaction, getPinnedMessages, togglePin, searchMessages } from '@/actions/messages'
 import { getGroupInfo } from '@/actions/groups'
 import { getOwnProfile } from '@/actions/users'
 import { createClient } from '@/lib/supabase/client'
@@ -13,6 +13,7 @@ import { useOnlineUsers } from '@/lib/presence-context'
 import MediaMessage from '@/components/chat/MediaMessage'
 import AudioRecorder from '@/components/chat/MediaRecorder'
 import CameraCapture from '@/components/chat/CameraCapture'
+import MessageReactions from '@/components/chat/MessageReactions'
 
 export default function ConversationPage() {
   const { id } = useParams()
@@ -31,6 +32,19 @@ export default function ConversationPage() {
   const [mediaPreview, setMediaPreview] = useState(null)
   const [showRecorder, setShowRecorder] = useState(false)
   const [showCamera, setShowCamera] = useState(false)
+  const [messageReactions, setMessageReactions] = useState({})
+  const [showPinnedPanel, setShowPinnedPanel] = useState(false)
+  const [pinnedMessages, setPinnedMessages] = useState([])
+  const [showSearch, setShowSearch] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState([])
+  const [searching, setSearching] = useState(false)
+  const [activeReactionPicker, setActiveReactionPicker] = useState(null)
+  const [pinnedMessageIds, setPinnedMessageIds] = useState(new Set())
+  const [mentionQuery, setMentionQuery] = useState('')
+  const [mentionResults, setMentionResults] = useState([])
+  const [showMentions, setShowMentions] = useState(false)
+  const [mentionStartIndex, setMentionStartIndex] = useState(-1)
   const { onlineUsers } = useOnlineUsers()
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
@@ -47,6 +61,7 @@ export default function ConversationPage() {
         getOwnProfile(),
       ])
       if (msgsResult.data) setMessages(msgsResult.data)
+      if (msgsResult.data) loadReactions(msgsResult.data)
       if (convResult.data) setConversation(convResult.data)
       const isGroup = convResult.data?.type === 'group'
       if (isGroup) {
@@ -56,6 +71,12 @@ export default function ConversationPage() {
       if (profileResult.data) setProfile(profileResult.data)
       setLoading(false)
       await markConversationRead(id)
+
+      const pinnedResult = await getPinnedMessages(id)
+      if (pinnedResult.data) {
+        setPinnedMessages(pinnedResult.data)
+        setPinnedMessageIds(new Set(pinnedResult.data.map(p => p.messages?.id)))
+      }
     }
     load()
   }, [id])
@@ -123,6 +144,19 @@ export default function ConversationPage() {
       supabase.removeChannel(channel)
     }
   }, [id, profile?.id])
+
+  const loadReactions = async (msgs) => {
+    const reactionsMap = {}
+    await Promise.all(
+      msgs.map(async (msg) => {
+        if (msg.type === 'text' || msg.type === 'image' || msg.type === 'audio' || msg.type === 'file') {
+          const result = await getReactions(msg.id)
+          if (result.data) reactionsMap[msg.id] = result.data
+        }
+      })
+    )
+    setMessageReactions(reactionsMap)
+  }
 
   const handleTyping = async () => {
     if (!channelRef.current || !profile) return
@@ -253,6 +287,44 @@ export default function ConversationPage() {
     setMediaPreview({ file, previewUrl, isImage: true })
   }
 
+  const handleSearch = async (query) => {
+    setSearchQuery(query)
+    if (query.length < 2) { setSearchResults([]); return }
+    setSearching(true)
+    const result = await searchMessages(id, query)
+    if (result.data) setSearchResults(result.data)
+    setSearching(false)
+  }
+
+  const handleLoadPinned = async () => {
+    const result = await getPinnedMessages(id)
+    if (result.data) setPinnedMessages(result.data)
+    setPinnedMessageIds(new Set(result.data.map(p => p.messages?.id)))
+    setShowPinnedPanel(true)
+  }
+
+  const handleTogglePin = async (messageId) => {
+    const result = await togglePin(id, messageId)
+    if (result.error) alert(result.error)
+    else if (showPinnedPanel) handleLoadPinned()
+    setPinnedMessageIds(prev => {
+      const next = new Set(prev)
+      if (next.has(messageId)) next.delete(messageId)
+      else next.add(messageId)
+      return next
+    })
+  }
+
+  const handleMentionSelect = (member) => {
+    const before = content.slice(0, mentionStartIndex)
+    const after = content.slice(mentionStartIndex + mentionQuery.length + 1)
+    const newContent = `${before}@${member.username} ${after}`
+    setContent(newContent)
+    setShowMentions(false)
+    setMentionResults([])
+    inputRef.current?.focus()
+  }
+
   const formatLastSeen = (lastSeen) => {
     if (!lastSeen) return ''
     const date = new Date(lastSeen)
@@ -359,7 +431,103 @@ export default function ConversationPage() {
             </div>
           </Link>
         ) : null}
+        <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto' }}>
+          <button
+            onClick={() => setShowSearch(prev => !prev)}
+            style={{
+              width: '34px',
+              height: '34px',
+              background: showSearch ? '#F5F5F5' : '#fff',
+              border: '1.5px solid #0a0a0a',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            title="Search messages"
+          >
+            🔍
+          </button>
+          <button
+            onClick={handleLoadPinned}
+            style={{
+              width: '34px',
+              height: '34px',
+              background: showPinnedPanel ? '#F5F5F5' : '#fff',
+              border: '1.5px solid #0a0a0a',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            title="Pinned messages"
+          >
+            📌
+          </button>
+        </div>
       </div>
+
+      {showPinnedPanel && (
+        <div style={{
+          borderBottom: '1.5px solid #0a0a0a',
+          background: '#fff',
+          flexShrink: 0,
+          maxHeight: '250px',
+          overflowY: 'auto',
+        }}>
+          <div style={{
+            padding: '10px 16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderBottom: '1px solid #F5F5F5',
+            position: 'sticky',
+            top: 0,
+            background: '#fff',
+          }}>
+            <p style={{ fontSize: '14px', fontWeight: '700' }}>📌 Pinned messages</p>
+            <button
+              onClick={() => setShowPinnedPanel(false)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', color: '#A3A3A3' }}
+            >×</button>
+          </div>
+          {pinnedMessages.length === 0 ? (
+            <p style={{ padding: '16px', fontSize: '13px', color: '#A3A3A3' }}>No pinned messages</p>
+          ) : pinnedMessages.map(pin => (
+            <div
+              key={pin.id}
+              style={{
+                padding: '10px 16px',
+                borderBottom: '1px solid #F5F5F5',
+                cursor: 'pointer',
+              }}
+              onClick={() => {
+                const el = document.getElementById(`msg-${pin.messages?.id}`)
+                if (el) {
+                  el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                  el.style.background = '#FFF8E1'
+                  setTimeout(() => el.style.background = '', 2000)
+                }
+                setShowPinnedPanel(false)
+              }}
+            >
+              <p style={{ fontSize: '12px', fontWeight: '700', color: '#0a0a0a', marginBottom: '2px' }}>
+                {pin.messages?.sender_name_snapshot}
+              </p>
+              <p style={{ fontSize: '13px', color: '#525252', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {pin.messages?.type === 'deleted' ? 'This message was deleted' : pin.messages?.content}
+              </p>
+              <p style={{ fontSize: '11px', color: '#A3A3A3', marginTop: '2px' }}>
+                Pinned by {pin.users?.display_name}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Messages */}
       <div style={{
@@ -417,6 +585,7 @@ export default function ConversationPage() {
               return (
                 <div
                   key={msg.id}
+                  id={`msg-${msg.id}`}
                   style={{
                     display: 'flex',
                     flexDirection: isOwn ? 'row-reverse' : 'row',
@@ -611,6 +780,39 @@ export default function ConversationPage() {
                           Reply
                         </button>
                       )}
+                      {!isDeleted && msg.type !== 'system' && (
+                        <button
+                          onClick={() => setActiveReactionPicker(prev => prev === msg.id ? null : msg.id)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontSize: '10px',
+                            color: '#A3A3A3',
+                            padding: '0',
+                            fontFamily: 'inherit',
+                          }}
+                        >
+                          React
+                        </button>
+                      )}
+                      {!isDeleted && msg.type !== 'system' && (
+                        <button
+                          onClick={() => handleTogglePin(msg.id)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontSize: '10px',
+                            color: pinnedMessageIds.has(msg.id) ? '#FFB800' : '#A3A3A3',
+                            padding: '0',
+                            fontFamily: 'inherit',
+                            fontWeight: pinnedMessageIds.has(msg.id) ? '700' : '400',
+                          }}
+                        >
+                          {pinnedMessageIds.has(msg.id) ? 'Unpin' : 'Pin'}
+                        </button>
+                      )}
                       {isOwn && !isDeleted && (
                         <button
                           onClick={() => setReplyTo(msg)}
@@ -628,6 +830,20 @@ export default function ConversationPage() {
                         </button>
                       )}
                     </div>
+                    <MessageReactions
+                      messageId={msg.id}
+                      reactions={messageReactions[msg.id] || []}
+                      currentUserId={profile?.id}
+                      showPicker={activeReactionPicker === msg.id}
+                      onTogglePicker={() => setActiveReactionPicker(prev => prev === msg.id ? null : msg.id)}
+                      onReactionChange={async () => {
+                        setActiveReactionPicker(null)
+                        const result = await getReactions(msg.id)
+                        if (result.data) {
+                          setMessageReactions(prev => ({ ...prev, [msg.id]: result.data }))
+                        }
+                      }}
+                    />
                   </div>
                 </div>
               )
@@ -813,6 +1029,110 @@ export default function ConversationPage() {
         </div>
       )}
 
+      {showSearch && (
+        <div style={{
+          borderTop: '1px solid #E5E5E5',
+          background: '#fff',
+          flexShrink: 0,
+          maxHeight: '300px',
+          display: 'flex',
+          flexDirection: 'column',
+        }}>
+          <div style={{ padding: '10px 16px', borderBottom: '1px solid #F5F5F5' }}>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => handleSearch(e.target.value)}
+              placeholder="Search messages..."
+              autoFocus
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                border: '1.5px solid #0a0a0a',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontFamily: 'inherit',
+                outline: 'none',
+              }}
+            />
+          </div>
+          <div style={{ overflowY: 'auto', flex: 1 }}>
+            {searching && (
+              <p style={{ padding: '12px 16px', fontSize: '13px', color: '#A3A3A3' }}>Searching...</p>
+            )}
+            {!searching && searchQuery.length >= 2 && searchResults.length === 0 && (
+              <p style={{ padding: '12px 16px', fontSize: '13px', color: '#A3A3A3' }}>No messages found</p>
+            )}
+            {searchResults.map(msg => (
+              <div
+                key={msg.id}
+                style={{
+                  padding: '10px 16px',
+                  borderBottom: '1px solid #F5F5F5',
+                  cursor: 'pointer',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = '#F9F9F9'}
+                onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+                onClick={() => {
+                  const el = document.getElementById(`msg-${msg.id}`)
+                  if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                    el.style.background = '#FFF8E1'
+                    setTimeout(() => el.style.background = '', 2000)
+                  }
+                  setShowSearch(false)
+                }}
+              >
+                <p style={{ fontSize: '12px', fontWeight: '700', color: '#0a0a0a', marginBottom: '2px' }}>
+                  {msg.sender_name_snapshot}
+                </p>
+                <p style={{ fontSize: '13px', color: '#525252', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {msg.content}
+                </p>
+                <p style={{ fontSize: '11px', color: '#A3A3A3', marginTop: '2px' }}>
+                  {formatTime(msg.created_at)}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {showMentions && (
+        <div style={{
+          background: '#fff',
+          border: '1.5px solid #0a0a0a',
+          borderRadius: '12px',
+          margin: '0 16px 8px',
+          overflow: 'hidden',
+          boxShadow: '3px 3px 0 #0a0a0a',
+          flexShrink: 0,
+        }}>
+          {mentionResults.map(member => (
+            <div
+              key={member.user_id || member.id}
+              onClick={() => handleMentionSelect(member)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                padding: '10px 14px',
+                cursor: 'pointer',
+                borderBottom: '1px solid #F5F5F5',
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = '#F9F9F9'}
+              onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+            >
+              <Avatar src={member.avatar_url} name={member.display_name} size={32} userId={member.user_id || member.id} />
+              <div>
+                <p style={{ fontSize: '13px', fontWeight: '700', color: '#0a0a0a' }}>{member.display_name}</p>
+                <p style={{ fontSize: '11px', color: '#A3A3A3' }}>@{member.username}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Input */}
       <div style={{
         padding: '12px 16px',
@@ -892,7 +1212,31 @@ export default function ConversationPage() {
         <textarea
           ref={inputRef}
           value={content}
-          onChange={e => { setContent(e.target.value); handleTyping() }}
+          onChange={e => {
+            const val = e.target.value
+            setContent(val)
+            handleTyping()
+
+            const cursorPos = e.target.selectionStart
+            const textBeforeCursor = val.slice(0, cursorPos)
+            const atMatch = textBeforeCursor.match(/@(\w*)$/)
+
+            if (atMatch && groupInfo) {
+              const query = atMatch[1].toLowerCase()
+              setMentionQuery(query)
+              setMentionStartIndex(cursorPos - atMatch[0].length)
+              const filtered = groupInfo.members?.filter(m =>
+                (m.user_id !== profile?.id) &&
+                (m.username?.toLowerCase().includes(query) ||
+                m.display_name?.toLowerCase().includes(query))
+              ) || []
+              setMentionResults(filtered)
+              setShowMentions(filtered.length > 0)
+            } else {
+              setShowMentions(false)
+              setMentionResults([])
+            }
+          }}
           onKeyDown={handleKeyDown}
           placeholder="Message..."
           rows={1}

@@ -472,3 +472,172 @@ export async function getMediaForMessage(messageId) {
   if (error) return { error: error.message }
   return { data }
 }
+
+export async function toggleReaction(messageId, emoji) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) return { error: 'Not authenticated' }
+  if (!emoji) return { error: 'Emoji is required' }
+
+  const { data: existing } = await supabase
+    .from('message_reactions')
+    .select('id, emoji')
+    .eq('message_id', messageId)
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  if (existing) {
+    if (existing.emoji === emoji) {
+      await supabase
+        .from('message_reactions')
+        .delete()
+        .eq('id', existing.id)
+      return { success: true, action: 'removed' }
+    } else {
+      await supabase
+        .from('message_reactions')
+        .update({ emoji })
+        .eq('id', existing.id)
+      return { success: true, action: 'changed' }
+    }
+  } else {
+    await supabase
+      .from('message_reactions')
+      .insert({ message_id: messageId, user_id: user.id, emoji })
+    return { success: true, action: 'added' }
+  }
+}
+
+export async function getReactions(messageId) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('message_reactions')
+    .select('emoji, user_id, users(display_name)')
+    .eq('message_id', messageId)
+
+  if (error) return { error: error.message }
+  return { data }
+}
+
+export async function togglePin(conversationId, messageId) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) return { error: 'Not authenticated' }
+
+  const { data: participant } = await supabase
+    .from('conversation_participants')
+    .select('role')
+    .eq('conversation_id', conversationId)
+    .eq('user_id', user.id)
+    .single()
+
+  if (!participant) return { error: 'Not a participant' }
+
+  const { data: conv } = await supabase
+    .from('conversations')
+    .select('type')
+    .eq('id', conversationId)
+    .single()
+
+  if (conv.type === 'group' && !['admin', 'owner'].includes(participant.role)) {
+    return { error: 'Only admins and owners can pin messages in groups' }
+  }
+
+  const { data: existing } = await supabase
+    .from('pinned_messages')
+    .select('id')
+    .eq('conversation_id', conversationId)
+    .eq('message_id', messageId)
+    .maybeSingle()
+
+  if (existing) {
+    await supabase.from('pinned_messages').delete().eq('id', existing.id)
+    return { success: true, action: 'unpinned' }
+  }
+
+  const { data: count } = await supabase
+    .from('pinned_messages')
+    .select('id', { count: 'exact' })
+    .eq('conversation_id', conversationId)
+
+  if (count?.length >= 5) {
+    return { error: 'Maximum 5 pinned messages per conversation' }
+  }
+
+  await supabase.from('pinned_messages').insert({
+    conversation_id: conversationId,
+    message_id: messageId,
+    pinned_by: user.id,
+  })
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('display_name')
+    .eq('id', user.id)
+    .single()
+
+  await supabase.from('messages').insert({
+    conversation_id: conversationId,
+    sender_id: null,
+    sender_name_snapshot: 'System',
+    content: `${profile.display_name} pinned a message`,
+    type: 'system',
+  })
+
+  return { success: true, action: 'pinned' }
+}
+
+export async function getPinnedMessages(conversationId) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) return { error: 'Not authenticated' }
+
+  const { data, error } = await supabase
+    .from('pinned_messages')
+    .select(`
+      id,
+      created_at,
+      pinned_by,
+      messages(id, content, type, sender_name_snapshot, created_at),
+      users!pinned_messages_pinned_by_fkey(display_name)
+    `)
+    .eq('conversation_id', conversationId)
+    .order('created_at', { ascending: false })
+
+  if (error) return { error: error.message }
+  return { data }
+}
+
+export async function searchMessages(conversationId, query) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) return { error: 'Not authenticated' }
+  if (!query || query.trim().length < 2) return { error: 'Search query too short' }
+
+  const { data: participant } = await supabase
+    .from('conversation_participants')
+    .select('role')
+    .eq('conversation_id', conversationId)
+    .eq('user_id', user.id)
+    .single()
+
+  if (!participant) return { error: 'Not a participant' }
+
+  const { data, error } = await supabase
+    .from('messages')
+    .select('id, content, type, sender_name_snapshot, created_at')
+    .eq('conversation_id', conversationId)
+    .neq('type', 'deleted')
+    .neq('type', 'system')
+    .ilike('content', `%${query.trim()}%`)
+    .order('created_at', { ascending: false })
+    .limit(30)
+
+  if (error) return { error: error.message }
+  return { data }
+}
