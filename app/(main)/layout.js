@@ -72,7 +72,15 @@ export default function MainLayout({ children }) {
     }
     loadChatsUnread()
 
-    if (!profile?.id) return
+    // Deterministic same-tab signal: fires the instant a conversation is
+    // marked read, without depending on Realtime being enabled for
+    // conversation_participants (this layout persists across /chat <->
+    // /chat/[id] navigations, so it never remounts to pick up fresh data).
+    window.addEventListener('relay:conversation-read', loadChatsUnread)
+
+    if (!profile?.id) {
+      return () => window.removeEventListener('relay:conversation-read', loadChatsUnread)
+    }
 
     const supabase = createClient()
 
@@ -95,7 +103,10 @@ export default function MainLayout({ children }) {
       })
       .subscribe()
 
-    return () => supabase.removeChannel(channel)
+    return () => {
+      window.removeEventListener('relay:conversation-read', loadChatsUnread)
+      supabase.removeChannel(channel)
+    }
   }, [profile?.id])
 
   const navItems = [

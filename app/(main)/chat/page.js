@@ -26,6 +26,16 @@ export default function ChatPage() {
   }, [])
 
   useEffect(() => {
+    async function refresh() {
+      const result = await getConversations()
+      if (result.data) setConversations(result.data)
+    }
+
+    // Same-tab signal fired the instant a conversation is marked read —
+    // guarantees this list reflects it immediately regardless of whether
+    // the browser actually remounts this page on back-navigation.
+    window.addEventListener('relay:conversation-read', refresh)
+
     const supabase = createClient()
     const channel = supabase
       .channel('chat-list-updates')
@@ -33,13 +43,13 @@ export default function ChatPage() {
         event: 'INSERT',
         schema: 'public',
         table: 'messages',
-      }, async () => {
-        const result = await getConversations()
-        if (result.data) setConversations(result.data)
-      })
+      }, refresh)
       .subscribe()
 
-    return () => supabase.removeChannel(channel)
+    return () => {
+      window.removeEventListener('relay:conversation-read', refresh)
+      supabase.removeChannel(channel)
+    }
   }, [])
 
   const formatTime = (timestamp) => {

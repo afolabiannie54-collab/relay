@@ -71,6 +71,7 @@ export default function ConversationPage() {
       if (profileResult.data) setProfile(profileResult.data)
       setLoading(false)
       await markConversationRead(id)
+      window.dispatchEvent(new Event('relay:conversation-read'))
 
       const pinnedResult = await getPinnedMessages(id)
       if (pinnedResult.data) {
@@ -114,6 +115,7 @@ export default function ConversationPage() {
           return [...prev, newMsg]
         })
         markConversationRead(id)
+        window.dispatchEvent(new Event('relay:conversation-read'))
       })
       .on('postgres_changes', {
         event: 'UPDATE',
