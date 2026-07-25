@@ -334,12 +334,6 @@ export default function PrivacySettingsPage() {
           boxShadow: '4px 4px 0 #0a0a0a',
           marginBottom: '20px',
         }}>
-          <SettingRow label="Push notifications" description="Receive notifications when app is closed">
-            <Toggle
-              value={settings?.push_notifications_enabled}
-              onChange={() => handleToggle('push_notifications_enabled')}
-            />
-          </SettingRow>
           <SettingRow label="Direct messages">
             <Toggle
               value={settings?.message_notifications}
