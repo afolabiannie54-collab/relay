@@ -4,22 +4,26 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Avatar from '@/components/shared/Avatar'
 import { getConversations } from '@/actions/messages'
+import { getMutedConversationIds } from '@/actions/conversations'
 import { getOwnProfile } from '@/actions/users'
 import { createClient } from '@/lib/supabase/client'
 
 export default function ChatPage() {
   const [conversations, setConversations] = useState([])
   const [profile, setProfile] = useState(null)
+  const [mutedIds, setMutedIds] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function load() {
-      const [convsResult, profileResult] = await Promise.all([
+      const [convsResult, profileResult, mutedResult] = await Promise.all([
         getConversations(),
         getOwnProfile(),
+        getMutedConversationIds(),
       ])
       if (convsResult.data) setConversations(convsResult.data)
       if (profileResult.data) setProfile(profileResult.data)
+      if (mutedResult.data) setMutedIds(mutedResult.data)
       setLoading(false)
     }
     load()
@@ -107,7 +111,16 @@ export default function ChatPage() {
         justifyContent: 'space-between',
       }}>
         <h1 style={{ fontSize: '20px', fontWeight: '800', color: '#0a0a0a' }}>Messages</h1>
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <Link href="/chat/hidden" style={{
+            fontSize: '13px',
+            fontWeight: '600',
+            color: '#A3A3A3',
+            textDecoration: 'none',
+            marginRight: '4px',
+          }}>
+            Hidden
+          </Link>
           <Link href="/groups/create" style={{
             width: '36px',
             height: '36px',
@@ -176,6 +189,7 @@ export default function ChatPage() {
             const otherUser = conv.other_participants?.[0]
             const displayName = isGroup ? conv.group_info?.name : otherUser?.display_name
             const avatarUrl = isGroup ? conv.group_info?.avatar_url : otherUser?.avatar_url
+            const isMuted = mutedIds.includes(conv.conversation_id)
 
             return (
               <Link
@@ -210,8 +224,18 @@ export default function ChatPage() {
                         whiteSpace: 'nowrap',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
                       }}>
-                        {displayName || 'Unknown'}
+                        <span style={{
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}>
+                          {displayName || 'Unknown'}
+                        </span>
+                        {isMuted && <span style={{ fontSize: '12px', flexShrink: 0 }}>🔕</span>}
                       </p>
                       <span style={{ fontSize: '11px', color: '#A3A3A3', flexShrink: 0, marginLeft: '8px' }}>
                         {formatTime(lastMessage?.created_at)}

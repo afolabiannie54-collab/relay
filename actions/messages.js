@@ -29,7 +29,8 @@ export async function sendMessageRequest(receiverId, content) {
       receiverId,
       'New message request',
       `${senderProfile.display_name} wants to chat with you`,
-      '/requests'
+      '/requests',
+      data.conversationId
     )
   }
 
@@ -77,7 +78,8 @@ export async function acceptMessageRequest(requestId) {
     request.sender_id,
     `${accepterProfile.display_name} accepted your message request`,
     'You can now chat freely.',
-    `/chat/${request.conversation_id}`
+    `/chat/${request.conversation_id}`,
+    request.conversation_id
   )
 
   // Remove from hidden conversations
@@ -324,7 +326,8 @@ export async function sendMessage(conversationId, content, replyToId = null) {
           mentionedUser.id,
           `${profile.display_name} mentioned you`,
           content.trim().slice(0, 100),
-          `/chat/${conversationId}`
+          `/chat/${conversationId}`,
+          conversationId
         )
       }
     }
@@ -346,7 +349,8 @@ export async function sendMessage(conversationId, content, replyToId = null) {
         p.user_id,
         profile.display_name,
         preview,
-        `/chat/${conversationId}`
+        `/chat/${conversationId}`,
+        conversationId
       )
     }
   }
@@ -445,6 +449,35 @@ export async function hideConversation(conversationId) {
     })
 
   return { success: true }
+}
+
+export async function unhideConversation(conversationId) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) return { error: 'Not authenticated' }
+
+  await supabase
+    .from('conversation_hidden')
+    .delete()
+    .eq('conversation_id', conversationId)
+    .eq('user_id', user.id)
+
+  return { success: true }
+}
+
+export async function getHiddenConversations() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) return { error: 'Not authenticated' }
+
+  const { data, error } = await supabase.rpc('get_hidden_conversations', {
+    p_user_id: user.id,
+  })
+
+  if (error) return { error: error.message }
+  return { data: data || [] }
 }
 
 export async function getExistingConversation(otherUserId) {

@@ -470,6 +470,25 @@ export default function ConversationPage() {
           >
             📌
           </button>
+          <Link
+            href={`/chat/${id}/settings`}
+            style={{
+              width: '34px',
+              height: '34px',
+              background: '#fff',
+              border: '1.5px solid #0a0a0a',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              textDecoration: 'none',
+            }}
+            title="Conversation settings"
+          >
+            ⚙️
+          </Link>
         </div>
       </div>
 

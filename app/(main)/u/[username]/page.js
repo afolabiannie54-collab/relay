@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import Avatar from '@/components/shared/Avatar'
 import Link from 'next/link'
 import MessageButton from '@/components/profile/MessageButton'
+import CopyUsernameButton from '@/components/profile/CopyUsernameButton'
 
 export default async function ProfilePage({ params }) {
   const { username } = await params
@@ -119,9 +120,12 @@ export default async function ProfilePage({ params }) {
               <h1 style={{ fontSize: '22px', fontWeight: '800', color: '#0a0a0a', marginBottom: '2px' }}>
                 {profile.display_name}
               </h1>
-              <p style={{ fontSize: '14px', color: '#A3A3A3', marginBottom: '8px' }}>
-                @{profile.username}
-              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '8px' }}>
+                <p style={{ fontSize: '14px', color: '#A3A3A3' }}>
+                  @{profile.username}
+                </p>
+                <CopyUsernameButton username={profile.username} />
+              </div>
               {profile.last_seen && (
                 <p style={{ fontSize: '12px', color: '#A3A3A3' }}>
                   Last seen {formatLastSeen(profile.last_seen)}
