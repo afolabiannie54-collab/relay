@@ -3,13 +3,6 @@
 import { useState } from 'react'
 import { revokeSession } from '@/actions/sessions'
 
-function parseDevice(userAgent) {
-  if (!userAgent) return 'Unknown device'
-  const ua = userAgent.toLowerCase()
-  const label = /mobile|android|iphone/.test(ua) ? 'Mobile' : 'Desktop'
-  return `${label} · ${userAgent.slice(0, 40)}${userAgent.length > 40 ? '…' : ''}`
-}
-
 function formatRelative(timestamp) {
   if (!timestamp) return 'Unknown'
   const date = new Date(timestamp)
@@ -48,35 +41,31 @@ export default function SessionRow({ session, isLast }) {
       gap: '16px',
       borderBottom: isLast ? 'none' : '1px solid #F5F5F5',
     }}>
-      <div style={{ minWidth: 0 }}>
+      <div style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
         <p style={{
           fontSize: '14px',
           fontWeight: '700',
           color: '#0a0a0a',
-          marginBottom: '2px',
           whiteSpace: 'nowrap',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
         }}>
-          {parseDevice(session.user_agent)}
-          {session.is_current && (
-            <span style={{
-              marginLeft: '8px',
-              fontSize: '11px',
-              fontWeight: '700',
-              color: '#0a0a0a',
-              background: '#FFB800',
-              border: '1.5px solid #0a0a0a',
-              borderRadius: '100px',
-              padding: '1px 8px',
-            }}>
-              This device
-            </span>
-          )}
-        </p>
-        <p style={{ fontSize: '12px', color: '#A3A3A3' }}>
           {session.ip || 'Unknown IP'} · {formatRelative(session.created_at)}
         </p>
+        {session.is_current && (
+          <span style={{
+            fontSize: '11px',
+            fontWeight: '700',
+            color: '#0a0a0a',
+            background: '#FFB800',
+            border: '1.5px solid #0a0a0a',
+            borderRadius: '100px',
+            padding: '1px 8px',
+            flexShrink: 0,
+          }}>
+            This device
+          </span>
+        )}
       </div>
       {!session.is_current && (
         <button

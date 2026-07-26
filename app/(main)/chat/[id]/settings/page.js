@@ -76,7 +76,7 @@ export default function ConversationSettingsPage() {
   }
 
   const handleHide = async () => {
-    if (!confirm('Hide this conversation? It will disappear from your chat list until a new message arrives.')) return
+    if (!confirm('Hide this conversation? It will move to your hidden chats and stay there until you unhide it.')) return
     setHiding(true)
     await hideConversation(id)
     router.push('/chat')
@@ -175,7 +175,6 @@ export default function ConversationSettingsPage() {
           background: '#fff',
           border: '1.5px solid #0a0a0a',
           borderRadius: '16px',
-          overflow: 'hidden',
           boxShadow: '4px 4px 0 #0a0a0a',
           marginBottom: '20px',
         }}>
