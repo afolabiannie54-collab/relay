@@ -3,6 +3,27 @@
 import { useState } from 'react'
 import { revokeSession } from '@/actions/sessions'
 
+function parseUserAgent(ua) {
+  if (!ua) return { browser: 'Unknown browser', os: 'Unknown device' }
+
+  let browser = 'Unknown browser'
+  if (/Edg\//.test(ua)) browser = 'Edge'
+  else if (/SamsungBrowser/.test(ua)) browser = 'Samsung Internet'
+  else if (/Chrome\//.test(ua)) browser = 'Chrome'
+  else if (/Firefox\//.test(ua)) browser = 'Firefox'
+  else if (/Safari\//.test(ua) && /Version\//.test(ua)) browser = 'Safari'
+
+  let os = 'Unknown device'
+  if (/iPad/.test(ua)) os = 'iPad'
+  else if (/iPhone/.test(ua)) os = 'iPhone'
+  else if (/Android/.test(ua)) os = 'Android'
+  else if (/Windows/.test(ua)) os = 'Windows'
+  else if (/Macintosh|Mac OS X/.test(ua)) os = 'Mac'
+  else if (/Linux/.test(ua)) os = 'Linux'
+
+  return { browser, os }
+}
+
 function formatRelative(timestamp) {
   if (!timestamp) return 'Unknown'
   const date = new Date(timestamp)
@@ -32,6 +53,8 @@ export default function SessionRow({ session, isLast }) {
 
   if (revoked) return null
 
+  const { browser, os } = parseUserAgent(session.user_agent)
+
   return (
     <div style={{
       padding: '16px 20px',
@@ -41,31 +64,36 @@ export default function SessionRow({ session, isLast }) {
       gap: '16px',
       borderBottom: isLast ? 'none' : '1px solid #F5F5F5',
     }}>
-      <div style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <p style={{
-          fontSize: '14px',
-          fontWeight: '700',
-          color: '#0a0a0a',
-          whiteSpace: 'nowrap',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-        }}>
-          {session.ip || 'Unknown IP'} · {formatRelative(session.created_at)}
-        </p>
-        {session.is_current && (
-          <span style={{
-            fontSize: '11px',
+      <div style={{ minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
+          <p style={{
+            fontSize: '14px',
             fontWeight: '700',
             color: '#0a0a0a',
-            background: '#FFB800',
-            border: '1.5px solid #0a0a0a',
-            borderRadius: '100px',
-            padding: '1px 8px',
-            flexShrink: 0,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
           }}>
-            This device
-          </span>
-        )}
+            {browser} · {os}
+          </p>
+          {session.is_current && (
+            <span style={{
+              fontSize: '11px',
+              fontWeight: '700',
+              color: '#0a0a0a',
+              background: '#FFB800',
+              border: '1.5px solid #0a0a0a',
+              borderRadius: '100px',
+              padding: '1px 8px',
+              flexShrink: 0,
+            }}>
+              This device
+            </span>
+          )}
+        </div>
+        <p style={{ fontSize: '12px', color: '#A3A3A3' }}>
+          {session.ip || 'Unknown IP'} · {formatRelative(session.created_at)}
+        </p>
       </div>
       {!session.is_current && (
         <button

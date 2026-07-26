@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { storeSessionInfo } from '@/actions/sessions'
 
 export default function VerifyPage() {
   const [code, setCode] = useState('')
@@ -42,6 +43,9 @@ export default function VerifyPage() {
     }
 
     sessionStorage.removeItem('verifyEmail')
+
+    await storeSessionInfo(navigator.userAgent)
+
     window.location.href = '/chat'
   }
 

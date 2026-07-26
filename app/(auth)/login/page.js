@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { signInWithEmail, signInWithGoogle } from '@/actions/auth'
+import { storeSessionInfo } from '@/actions/sessions'
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({ email: '', password: '' })
@@ -47,6 +48,8 @@ export default function LoginPage() {
       setLoading(false)
       return
     }
+
+    await storeSessionInfo(navigator.userAgent)
 
     window.location.href = '/chat'
   }

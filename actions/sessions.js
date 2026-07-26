@@ -27,3 +27,27 @@ export async function revokeSession(sessionId) {
   if (error) return { error: error.message }
   return data
 }
+
+export async function storeSessionInfo(userAgent) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) return { error: 'Not authenticated' }
+
+  const { data: claimsData, error: claimsError } = await supabase.auth.getClaims()
+
+  if (claimsError || !claimsData?.claims?.session_id) {
+    return { error: claimsError?.message || 'Could not determine session' }
+  }
+
+  const { error } = await supabase
+    .from('user_sessions')
+    .upsert({
+      user_id: user.id,
+      session_id: claimsData.claims.session_id,
+      user_agent: userAgent,
+    }, { onConflict: 'session_id' })
+
+  if (error) return { error: error.message }
+  return { success: true }
+}

@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { checkUsernameAvailable } from '@/actions/auth'
+import { storeSessionInfo } from '@/actions/sessions'
 
 export default function SetupUsernamePage() {
   const [formData, setFormData] = useState({ username: '', display_name: '' })
@@ -12,6 +13,13 @@ export default function SetupUsernamePage() {
   const [loading, setLoading] = useState(false)
   const [serverError, setServerError] = useState(null)
   const usernameTimeout = useRef(null)
+
+  // This page is only reached right after Google OAuth completes for a
+  // new user (see app/api/auth/callback/route.js), so this is where we
+  // capture the browser's real user agent for the active session.
+  useEffect(() => {
+    storeSessionInfo(navigator.userAgent)
+  }, [])
 
   const handleChange = (e) => {
     const { name, value } = e.target
