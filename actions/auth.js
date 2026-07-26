@@ -56,6 +56,18 @@ export async function signOut() {
   }
 }
 
+export async function signOutAllSessions() {
+  const supabase = await createClient()
+
+  const { error } = await supabase.auth.signOut({ scope: 'global' })
+
+  if (error) {
+    return { error }
+  }
+
+  return { success: true }
+}
+
 export async function resetPasswordRequest(formData) {
   const email = formData.get('email')
 

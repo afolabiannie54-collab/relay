@@ -10,6 +10,7 @@ import { getRequestsCount } from '@/actions/notifications'
 import { getUnreadChatsCount } from '@/actions/messages'
 import { createClient } from '@/lib/supabase/client'
 import { usePushNotifications } from '@/hooks/usePushNotifications'
+import { signOut } from '@/actions/auth'
 
 export default function MainLayout({ children }) {
   const pathname = usePathname()
@@ -115,6 +116,11 @@ export default function MainLayout({ children }) {
     { href: '/requests', label: 'Requests', icon: '📨', badge: pendingRequestsCount },
     { href: '/settings', label: 'Settings', icon: '⚙️' },
   ]
+
+  const handleSignOut = async () => {
+    await signOut()
+    window.location.href = '/login'
+  }
 
   const isActive = (href) => {
     if (href === '/chat') return pathname === '/chat' || pathname.startsWith('/chat/')
@@ -249,6 +255,28 @@ export default function MainLayout({ children }) {
               </div>
             </div>
           </Link>
+          <button
+            onClick={handleSignOut}
+            style={{
+              width: '100%',
+              padding: '8px 12px',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '13px',
+              color: '#A3A3A3',
+              fontFamily: 'inherit',
+              textAlign: 'left',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              borderTop: '1px solid #E5E5E5',
+              marginTop: '4px',
+              paddingTop: '12px',
+            }}
+          >
+            Sign out
+          </button>
         </div>
       </div>
 

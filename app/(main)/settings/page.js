@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getOwnProfile } from '@/actions/users'
 import Avatar from '@/components/shared/Avatar'
+import SignOutAllRow from '@/components/settings/SignOutAllRow'
 
 export default async function SettingsPage() {
   const result = await getOwnProfile()
@@ -69,6 +70,7 @@ export default async function SettingsPage() {
             items: [
               { label: 'Edit profile', href: '/settings/profile' },
               { label: 'Privacy settings', href: '/settings/privacy' },
+              { label: 'Blocked users', href: '/settings/blocked' },
               { label: 'Notifications', href: '/notifications' },
             ]
           },
@@ -76,6 +78,7 @@ export default async function SettingsPage() {
             title: 'Session',
             items: [
               { label: 'Active sessions', href: '/settings/sessions' },
+              { label: 'Sign out all devices', action: 'signOutAll' },
             ]
           },
           {
@@ -105,25 +108,29 @@ export default async function SettingsPage() {
               boxShadow: '4px 4px 0 #0a0a0a',
             }}>
               {section.items.map((item, i) => (
-                <Link key={item.href} href={item.href} style={{ textDecoration: 'none' }}>
-                  <div style={{
-                    padding: '16px 20px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    borderBottom: i < section.items.length - 1 ? '1px solid #F5F5F5' : 'none',
-                    cursor: 'pointer',
-                  }}>
-                    <span style={{
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      color: item.danger ? '#EF4444' : '#0a0a0a',
+                item.action === 'signOutAll' ? (
+                  <SignOutAllRow key="signOutAll" isLast={i === section.items.length - 1} />
+                ) : (
+                  <Link key={item.href} href={item.href} style={{ textDecoration: 'none' }}>
+                    <div style={{
+                      padding: '16px 20px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      borderBottom: i < section.items.length - 1 ? '1px solid #F5F5F5' : 'none',
+                      cursor: 'pointer',
                     }}>
-                      {item.label}
-                    </span>
-                    <span style={{ color: '#A3A3A3', fontSize: '14px' }}>→</span>
-                  </div>
-                </Link>
+                      <span style={{
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        color: item.danger ? '#EF4444' : '#0a0a0a',
+                      }}>
+                        {item.label}
+                      </span>
+                      <span style={{ color: '#A3A3A3', fontSize: '14px' }}>→</span>
+                    </div>
+                  </Link>
+                )
               ))}
             </div>
           </div>
