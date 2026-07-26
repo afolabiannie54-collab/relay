@@ -95,42 +95,59 @@ export async function isBlocked(otherUserId) {
   return { blocked: !!data }
 }
 
-export async function getActiveSessions() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'Not authenticated' }
-
-  const { data, error } = await supabase.auth.admin.listSessions()
-  if (error) return { error: error.message }
-  return { data }
-}
-
 export async function deleteAccount() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) return { error: 'Not authenticated' }
 
-  // Anonymize messages
-  await supabase
-    .from('messages')
-    .update({ sender_id: null })
-    .eq('sender_id', user.id)
+  try {
+    // Anonymize messages
+    await supabase
+      .from('messages')
+      .update({ sender_id: null })
+      .eq('sender_id', user.id)
 
-  // Transfer group ownership and handle memberships
-  // (handled by existing DB triggers)
+    // Nullify groups.created_by for groups this user created
+    // Ownership transfer is handled by the existing DB trigger when we delete from conversation_participants
+    await supabase
+      .from('groups')
+      .update({ created_by: null })
+      .eq('created_by', user.id)
 
-  // Delete profile media
-  await supabase.storage.from('avatars').remove([`${user.id}/avatar`])
+    // Delete push subscriptions
+    await supabase.from('push_subscriptions').delete().eq('user_id', user.id)
 
-  // Delete push subscriptions
-  await supabase.from('push_subscriptions').delete().eq('user_id', user.id)
+    // Delete profile avatar from storage
+    try {
+      const extensions = ['jpg', 'jpeg', 'png', 'webp', 'gif']
+      for (const ext of extensions) {
+        await supabase.storage.from('avatars').remove([`${user.id}/avatar.${ext}`])
+      }
+    } catch {}
 
-  // Delete the user (cascades to most tables)
-  await supabase.from('users').delete().eq('id', user.id)
+    // Delete public.users row (cascades to most related tables via FK)
+    const { error: deleteError } = await supabase
+      .from('users')
+      .delete()
+      .eq('id', user.id)
 
-  // Sign out
-  await supabase.auth.signOut()
+    if (deleteError) return { error: deleteError.message }
 
-  return { success: true }
+    // Delete auth.users record using service role to fully remove credentials
+    const { createClient: createServiceClient } = await import('@supabase/supabase-js')
+    const serviceClient = createServiceClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    )
+
+    await serviceClient.auth.admin.deleteUser(user.id)
+
+    // Sign out current session
+    await supabase.auth.signOut()
+
+    return { success: true }
+  } catch (err) {
+    return { error: err.message || 'Failed to delete account' }
+  }
 }
