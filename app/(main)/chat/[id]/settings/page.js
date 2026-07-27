@@ -85,7 +85,7 @@ export default function ConversationSettingsPage() {
   if (loading) {
     return (
       <div style={{
-        minHeight: '100vh',
+        height: '100%',
         background: '#F5F5F5',
         display: 'flex',
         alignItems: 'center',
@@ -101,7 +101,8 @@ export default function ConversationSettingsPage() {
 
   return (
     <div style={{
-      minHeight: '100vh',
+      height: '100%',
+      overflowY: 'auto',
       background: '#F5F5F5',
       fontFamily: "'Inter', -apple-system, sans-serif",
     }}>

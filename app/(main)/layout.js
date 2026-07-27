@@ -127,6 +127,12 @@ export default function MainLayout({ children }) {
     return pathname.startsWith(href)
   }
 
+  // Matches /chat/<uuid> and /chat/<uuid>/settings — i.e. any page that's
+  // "inside" a conversation on mobile, where the two-panel chat shell is
+  // already showing its own back button and the bottom tab bar would just
+  // be redundant chrome eating into the conversation view.
+  const isConversationPage = /^\/chat\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(pathname)
+
   return (
     <PresenceProvider userId={profile?.id}>
     <div style={{
@@ -296,13 +302,14 @@ export default function MainLayout({ children }) {
         </div>
 
         {/* Mobile bottom nav */}
-        <div style={{
-          display: 'none',
-          borderTop: '1.5px solid #0a0a0a',
-          background: '#fff',
-          padding: '8px 0',
-        }}
-          className="mobile-nav"
+        <div
+          className={isConversationPage ? 'mobile-nav hide-mobile-nav' : 'mobile-nav'}
+          style={{
+            display: 'none',
+            borderTop: '1.5px solid #0a0a0a',
+            background: '#fff',
+            padding: '8px 0',
+          }}
         >
           {navItems.map(item => (
             <Link key={item.href} href={item.href} style={{ textDecoration: 'none', flex: 1 }}>
@@ -354,6 +361,7 @@ export default function MainLayout({ children }) {
         @media (max-width: 768px) {
           .desktop-sidebar { display: none !important; }
           .mobile-nav { display: flex !important; }
+          .mobile-nav.hide-mobile-nav { display: none !important; }
         }
       `}</style>
     </div>
