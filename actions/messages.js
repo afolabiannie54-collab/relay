@@ -224,7 +224,8 @@ export async function getMessages(conversationId, page = 0) {
       reply_to_id,
       is_edited,
       edited_at,
-      created_at
+      created_at,
+      media(url, filename, size, mime_type)
     `)
     .eq('conversation_id', conversationId)
     .order('created_at', { ascending: false })
@@ -232,7 +233,16 @@ export async function getMessages(conversationId, page = 0) {
 
   if (error) return { error: error.message }
 
-  const messages = data.reverse()
+  const messages = data.reverse().map(({ media, ...msg }) => {
+    const mediaRow = Array.isArray(media) ? media[0] : media
+    return {
+      ...msg,
+      media_url: mediaRow?.url || null,
+      media_filename: mediaRow?.filename || null,
+      media_size: mediaRow?.size || null,
+      media_mime_type: mediaRow?.mime_type || null,
+    }
+  })
 
   const messagesWithReplies = await Promise.all(
     messages.map(async (msg) => {

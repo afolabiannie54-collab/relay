@@ -6,8 +6,8 @@ import Link from 'next/link'
 import Avatar from '@/components/shared/Avatar'
 import { getMessages, sendMessage, getConversation, markConversationRead, editMessage, deleteMessage, uploadMedia, getReactions, toggleReaction, getPinnedMessages, togglePin, searchMessages } from '@/actions/messages'
 import { getGroupInfo } from '@/actions/groups'
-import { getOwnProfile } from '@/actions/users'
 import { createClient } from '@/lib/supabase/client'
+import { cache } from '@/lib/cache'
 import { useReadReceipts } from '@/hooks/useReadReceipts'
 import { useOnlineUsers } from '@/lib/presence-context'
 import MediaMessage from '@/components/chat/MediaMessage'
@@ -56,21 +56,75 @@ export default function ConversationPage() {
 
   useEffect(() => {
     async function load() {
-      const [msgsResult, convResult, profileResult] = await Promise.all([
-        getMessages(id),
-        getConversation(id),
-        getOwnProfile(),
-      ])
-      if (msgsResult.data) setMessages(msgsResult.data)
-      if (msgsResult.data) loadReactions(msgsResult.data)
-      if (convResult.data) setConversation(convResult.data)
-      const isGroup = convResult.data?.type === 'group'
-      if (isGroup) {
-        const groupResult = await getGroupInfo(id)
-        if (groupResult.data) setGroupInfo(groupResult.data)
+      // Show whatever's cached immediately — zero loading state for data
+      // we've already seen. Fresh data still gets fetched below and swaps
+      // in silently as it arrives.
+      const cachedProfile = cache.get('profile')
+      const cachedConv = cache.get(`conversation:${id}`)
+      const cachedMessages = cache.get(`messages:${id}`)
+
+      if (cachedProfile) setProfile(cachedProfile)
+      if (cachedConv) setConversation(cachedConv)
+      if (cachedMessages) {
+        setMessages(cachedMessages)
+        setLoading(false)
       }
-      if (profileResult.data) setProfile(profileResult.data)
+
+      const supabase = createClient()
+
+      const profilePromise = cachedProfile
+        ? Promise.resolve(cachedProfile)
+        : (async () => {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) return null
+            const { data } = await supabase
+              .from('users')
+              .select('id, username, display_name, avatar_url')
+              .eq('id', user.id)
+              .single()
+            if (data) cache.set('profile', data, 300000)
+            return data
+          })()
+
+      const convPromise = cachedConv
+        ? Promise.resolve(cachedConv)
+        : (async () => {
+            const result = await getConversation(id)
+            if (result.data) cache.set(`conversation:${id}`, result.data, 60000)
+            return result.data
+          })()
+
+      const [freshProfile, freshConv, msgsResult] = await Promise.all([
+        profilePromise,
+        convPromise,
+        getMessages(id),
+      ])
+
+      if (freshProfile) setProfile(freshProfile)
+
+      if (freshConv) {
+        setConversation(freshConv)
+        if (freshConv.type === 'group') {
+          const cachedGroup = cache.get(`group:${id}`)
+          if (cachedGroup) {
+            setGroupInfo(cachedGroup)
+          } else {
+            const groupResult = await getGroupInfo(id)
+            if (groupResult.data) {
+              setGroupInfo(groupResult.data)
+              cache.set(`group:${id}`, groupResult.data, 60000)
+            }
+          }
+        }
+      }
+
+      if (msgsResult.data) {
+        setMessages(msgsResult.data)
+        loadReactions(msgsResult.data)
+        cache.set(`messages:${id}`, msgsResult.data, 20000)
+      }
       setLoading(false)
+
       await markConversationRead(id)
       window.dispatchEvent(new Event('relay:conversation-read'))
 
@@ -102,7 +156,6 @@ export default function ConversationPage() {
       }, async (payload) => {
         const newMsg = { ...payload.new, reply: null }
         if (payload.new.reply_to_id) {
-          const supabase = createClient()
           const { data: reply } = await supabase
             .from('messages')
             .select('id, content, sender_name_snapshot, type')
@@ -110,11 +163,25 @@ export default function ConversationPage() {
             .single()
           newMsg.reply = reply || null
         }
+        if (['image', 'audio', 'file'].includes(payload.new.type)) {
+          const { data: mediaRow } = await supabase
+            .from('media')
+            .select('url, filename, size, mime_type')
+            .eq('message_id', payload.new.id)
+            .single()
+          if (mediaRow) {
+            newMsg.media_url = mediaRow.url
+            newMsg.media_filename = mediaRow.filename
+            newMsg.media_size = mediaRow.size
+            newMsg.media_mime_type = mediaRow.mime_type
+          }
+        }
         setMessages(prev => {
           const exists = prev.find(m => m.id === newMsg.id)
           if (exists) return prev
           return [...prev, newMsg]
         })
+        cache.invalidate(`messages:${id}`)
         markConversationRead(id)
         window.dispatchEvent(new Event('relay:conversation-read'))
       })
@@ -127,6 +194,7 @@ export default function ConversationPage() {
         setMessages(prev => prev.map(m =>
           m.id === payload.new.id ? { ...m, ...payload.new } : m
         ))
+        cache.invalidate(`messages:${id}`)
       })
       .on('broadcast', { event: 'typing' }, (payload) => {
         if (payload.payload.userId === profile?.id) return
@@ -391,7 +459,7 @@ export default function ConversationPage() {
         flexShrink: 0,
       }}>
         <button
-          onClick={() => navigateWithTransition(() => router.back())}
+          onClick={() => navigateWithTransition(() => router.push('/chat'))}
           className="mobile-back-btn"
           style={{
             background: 'none',

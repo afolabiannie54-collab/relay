@@ -1,37 +1,19 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { getMediaForMessage } from '@/actions/messages'
+import { useState } from 'react'
 
 export default function MediaMessage({ message, isOwn }) {
-  const [media, setMedia] = useState(null)
-  const [loading, setLoading] = useState(true)
   const [imageError, setImageError] = useState(false)
   const [lightboxOpen, setLightboxOpen] = useState(false)
 
-  useEffect(() => {
-    async function load() {
-      const result = await getMediaForMessage(message.id)
-      if (result.data) setMedia(result.data)
-      setLoading(false)
-    }
-    load()
-  }, [message.id])
-
-  if (loading) {
-    return (
-      <div style={{
-        padding: '12px 14px',
-        background: isOwn ? '#0a0a0a' : '#F5F5F5',
-        borderRadius: isOwn ? '16px 4px 16px 16px' : '4px 16px 16px 16px',
-        border: '1.5px solid #0a0a0a',
-        color: isOwn ? '#fff' : '#A3A3A3',
-        fontSize: '13px',
-      }}>
-        Loading...
-      </div>
-    )
-  }
+  const media = message.media_url
+    ? {
+        url: message.media_url,
+        filename: message.media_filename,
+        size: message.media_size,
+        mimeType: message.media_mime_type,
+      }
+    : null
 
   if (!media) {
     return (
@@ -64,6 +46,7 @@ export default function MediaMessage({ message, isOwn }) {
             <img
               src={media.url}
               alt={media.filename}
+              loading="lazy"
               onError={() => setImageError(true)}
               style={{
                 width: '100%',
@@ -148,6 +131,7 @@ export default function MediaMessage({ message, isOwn }) {
             <img
               src={media.url}
               alt={media.filename}
+              loading="lazy"
               onClick={e => e.stopPropagation()}
               style={{
                 maxWidth: '100%',

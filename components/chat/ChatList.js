@@ -4,27 +4,48 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Avatar from '@/components/shared/Avatar'
 import ChatLink from '@/components/chat/ChatLink'
-import { getConversations } from '@/actions/messages'
+import { getConversations, getMessages } from '@/actions/messages'
 import { getMutedConversationIds } from '@/actions/conversations'
-import { getOwnProfile } from '@/actions/users'
 import { createClient } from '@/lib/supabase/client'
+import { cache } from '@/lib/cache'
 
 export default function ChatList({ onSelectConversation }) {
   const [conversations, setConversations] = useState([])
-  const [profile, setProfile] = useState(null)
+  const [userId, setUserId] = useState(null)
   const [mutedIds, setMutedIds] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function load() {
-      const [convsResult, profileResult, mutedResult] = await Promise.all([
+      // Paint cached data immediately — no spinner for a list we've
+      // already fetched this session. Fresh data still loads underneath
+      // and replaces it silently.
+      const cachedConvs = cache.get('conversations')
+      const cachedMuted = cache.get('muted-ids')
+
+      if (cachedConvs) {
+        setConversations(cachedConvs)
+        setLoading(false)
+      }
+      if (cachedMuted) setMutedIds(cachedMuted)
+
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) setUserId(user.id)
+
+      const [convsResult, mutedResult] = await Promise.all([
         getConversations(),
-        getOwnProfile(),
-        getMutedConversationIds(),
+        cachedMuted ? Promise.resolve({ data: cachedMuted }) : getMutedConversationIds(),
       ])
-      if (convsResult.data) setConversations(convsResult.data)
-      if (profileResult.data) setProfile(profileResult.data)
-      if (mutedResult.data) setMutedIds(mutedResult.data)
+
+      if (convsResult.data) {
+        setConversations(convsResult.data)
+        cache.set('conversations', convsResult.data, 10000)
+      }
+      if (mutedResult.data) {
+        setMutedIds(mutedResult.data)
+        cache.set('muted-ids', mutedResult.data, 30000)
+      }
       setLoading(false)
     }
     load()
@@ -33,7 +54,10 @@ export default function ChatList({ onSelectConversation }) {
   useEffect(() => {
     async function refresh() {
       const result = await getConversations()
-      if (result.data) setConversations(result.data)
+      if (result.data) {
+        setConversations(result.data)
+        cache.set('conversations', result.data, 10000)
+      }
     }
 
     // Same-tab signal fired the instant a conversation is marked read —
@@ -48,7 +72,10 @@ export default function ChatList({ onSelectConversation }) {
         event: 'INSERT',
         schema: 'public',
         table: 'messages',
-      }, refresh)
+      }, () => {
+        cache.invalidate('conversations')
+        refresh()
+      })
       .subscribe()
 
     return () => {
@@ -56,6 +83,12 @@ export default function ChatList({ onSelectConversation }) {
       supabase.removeChannel(channel)
     }
   }, [])
+
+  async function prefetchConversation(convId) {
+    if (cache.get(`messages:${convId}`)) return
+    const result = await getMessages(convId)
+    if (result.data) cache.set(`messages:${convId}`, result.data, 20000)
+  }
 
   const formatTime = (timestamp) => {
     if (!timestamp) return ''
@@ -209,8 +242,12 @@ export default function ChatList({ onSelectConversation }) {
                   background: '#fff',
                   transition: 'background 0.1s',
                 }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#F9F9F9'}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.background = '#F9F9F9'
+                    prefetchConversation(conv.conversation_id)
+                  }}
                   onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+                  onTouchStart={() => prefetchConversation(conv.conversation_id)}
                 >
                   <Avatar
                     src={avatarUrl}
@@ -253,7 +290,7 @@ export default function ChatList({ onSelectConversation }) {
                         textOverflow: 'ellipsis',
                         flex: 1,
                       }}>
-                        {lastMessage?.sender_id === profile?.id ? 'You: ' : ''}{getLastMessagePreview(lastMessage)}
+                        {lastMessage?.sender_id === userId ? 'You: ' : ''}{getLastMessagePreview(lastMessage)}
                       </p>
                       {getUnreadCount(conv) > 0 && (
                         <div style={{
