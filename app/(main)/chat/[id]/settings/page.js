@@ -8,6 +8,7 @@ import CopyUsernameButton from '@/components/profile/CopyUsernameButton'
 import { getConversation, getPinnedMessages, hideConversation } from '@/actions/messages'
 import { getGroupInfo } from '@/actions/groups'
 import { getMuteStatus, muteConversation, unmuteConversation } from '@/actions/conversations'
+import { cache } from '@/lib/cache'
 
 const MUTE_OPTIONS = [
   { label: '1 hour', hours: 1 },
@@ -25,16 +26,42 @@ export default function ConversationSettingsPage() {
   const [otherParticipant, setOtherParticipant] = useState(null)
   const [muteStatus, setMuteStatus] = useState({ muted: false, mutedUntil: null })
   const [pinnedCount, setPinnedCount] = useState(0)
-  const [loading, setLoading] = useState(true)
   const [showMutePicker, setShowMutePicker] = useState(false)
   const [muting, setMuting] = useState(false)
   const [hiding, setHiding] = useState(false)
 
   useEffect(() => {
     async function load() {
+      // Reuse whatever the conversation page already cached — no need to
+      // re-fetch conversation/group metadata we just fetched a moment ago.
+      const cachedConv = cache.get(`conversation:${id}`)
+      const cachedMute = cache.get(`mute:${id}`)
+
+      if (cachedConv) {
+        setConversation(cachedConv)
+        setOtherParticipant(cachedConv.participants?.[0] || null)
+      }
+      if (cachedMute) setMuteStatus(cachedMute)
+
+      const convPromise = cachedConv
+        ? Promise.resolve({ data: cachedConv })
+        : (async () => {
+            const result = await getConversation(id)
+            if (result.data) cache.set(`conversation:${id}`, result.data, 60000)
+            return result
+          })()
+
+      const mutePromise = cachedMute
+        ? Promise.resolve(cachedMute)
+        : (async () => {
+            const result = await getMuteStatus(id)
+            cache.set(`mute:${id}`, result, 30000)
+            return result
+          })()
+
       const [convResult, muteResult, pinnedResult] = await Promise.all([
-        getConversation(id),
-        getMuteStatus(id),
+        convPromise,
+        mutePromise,
         getPinnedMessages(id),
       ])
 
@@ -43,14 +70,21 @@ export default function ConversationSettingsPage() {
         setOtherParticipant(convResult.data.participants?.[0] || null)
 
         if (convResult.data.type === 'group') {
-          const groupResult = await getGroupInfo(id)
-          if (groupResult.data) setGroupInfo(groupResult.data)
+          const cachedGroup = cache.get(`group:${id}`)
+          if (cachedGroup) {
+            setGroupInfo(cachedGroup)
+          } else {
+            const groupResult = await getGroupInfo(id)
+            if (groupResult.data) {
+              setGroupInfo(groupResult.data)
+              cache.set(`group:${id}`, groupResult.data, 60000)
+            }
+          }
         }
       }
 
       setMuteStatus(muteResult)
       if (pinnedResult.data) setPinnedCount(pinnedResult.data.length)
-      setLoading(false)
     }
     load()
   }, [id])
@@ -61,6 +95,7 @@ export default function ConversationSettingsPage() {
     const result = await muteConversation(id, mutedUntil)
     if (!result.error) {
       setMuteStatus({ muted: true, mutedUntil: mutedUntil ? new Date(mutedUntil).toISOString() : null })
+      cache.invalidate(`mute:${id}`)
       setShowMutePicker(false)
     }
     setMuting(false)
@@ -71,6 +106,7 @@ export default function ConversationSettingsPage() {
     const result = await unmuteConversation(id)
     if (!result.error) {
       setMuteStatus({ muted: false, mutedUntil: null })
+      cache.invalidate(`mute:${id}`)
     }
     setMuting(false)
   }
@@ -82,20 +118,7 @@ export default function ConversationSettingsPage() {
     router.push('/chat')
   }
 
-  if (loading) {
-    return (
-      <div style={{
-        height: '100%',
-        background: '#F5F5F5',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontFamily: "'Inter', -apple-system, sans-serif",
-      }}>
-        <p style={{ color: '#A3A3A3', fontSize: '14px' }}>Loading...</p>
-      </div>
-    )
-  }
+  if (!conversation) return null
 
   const isGroup = conversation?.type === 'group'
 

@@ -64,6 +64,7 @@ export default function ChatLayout({ children }) {
       <style>{`
         .chat-list-panel, .chat-detail-panel {
           transition: transform 0.25s ease;
+          will-change: transform;
         }
 
         /* Desktop: both panels always visible side by side, no sliding */
@@ -78,6 +79,7 @@ export default function ChatLayout({ children }) {
         @media (max-width: 768px) {
           .chat-list-panel, .chat-detail-panel {
             width: 100% !important;
+            height: 100%;
             position: absolute;
             top: 0;
             left: 0;

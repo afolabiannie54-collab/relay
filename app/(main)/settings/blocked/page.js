@@ -1,47 +1,10 @@
-'use client'
-
-import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import Avatar from '@/components/shared/Avatar'
-import { getBlockedUsers, unblockUser } from '@/actions/blocks'
+import { getBlockedUsers } from '@/actions/blocks'
+import BlockedUserRow from '@/components/settings/BlockedUserRow'
 
-export default function BlockedUsersPage() {
-  const [users, setUsers] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [unblockingId, setUnblockingId] = useState(null)
-
-  useEffect(() => {
-    async function load() {
-      const result = await getBlockedUsers()
-      if (result.data) setUsers(result.data)
-      setLoading(false)
-    }
-    load()
-  }, [])
-
-  const handleUnblock = async (userId) => {
-    setUnblockingId(userId)
-    const result = await unblockUser(userId)
-    if (!result.error) {
-      setUsers(prev => prev.filter(u => u.id !== userId))
-    }
-    setUnblockingId(null)
-  }
-
-  if (loading) {
-    return (
-      <div style={{
-        minHeight: '100dvh',
-        background: '#F5F5F5',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontFamily: "'Inter', -apple-system, sans-serif",
-      }}>
-        <p style={{ color: '#A3A3A3', fontSize: '14px' }}>Loading...</p>
-      </div>
-    )
-  }
+export default async function BlockedUsersPage() {
+  const result = await getBlockedUsers()
+  const users = result.data || []
 
   return (
     <div style={{
@@ -92,47 +55,7 @@ export default function BlockedUsersPage() {
             boxShadow: '4px 4px 0 #0a0a0a',
           }}>
             {users.map((u, i) => (
-              <div key={u.id} style={{
-                padding: '14px 20px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                borderBottom: i < users.length - 1 ? '1px solid #F5F5F5' : 'none',
-              }}>
-                <Avatar src={u.avatar_url} name={u.display_name} size={44} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{
-                    fontSize: '14px',
-                    fontWeight: '700',
-                    color: '#0a0a0a',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                  }}>
-                    {u.display_name}
-                  </p>
-                  <p style={{ fontSize: '12px', color: '#A3A3A3' }}>@{u.username}</p>
-                </div>
-                <button
-                  onClick={() => handleUnblock(u.id)}
-                  disabled={unblockingId === u.id}
-                  style={{
-                    padding: '8px 16px',
-                    background: '#0a0a0a',
-                    color: '#fff',
-                    border: '1.5px solid #0a0a0a',
-                    borderRadius: '8px',
-                    fontSize: '13px',
-                    fontWeight: '600',
-                    cursor: unblockingId === u.id ? 'not-allowed' : 'pointer',
-                    fontFamily: 'inherit',
-                    boxShadow: unblockingId === u.id ? 'none' : '2px 2px 0 #FFB800',
-                    flexShrink: 0,
-                  }}
-                >
-                  {unblockingId === u.id ? 'Unblocking...' : 'Unblock'}
-                </button>
-              </div>
+              <BlockedUserRow key={u.id} user={u} isLast={i === users.length - 1} />
             ))}
           </div>
         )}

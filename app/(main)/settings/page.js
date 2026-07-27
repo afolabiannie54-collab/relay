@@ -1,12 +1,27 @@
+'use client'
+
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
 import { getOwnProfile } from '@/actions/users'
 import Avatar from '@/components/shared/Avatar'
 import SignOutAllRow from '@/components/settings/SignOutAllRow'
+import { cache } from '@/lib/cache'
 
-export default async function SettingsPage() {
-  const result = await getOwnProfile()
-  const profile = result.data
+export default function SettingsPage() {
+  const [profile, setProfile] = useState(() => cache.peek('profile'))
+
+  useEffect(() => {
+    async function load() {
+      const result = await getOwnProfile()
+      if (result.data) {
+        setProfile(result.data)
+        cache.set('profile', result.data, 300000)
+      }
+    }
+    load()
+  }, [])
+
+  if (!profile) return null
 
   return (
     <div style={{

@@ -116,7 +116,7 @@ export default function SetupUsernamePage() {
 
   return (
     <div style={{
-      minHeight: '100vh',
+      minHeight: '100dvh',
       background: '#F5F5F5',
       display: 'flex',
       alignItems: 'center',
