@@ -63,7 +63,8 @@ export default function ConversationPage() {
       // TTL shouldn't also gate whether we get to show something instantly.
       const cachedProfile = cache.get('profile')
       const cachedConv = cache.get(`conversation:${id}`)
-      const cachedMessages = cache.peek(`messages:${id}`)
+      const cachedMessagesRaw = cache.peek(`messages:${id}`)
+      const cachedMessages = Array.isArray(cachedMessagesRaw) ? cachedMessagesRaw : null
 
       if (cachedProfile) setProfile(cachedProfile)
       if (cachedConv) setConversation(cachedConv)
@@ -120,7 +121,7 @@ export default function ConversationPage() {
         }
       }
 
-      if (msgsResult.data) {
+      if (Array.isArray(msgsResult.data)) {
         setMessages(msgsResult.data)
         loadReactions(msgsResult.data)
         cache.set(`messages:${id}`, msgsResult.data, 20000)

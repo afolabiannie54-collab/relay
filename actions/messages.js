@@ -231,7 +231,7 @@ export async function getMessages(conversationId, page = 0) {
         edited_at,
         created_at,
         media(url, filename, size, mime_type),
-        reply:messages!messages_reply_to_id_fkey(id, content, sender_name_snapshot, type)
+        reply:reply_to_id(id, content, sender_name_snapshot, type)
       `)
       .eq('conversation_id', conversationId)
       .order('created_at', { ascending: false })
