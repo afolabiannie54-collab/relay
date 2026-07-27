@@ -168,30 +168,36 @@ export async function getConversation(conversationId) {
 
   if (!user) return { error: 'Not authenticated' }
 
-  const { data: participant } = await supabase
-    .from('conversation_participants')
-    .select('role')
-    .eq('conversation_id', conversationId)
-    .eq('user_id', user.id)
-    .single()
+  // These three reads don't depend on one another — fire them together
+  // instead of paying for three sequential round-trips.
+  const [participantResult, conversationResult, participantsResult] = await Promise.all([
+    supabase
+      .from('conversation_participants')
+      .select('role')
+      .eq('conversation_id', conversationId)
+      .eq('user_id', user.id)
+      .single(),
+    supabase
+      .from('conversations')
+      .select('type')
+      .eq('id', conversationId)
+      .single(),
+    supabase
+      .from('conversation_participants')
+      .select(`
+        user_id,
+        role,
+        users!inner(id, username, display_name, avatar_url, last_seen)
+      `)
+      .eq('conversation_id', conversationId)
+      .neq('user_id', user.id),
+  ])
 
+  const participant = participantResult.data
   if (!participant) return { error: 'Not a participant' }
 
-  const { data: conversationRow } = await supabase
-    .from('conversations')
-    .select('type')
-    .eq('id', conversationId)
-    .single()
-
-  const { data: participants, error } = await supabase
-    .from('conversation_participants')
-    .select(`
-      user_id,
-      role,
-      users!inner(id, username, display_name, avatar_url, last_seen)
-    `)
-    .eq('conversation_id', conversationId)
-    .neq('user_id', user.id)
+  const conversationRow = conversationResult.data
+  const { data: participants, error } = participantsResult
 
   if (error) return { error: error.message }
 
@@ -206,34 +212,36 @@ export async function getConversation(conversationId) {
 
 export async function getMessages(conversationId, page = 0) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) return { error: 'Not authenticated' }
 
   const limit = 50
   const offset = page * limit
 
-  const { data, error } = await supabase
-    .from('messages')
-    .select(`
-      id,
-      content,
-      type,
-      sender_id,
-      sender_name_snapshot,
-      reply_to_id,
-      is_edited,
-      edited_at,
-      created_at,
-      media(url, filename, size, mime_type)
-    `)
-    .eq('conversation_id', conversationId)
-    .order('created_at', { ascending: false })
-    .range(offset, offset + limit - 1)
+  const [{ data: { user } }, { data, error }] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase
+      .from('messages')
+      .select(`
+        id,
+        content,
+        type,
+        sender_id,
+        sender_name_snapshot,
+        reply_to_id,
+        is_edited,
+        edited_at,
+        created_at,
+        media(url, filename, size, mime_type),
+        reply:messages!messages_reply_to_id_fkey(id, content, sender_name_snapshot, type)
+      `)
+      .eq('conversation_id', conversationId)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1),
+  ])
 
+  if (!user) return { error: 'Not authenticated' }
   if (error) return { error: error.message }
 
-  const messages = data.reverse().map(({ media, ...msg }) => {
+  const messages = data.reverse().map(({ media, reply, ...msg }) => {
     const mediaRow = Array.isArray(media) ? media[0] : media
     return {
       ...msg,
@@ -241,22 +249,11 @@ export async function getMessages(conversationId, page = 0) {
       media_filename: mediaRow?.filename || null,
       media_size: mediaRow?.size || null,
       media_mime_type: mediaRow?.mime_type || null,
+      reply: reply || null,
     }
   })
 
-  const messagesWithReplies = await Promise.all(
-    messages.map(async (msg) => {
-      if (!msg.reply_to_id) return { ...msg, reply: null }
-      const { data: reply } = await supabase
-        .from('messages')
-        .select('id, content, sender_name_snapshot, type')
-        .eq('id', msg.reply_to_id)
-        .single()
-      return { ...msg, reply: reply || null }
-    })
-  )
-
-  return { data: messagesWithReplies }
+  return { data: messages }
 }
 
 export async function sendMessage(conversationId, content, replyToId = null) {

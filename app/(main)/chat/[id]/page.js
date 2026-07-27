@@ -58,10 +58,12 @@ export default function ConversationPage() {
     async function load() {
       // Show whatever's cached immediately — zero loading state for data
       // we've already seen. Fresh data still gets fetched below and swaps
-      // in silently as it arrives.
+      // in silently as it arrives. Messages use peek() rather than get()
+      // since we always re-fetch them fresh below regardless of TTL — the
+      // TTL shouldn't also gate whether we get to show something instantly.
       const cachedProfile = cache.get('profile')
       const cachedConv = cache.get(`conversation:${id}`)
-      const cachedMessages = cache.get(`messages:${id}`)
+      const cachedMessages = cache.peek(`messages:${id}`)
 
       if (cachedProfile) setProfile(cachedProfile)
       if (cachedConv) setConversation(cachedConv)

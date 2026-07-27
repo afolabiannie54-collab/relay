@@ -19,8 +19,10 @@ export default function ChatList({ onSelectConversation }) {
     async function load() {
       // Paint cached data immediately — no spinner for a list we've
       // already fetched this session. Fresh data still loads underneath
-      // and replaces it silently.
-      const cachedConvs = cache.get('conversations')
+      // and replaces it silently. Uses peek() rather than get() since we
+      // always re-fetch fresh below regardless of TTL — the TTL shouldn't
+      // also gate whether we get to show something instantly.
+      const cachedConvs = cache.peek('conversations')
       const cachedMuted = cache.get('muted-ids')
 
       if (cachedConvs) {
@@ -30,13 +32,14 @@ export default function ChatList({ onSelectConversation }) {
       if (cachedMuted) setMutedIds(cachedMuted)
 
       const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) setUserId(user.id)
 
-      const [convsResult, mutedResult] = await Promise.all([
+      const [userResult, convsResult, mutedResult] = await Promise.all([
+        supabase.auth.getUser(),
         getConversations(),
         cachedMuted ? Promise.resolve({ data: cachedMuted }) : getMutedConversationIds(),
       ])
+
+      if (userResult.data.user) setUserId(userResult.data.user.id)
 
       if (convsResult.data) {
         setConversations(convsResult.data)
