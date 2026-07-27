@@ -31,7 +31,7 @@ export default function BlockedUsersPage() {
   if (loading) {
     return (
       <div style={{
-        minHeight: '100vh',
+        minHeight: '100dvh',
         background: '#F5F5F5',
         display: 'flex',
         alignItems: 'center',
@@ -45,7 +45,7 @@ export default function BlockedUsersPage() {
 
   return (
     <div style={{
-      minHeight: '100vh',
+      minHeight: '100dvh',
       background: '#F5F5F5',
       fontFamily: "'Inter', -apple-system, sans-serif",
     }}>

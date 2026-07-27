@@ -401,6 +401,9 @@ export default function ConversationPage() {
             padding: '4px',
             display: 'flex',
             alignItems: 'center',
+            justifyContent: 'center',
+            minWidth: '44px',
+            minHeight: '44px',
           }}
         >
           ←
@@ -1159,6 +1162,7 @@ export default function ConversationPage() {
       {/* Input */}
       <div style={{
         padding: '12px 16px',
+        paddingBottom: 'calc(12px + env(safe-area-inset-bottom))',
         borderTop: '1.5px solid #E5E5E5',
         display: 'flex',
         gap: '10px',

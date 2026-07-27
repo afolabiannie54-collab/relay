@@ -15,7 +15,7 @@ export default async function ProfilePage({ params }) {
   if (result.error) {
     return (
       <div style={{
-        minHeight: '100vh',
+        minHeight: '100dvh',
         background: '#F5F5F5',
         display: 'flex',
         alignItems: 'center',
@@ -75,7 +75,7 @@ export default async function ProfilePage({ params }) {
 
   return (
     <div style={{
-      minHeight: '100vh',
+      minHeight: '100dvh',
       background: '#F5F5F5',
       fontFamily: "'Inter', -apple-system, sans-serif",
     }}>

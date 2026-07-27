@@ -137,7 +137,7 @@ export default function MainLayout({ children }) {
     <PresenceProvider userId={profile?.id}>
     <div style={{
       display: 'flex',
-      height: '100vh',
+      height: '100dvh',
       overflow: 'hidden',
       fontFamily: "'Inter', -apple-system, sans-serif",
       background: '#F5F5F5',
@@ -150,7 +150,7 @@ export default function MainLayout({ children }) {
         borderRight: '1.5px solid #0a0a0a',
         display: 'flex',
         flexDirection: 'column',
-        height: '100vh',
+        height: '100dvh',
       }}
         className="desktop-sidebar"
       >

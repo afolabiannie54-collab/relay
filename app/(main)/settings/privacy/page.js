@@ -107,7 +107,7 @@ export default function PrivacySettingsPage() {
   if (loading) {
     return (
       <div style={{
-        minHeight: '100vh',
+        minHeight: '100dvh',
         background: '#F5F5F5',
         display: 'flex',
         alignItems: 'center',
@@ -121,7 +121,7 @@ export default function PrivacySettingsPage() {
 
   return (
     <div style={{
-      minHeight: '100vh',
+      minHeight: '100dvh',
       background: '#F5F5F5',
       fontFamily: "'Inter', -apple-system, sans-serif",
     }}>
