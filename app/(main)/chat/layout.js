@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useEffect } from 'react'
+import { useRef } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import ChatList from '@/components/chat/ChatList'
 import ChatEmptyState from '@/components/chat/ChatEmptyState'
@@ -9,9 +9,6 @@ import ChatEmptyState from '@/components/chat/ChatEmptyState'
 // "the conversation list plus a conversation" — these bypass the two-panel
 // shell entirely and just render full width.
 const FULL_WIDTH_ROUTES = ['/chat/hidden']
-
-const CONVERSATION_PATTERN = /^\/chat\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-const SETTINGS_PATTERN = /^\/chat\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/settings$/i
 
 // Two-panel shell for everything else under /chat/*, WhatsApp-Web style on
 // desktop. This layout persists across navigation between /chat,
@@ -29,39 +26,6 @@ export default function ChatLayout({ children }) {
   const isListRoute = pathname === '/chat'
   const isFullWidthRoute = FULL_WIDTH_ROUTES.includes(pathname)
   const touchStartRef = useRef(null)
-  const pathRef = useRef(pathname)
-
-  useEffect(() => {
-    pathRef.current = pathname
-  }, [pathname])
-
-  // Enforces a fixed navigation hierarchy — conversation is always a
-  // child of the list, and conversation settings is always a child of its
-  // conversation — no matter how the user actually arrived there. This is
-  // how native chat apps behave: their back button doesn't retrace your
-  // literal click history, it always resolves to the same fixed parent.
-  //
-  // Our own back button and swipe gesture already enforce this directly
-  // (a plain push/replace to a fixed destination). This effect covers the
-  // other way "back" can happen: the phone's system back gesture (or
-  // Safari's edge-swipe), which bypasses our React handlers entirely and
-  // triggers a real browser history traversal. pushState/replaceState
-  // (what our own UI uses) never fire `popstate`, only genuine back/
-  // forward navigation does — so this listener only ever reacts to that
-  // system-level gesture, never to our own button/swipe/link clicks.
-  useEffect(() => {
-    const handlePopState = () => {
-      const prevPath = pathRef.current
-      const settingsMatch = prevPath.match(SETTINGS_PATTERN)
-      if (settingsMatch) {
-        router.replace(`/chat/${settingsMatch[1]}`)
-      } else if (CONVERSATION_PATTERN.test(prevPath)) {
-        router.replace('/chat')
-      }
-    }
-    window.addEventListener('popstate', handlePopState)
-    return () => window.removeEventListener('popstate', handlePopState)
-  }, [router])
 
   // Identifies which conversation is currently loaded, independent of the
   // /settings sub-route — used only to key the inner content wrapper below
@@ -73,12 +37,14 @@ export default function ChatLayout({ children }) {
   // active on mobile and only while actually viewing a conversation (not
   // the list itself). A mostly-vertical drag (normal message-list
   // scrolling) is rejected by the deltaX-vs-deltaY comparison, so this
-  // doesn't fight with scrolling. Always resolves to the list — same
-  // fixed destination as the header's back button, regardless of how the
-  // conversation was opened.
+  // doesn't fight with scrolling. Ignores touches starting very close to
+  // the left edge — that strip is where iOS's own native edge-swipe-back
+  // gesture activates, and having both respond to the same touch can
+  // trigger overlapping navigations.
   const handleTouchStart = (e) => {
     const touch = e.touches[0]
     if (!touch) return
+    if (touch.clientX < 24) return
     touchStartRef.current = { x: touch.clientX, y: touch.clientY }
   }
 
@@ -102,14 +68,14 @@ export default function ChatLayout({ children }) {
 
   if (isFullWidthRoute) {
     return (
-      <div style={{ height: 'var(--app-height, 100dvh)', overflow: 'hidden' }}>
+      <div style={{ height: '100dvh', overflow: 'hidden' }}>
         {children}
       </div>
     )
   }
 
   return (
-    <div className="chat-shell" style={{ display: 'flex', height: 'var(--app-height, 100dvh)', overflow: 'hidden', position: 'relative' }}>
+    <div className="chat-shell" style={{ display: 'flex', height: '100dvh', overflow: 'hidden', position: 'relative' }}>
       <div
         className={`chat-list-panel ${isListRoute ? 'chat-panel-visible' : 'chat-panel-hidden-left'}`}
         style={{
@@ -117,7 +83,7 @@ export default function ChatLayout({ children }) {
           flexShrink: 0,
           borderRight: '1.5px solid #0a0a0a',
           background: '#fff',
-          height: 'var(--app-height, 100dvh)',
+          height: '100dvh',
           overflow: 'hidden',
         }}
       >
@@ -129,7 +95,7 @@ export default function ChatLayout({ children }) {
         style={{
           flex: 1,
           minWidth: 0,
-          height: 'var(--app-height, 100dvh)',
+          height: '100dvh',
           overflow: 'hidden',
           background: '#fff',
         }}

@@ -9,11 +9,10 @@ import Link from 'next/link'
 // page's captured screenshot look like a stale-content flash. The
 // transform slide alone is the intended transition now.
 //
-// A plain push — normal Link/history behavior. Going "back" out of a
-// conversation is handled independently of whatever's actually in
-// history: the conversation's own back button/swipe always navigate to a
-// fixed destination, and chat/layout.js's popstate listener enforces the
-// same fixed destination for the phone's system back gesture too.
+// A plain push — normal Link/history behavior. The conversation's own
+// back button and swipe gesture always navigate to a fixed destination
+// regardless of what's in history, so this doesn't need to do anything
+// special.
 export default function ChatLink({ href, children, onClick, ...props }) {
   return (
     <Link href={href} prefetch={true} onClick={onClick} {...props}>
