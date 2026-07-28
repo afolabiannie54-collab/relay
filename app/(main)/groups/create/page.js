@@ -76,7 +76,7 @@ export default function CreateGroupPage() {
       return
     }
 
-    router.replace(`/chat/${result.conversationId}`)
+    router.push(`/chat/${result.conversationId}`)
   }
 
   const MemberChip = ({ user }) => (

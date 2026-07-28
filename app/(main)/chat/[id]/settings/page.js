@@ -140,14 +140,19 @@ export default function ConversationSettingsPage() {
         top: 0,
         zIndex: 10,
       }}>
-        <Link href={`/chat/${id}`} replace style={{
+        <button onClick={() => router.push(`/chat/${id}`)} style={{
+          background: 'none',
+          border: 'none',
+          padding: 0,
+          cursor: 'pointer',
           textDecoration: 'none',
           color: '#0a0a0a',
           fontSize: '14px',
           fontWeight: '600',
+          fontFamily: 'inherit',
         }}>
           ← Back
-        </Link>
+        </button>
         <span style={{ fontSize: '16px', fontWeight: '700' }}>Conversation settings</span>
       </div>
 
