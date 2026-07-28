@@ -172,11 +172,17 @@ export default function ConversationPage() {
   // Re-pin to the bottom whenever the visual viewport resizes (the iOS
   // keyboard opening/closing being the main case) so the last message
   // stays next to the input bar instead of getting scrolled out of view.
+  // This page does NOT size itself to the viewport — the chat shell
+  // (app/(main)/chat/layout.js) is the single source of truth for height,
+  // sized to window.visualViewport itself; this page just fills 100% of
+  // that and re-scrolls when the available space changes.
   useEffect(() => {
     if (typeof window === 'undefined' || !window.visualViewport) return
     const vv = window.visualViewport
     const handleResize = () => {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
+      requestAnimationFrame(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
+      })
     }
     vv.addEventListener('resize', handleResize)
     return () => vv.removeEventListener('resize', handleResize)

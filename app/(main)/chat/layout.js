@@ -57,6 +57,26 @@ export default function ChatLayout({ children }) {
     setShowEmpty(false)
   }, [isListRoute])
 
+  // Single source of truth for height: the shell itself tracks
+  // window.visualViewport, which shrinks (from the bottom only) when the
+  // iOS keyboard opens — unlike 100dvh, which ignores the keyboard
+  // entirely. Every descendant below (panels, the conversation page's own
+  // container, its flex:1 messages area) just fills 100% of whatever
+  // height it's given, so the shrink propagates down and only the
+  // flex:1 messages area actually absorbs it: header and input bar
+  // (both flexShrink:0) stay pinned in place. On desktop the keyboard
+  // never opens, so vh just tracks the full viewport — same as 100dvh.
+  const [vh, setVh] = useState(null)
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.visualViewport) return
+    const vv = window.visualViewport
+    const onResize = () => setVh(vv.height)
+    onResize()
+    vv.addEventListener('resize', onResize)
+    return () => vv.removeEventListener('resize', onResize)
+  }, [])
+  const shellHeight = vh ? `${vh}px` : '100dvh'
+
   // iOS-style swipe-from-anywhere-to-go-back on the detail panel. Only
   // active on mobile and only while actually viewing a conversation (not
   // the list itself). A mostly-vertical drag (normal message-list
@@ -99,7 +119,7 @@ export default function ChatLayout({ children }) {
   }
 
   return (
-    <div className="chat-shell" style={{ display: 'flex', height: '100dvh', overflow: 'hidden', position: 'relative' }}>
+    <div className="chat-shell" style={{ display: 'flex', height: shellHeight, overflow: 'hidden', position: 'relative' }}>
       <div
         className={`chat-list-panel ${isListRoute ? 'chat-panel-visible' : 'chat-panel-hidden-left'}`}
         style={{
@@ -107,7 +127,7 @@ export default function ChatLayout({ children }) {
           flexShrink: 0,
           borderRight: '1.5px solid #0a0a0a',
           background: '#fff',
-          height: '100dvh',
+          height: '100%',
           overflow: 'hidden',
         }}
       >
@@ -119,7 +139,7 @@ export default function ChatLayout({ children }) {
         style={{
           flex: 1,
           minWidth: 0,
-          height: '100dvh',
+          height: '100%',
           overflow: 'hidden',
           background: '#fff',
         }}
