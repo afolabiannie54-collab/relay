@@ -297,6 +297,7 @@ export default function MainLayout({ children }) {
         <div style={{
           flex: 1,
           overflowY: 'auto',
+          overflowX: 'hidden',
         }}>
           {children}
         </div>
