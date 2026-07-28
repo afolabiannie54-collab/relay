@@ -24,6 +24,12 @@ export default function ChatLayout({ children }) {
   const isListRoute = pathname === '/chat'
   const isFullWidthRoute = FULL_WIDTH_ROUTES.includes(pathname)
 
+  // Identifies which conversation is currently loaded, independent of the
+  // /settings sub-route — used only to key the inner content wrapper below
+  // (not the panel itself) so a stale conversation's messages never flash
+  // when switching directly from one conversation to another.
+  const convId = pathname.split('/')[2] || 'empty'
+
   if (isFullWidthRoute) {
     return (
       <div style={{ height: '100dvh', overflow: 'hidden' }}>
@@ -58,12 +64,22 @@ export default function ChatLayout({ children }) {
           background: '#fff',
         }}
       >
-        {isListRoute ? <ChatEmptyState /> : children}
+        {/* Keyed by conversation id so switching directly between two
+            conversations remounts the content instead of briefly showing
+            the previous conversation's stale messages. This key lives on
+            an inner wrapper, not the .chat-detail-panel node itself —
+            keying the outer node would also remount it on every
+            list-to-conversation transition, which would skip the CSS
+            transform transition below entirely (a freshly-mounted node
+            has no prior style to animate from). */}
+        <div key={convId} style={{ height: '100%' }}>
+          {isListRoute ? <ChatEmptyState /> : children}
+        </div>
       </div>
 
       <style>{`
         .chat-list-panel, .chat-detail-panel {
-          transition: transform 0.25s ease;
+          transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
           will-change: transform;
         }
 
@@ -89,10 +105,10 @@ export default function ChatLayout({ children }) {
             transform: translateX(0);
           }
           .chat-panel-hidden-left {
-            transform: translateX(-100%);
+            transform: translateX(-110%);
           }
           .chat-panel-hidden-right {
-            transform: translateX(100%);
+            transform: translateX(110%);
           }
         }
       `}</style>
