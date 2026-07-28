@@ -64,14 +64,14 @@ export default function ChatLayout({ children }) {
 
   if (isFullWidthRoute) {
     return (
-      <div style={{ height: '100dvh', overflow: 'hidden' }}>
+      <div style={{ height: 'var(--app-height, 100dvh)', overflow: 'hidden' }}>
         {children}
       </div>
     )
   }
 
   return (
-    <div className="chat-shell" style={{ display: 'flex', height: '100dvh', overflow: 'hidden', position: 'relative' }}>
+    <div className="chat-shell" style={{ display: 'flex', height: 'var(--app-height, 100dvh)', overflow: 'hidden', position: 'relative' }}>
       <div
         className={`chat-list-panel ${isListRoute ? 'chat-panel-visible' : 'chat-panel-hidden-left'}`}
         style={{
@@ -79,7 +79,7 @@ export default function ChatLayout({ children }) {
           flexShrink: 0,
           borderRight: '1.5px solid #0a0a0a',
           background: '#fff',
-          height: '100dvh',
+          height: 'var(--app-height, 100dvh)',
           overflow: 'hidden',
         }}
       >
@@ -91,7 +91,7 @@ export default function ChatLayout({ children }) {
         style={{
           flex: 1,
           minWidth: 0,
-          height: '100dvh',
+          height: 'var(--app-height, 100dvh)',
           overflow: 'hidden',
           background: '#fff',
         }}

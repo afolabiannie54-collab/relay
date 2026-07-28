@@ -10,6 +10,7 @@ import { getRequestsCount } from '@/actions/notifications'
 import { getUnreadChatsCount } from '@/actions/messages'
 import { createClient } from '@/lib/supabase/client'
 import { usePushNotifications } from '@/hooks/usePushNotifications'
+import { useAppHeight } from '@/hooks/useAppHeight'
 import { signOut } from '@/actions/auth'
 
 export default function MainLayout({ children }) {
@@ -19,6 +20,7 @@ export default function MainLayout({ children }) {
   const [unreadChatsCount, setUnreadChatsCount] = useState(0)
 
   usePushNotifications(profile?.id)
+  useAppHeight()
 
   useEffect(() => {
     async function load() {
@@ -137,7 +139,7 @@ export default function MainLayout({ children }) {
     <PresenceProvider userId={profile?.id}>
     <div style={{
       display: 'flex',
-      height: '100dvh',
+      height: 'var(--app-height, 100dvh)',
       overflow: 'hidden',
       fontFamily: "'Inter', -apple-system, sans-serif",
       background: '#F5F5F5',
@@ -150,7 +152,7 @@ export default function MainLayout({ children }) {
         borderRight: '1.5px solid #0a0a0a',
         display: 'flex',
         flexDirection: 'column',
-        height: '100dvh',
+        height: 'var(--app-height, 100dvh)',
       }}
         className="desktop-sidebar"
       >
