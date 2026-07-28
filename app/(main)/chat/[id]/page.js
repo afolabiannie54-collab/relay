@@ -504,7 +504,7 @@ export default function ConversationPage() {
         flexShrink: 0,
       }}>
         <button
-          onClick={() => router.push('/chat')}
+          onClick={() => router.replace('/chat')}
           className="mobile-back-btn"
           style={{
             background: 'none',
@@ -590,6 +590,7 @@ export default function ConversationPage() {
           </button>
           <Link
             href={`/chat/${id}/settings`}
+            replace
             style={{
               width: '44px',
               height: '44px',

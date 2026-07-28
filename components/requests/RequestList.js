@@ -39,7 +39,7 @@ export default function RequestList({ initialRequests, userId }) {
     const result = await acceptMessageRequest(requestId)
     if (result.success) {
       setRequests(prev => prev.filter(r => r.id !== requestId))
-      router.push(`/chat/${result.conversationId}`)
+      router.replace(`/chat/${result.conversationId}`)
     }
     setActing(null)
   }

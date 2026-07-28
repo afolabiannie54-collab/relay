@@ -38,7 +38,7 @@ export default function MessageButton({ receiverId, displayName }) {
 
     if (result.error) {
       if (result.conversationId) {
-        router.push(`/chat/${result.conversationId}`)
+        router.replace(`/chat/${result.conversationId}`)
         return
       }
       setError(result.error)
@@ -46,7 +46,7 @@ export default function MessageButton({ receiverId, displayName }) {
       return
     }
 
-    router.push(`/chat/${result.conversationId}`)
+    router.replace(`/chat/${result.conversationId}`)
   }
 
   const handleBlock = async () => {
@@ -90,7 +90,7 @@ export default function MessageButton({ receiverId, displayName }) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'flex-start' }}>
         <button
-          onClick={() => router.push(`/chat/${existingConvId}`)}
+          onClick={() => router.replace(`/chat/${existingConvId}`)}
           style={{
             padding: '10px 20px',
             background: '#0a0a0a',

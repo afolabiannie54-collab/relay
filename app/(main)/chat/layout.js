@@ -58,7 +58,7 @@ export default function ChatLayout({ children }) {
     const deltaY = touch.clientY - start.y
 
     if (deltaX > 60 && deltaX > Math.abs(deltaY) * 1.5) {
-      router.push('/chat')
+      router.replace('/chat')
     }
   }
 

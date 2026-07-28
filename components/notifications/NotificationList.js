@@ -26,7 +26,7 @@ export default function NotificationList({ initialNotifications }) {
         case 'message':
         case 'group_message':
         case 'mention':
-          router.push(`/chat/${notification.reference_id}`)
+          router.replace(`/chat/${notification.reference_id}`)
           break
         case 'message_request':
           router.push('/requests')
@@ -35,7 +35,7 @@ export default function NotificationList({ initialNotifications }) {
           router.push('/requests')
           break
         case 'reaction':
-          router.push(`/chat/${notification.reference_id}`)
+          router.replace(`/chat/${notification.reference_id}`)
           break
         default:
           break

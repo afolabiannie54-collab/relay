@@ -115,7 +115,7 @@ export default function ConversationSettingsPage() {
     if (!confirm('Hide this conversation? It will move to your hidden chats and stay there until you unhide it.')) return
     setHiding(true)
     await hideConversation(id)
-    router.push('/chat')
+    router.replace('/chat')
   }
 
   if (!conversation) return null
@@ -140,7 +140,7 @@ export default function ConversationSettingsPage() {
         top: 0,
         zIndex: 10,
       }}>
-        <Link href={`/chat/${id}`} style={{
+        <Link href={`/chat/${id}`} replace style={{
           textDecoration: 'none',
           color: '#0a0a0a',
           fontSize: '14px',
