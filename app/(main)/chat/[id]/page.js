@@ -50,6 +50,7 @@ export default function ConversationPage() {
   const inputRef = useRef(null)
   const typingTimeout = useRef(null)
   const channelRef = useRef(null)
+  const lastMessageIdRef = useRef(null)
 
   useReadReceipts(id, profile?.id, messages)
 
@@ -63,6 +64,7 @@ export default function ConversationPage() {
       // Blank is a much less jarring failure mode than wrong.
       setConversation(null)
       setGroupInfo(null)
+      lastMessageIdRef.current = null
 
       // Show whatever's cached immediately — zero loading state for data
       // we've already seen. Fresh data still gets fetched below and swaps
@@ -150,9 +152,21 @@ export default function ConversationPage() {
     load()
   }, [id])
 
-  // Scroll to bottom when messages change
+  // Scroll to bottom when messages change — but only actually move the
+  // scroll position when the last message genuinely changed. A single
+  // conversation open sets `messages` two or three times in quick
+  // succession (cache hit, then the fresh-fetch overwrite, sometimes with
+  // the same content) — animating a smooth scroll on every one of those
+  // is what read as bouncy/jarring. The first time a conversation's
+  // messages appear, jump straight to the bottom instantly, like a native
+  // messaging app; only genuinely new messages after that animate in.
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (messages.length === 0) return
+    const lastId = messages[messages.length - 1].id
+    if (lastId === lastMessageIdRef.current) return
+    const behavior = lastMessageIdRef.current === null ? 'auto' : 'smooth'
+    lastMessageIdRef.current = lastId
+    messagesEndRef.current?.scrollIntoView({ behavior })
   }, [messages])
 
   // Supabase Realtime subscription
