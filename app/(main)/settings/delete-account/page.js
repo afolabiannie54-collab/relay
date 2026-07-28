@@ -103,7 +103,7 @@ export default function DeleteAccountPage() {
               padding: '12px 14px',
               border: '1.5px solid #0a0a0a',
               borderRadius: '8px',
-              fontSize: '14px',
+              fontSize: '16px',
               fontFamily: 'inherit',
               outline: 'none',
               marginBottom: '16px',

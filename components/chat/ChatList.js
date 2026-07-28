@@ -159,8 +159,8 @@ export default function ChatList({ onSelectConversation }) {
             Hidden
           </Link>
           <Link href="/groups/create" style={{
-            width: '36px',
-            height: '36px',
+            width: '44px',
+            height: '44px',
             border: '1.5px solid #0a0a0a',
             borderRadius: '8px',
             display: 'flex',
@@ -173,8 +173,8 @@ export default function ChatList({ onSelectConversation }) {
             👥
           </Link>
           <Link href="/search" style={{
-            width: '36px',
-            height: '36px',
+            width: '44px',
+            height: '44px',
             border: '1.5px solid #0a0a0a',
             borderRadius: '8px',
             display: 'flex',
@@ -190,7 +190,14 @@ export default function ChatList({ onSelectConversation }) {
       </div>
 
       {/* Conversation list */}
-      <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', overscrollBehaviorX: 'none' }}>
+      <div style={{
+        flex: 1,
+        overflowY: 'auto',
+        overflowX: 'hidden',
+        overscrollBehaviorX: 'none',
+        overscrollBehaviorY: 'contain',
+        WebkitOverflowScrolling: 'touch',
+      }}>
         {conversations.length === 0 ? (
           <div style={{
             display: 'flex',

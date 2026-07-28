@@ -46,7 +46,11 @@ export default function VerifyPage() {
 
     await storeSessionInfo(navigator.userAgent)
 
-    window.location.href = '/chat'
+    const next = new URLSearchParams(window.location.search).get('next')
+    // Only ever follow a same-origin relative path — an absolute or
+    // protocol-relative (//host) value here would be an open redirect.
+    const safeNext = next && next.startsWith('/') && !next.startsWith('//') ? next : '/chat'
+    window.location.href = safeNext
   }
 
   const handleResend = async () => {

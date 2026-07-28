@@ -236,7 +236,7 @@ export default function PrivacySettingsForm({ initialSettings, userId }) {
                 padding: '6px 10px',
                 border: '1.5px solid #0a0a0a',
                 borderRadius: '8px',
-                fontSize: '13px',
+                fontSize: '16px',
                 fontFamily: 'inherit',
                 background: '#fff',
                 cursor: 'pointer',

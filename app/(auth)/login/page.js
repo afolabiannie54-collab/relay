@@ -51,7 +51,11 @@ export default function LoginPage() {
 
     await storeSessionInfo(navigator.userAgent)
 
-    window.location.href = '/chat'
+    const next = new URLSearchParams(window.location.search).get('next')
+    // Only ever follow a same-origin relative path — an absolute or
+    // protocol-relative (//host) value here would be an open redirect.
+    const safeNext = next && next.startsWith('/') && !next.startsWith('//') ? next : '/chat'
+    window.location.href = safeNext
   }
 
   const handleGoogle = async () => {
@@ -72,7 +76,7 @@ export default function LoginPage() {
     padding: '12px 14px',
     border: `1.5px solid ${errors[field] ? '#EF4444' : '#e5e5e5'}`,
     borderRadius: '8px',
-    fontSize: '14px',
+    fontSize: '16px',
     fontFamily: 'inherit',
     outline: 'none',
     background: '#fff',

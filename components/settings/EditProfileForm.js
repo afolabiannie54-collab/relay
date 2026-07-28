@@ -141,7 +141,7 @@ export default function EditProfileForm({ initialProfile }) {
     padding: '12px 14px',
     border: '1.5px solid #e5e5e5',
     borderRadius: '8px',
-    fontSize: '14px',
+    fontSize: '16px',
     fontFamily: 'inherit',
     outline: 'none',
     background: '#fff',

@@ -537,8 +537,8 @@ export default function ConversationPage() {
           <button
             onClick={() => setShowSearch(prev => !prev)}
             style={{
-              width: '34px',
-              height: '34px',
+              width: '44px',
+              height: '44px',
               background: showSearch ? '#F5F5F5' : '#fff',
               border: '1.5px solid #0a0a0a',
               borderRadius: '8px',
@@ -555,8 +555,8 @@ export default function ConversationPage() {
           <button
             onClick={handleLoadPinned}
             style={{
-              width: '34px',
-              height: '34px',
+              width: '44px',
+              height: '44px',
               background: showPinnedPanel ? '#F5F5F5' : '#fff',
               border: '1.5px solid #0a0a0a',
               borderRadius: '8px',
@@ -573,8 +573,8 @@ export default function ConversationPage() {
           <Link
             href={`/chat/${id}/settings`}
             style={{
-              width: '34px',
-              height: '34px',
+              width: '44px',
+              height: '44px',
               background: '#fff',
               border: '1.5px solid #0a0a0a',
               borderRadius: '8px',
@@ -651,12 +651,13 @@ export default function ConversationPage() {
       )}
 
       {/* Messages */}
-      <div style={{
+      <div className="messages-scroll-area" style={{
         flex: 1,
         overflowY: 'auto',
         overflowX: 'hidden',
         overscrollBehaviorX: 'none',
         padding: '16px',
+        paddingBottom: '32px',
         display: 'flex',
         flexDirection: 'column',
         gap: '2px',
@@ -778,7 +779,7 @@ export default function ConversationPage() {
                             padding: '8px 12px',
                             border: '1.5px solid #0a0a0a',
                             borderRadius: '8px',
-                            fontSize: '14px',
+                            fontSize: '16px',
                             fontFamily: 'inherit',
                             outline: 'none',
                           }}
@@ -858,6 +859,7 @@ export default function ConversationPage() {
                       {isOwn && !isDeleted && (
                         <button
                           onClick={() => handleDelete(msg.id)}
+                          className="message-action-btn"
                           style={{
                             background: 'none',
                             border: 'none',
@@ -874,6 +876,7 @@ export default function ConversationPage() {
                       {isOwn && !isDeleted && msg.type === 'text' && (
                         <button
                           onClick={() => { setEditingId(msg.id); setEditContent(msg.content) }}
+                          className="message-action-btn"
                           style={{
                             background: 'none',
                             border: 'none',
@@ -890,6 +893,7 @@ export default function ConversationPage() {
                       {!isOwn && !isDeleted && (
                         <button
                           onClick={() => setReplyTo(msg)}
+                          className="message-action-btn"
                           style={{
                             background: 'none',
                             border: 'none',
@@ -906,6 +910,7 @@ export default function ConversationPage() {
                       {!isDeleted && msg.type !== 'system' && (
                         <button
                           onClick={() => setActiveReactionPicker(prev => prev === msg.id ? null : msg.id)}
+                          className="message-action-btn"
                           style={{
                             background: 'none',
                             border: 'none',
@@ -922,6 +927,7 @@ export default function ConversationPage() {
                       {!isDeleted && msg.type !== 'system' && (
                         <button
                           onClick={() => handleTogglePin(msg.id)}
+                          className="message-action-btn"
                           style={{
                             background: 'none',
                             border: 'none',
@@ -939,6 +945,7 @@ export default function ConversationPage() {
                       {isOwn && !isDeleted && (
                         <button
                           onClick={() => setReplyTo(msg)}
+                          className="message-action-btn"
                           style={{
                             background: 'none',
                             border: 'none',
@@ -1173,7 +1180,7 @@ export default function ConversationPage() {
                 padding: '8px 12px',
                 border: '1.5px solid #0a0a0a',
                 borderRadius: '8px',
-                fontSize: '14px',
+                fontSize: '16px',
                 fontFamily: 'inherit',
                 outline: 'none',
               }}
@@ -1257,7 +1264,9 @@ export default function ConversationPage() {
       )}
 
       {/* Input */}
-      <div style={{
+      <div className="chat-input-bar" style={{
+        position: 'sticky',
+        bottom: 0,
         padding: '12px 16px',
         paddingBottom: 'calc(12px + env(safe-area-inset-bottom))',
         borderTop: '1.5px solid #E5E5E5',
@@ -1278,8 +1287,8 @@ export default function ConversationPage() {
           <label
             htmlFor="media-upload"
             style={{
-              width: '40px',
-              height: '40px',
+              width: '44px',
+              height: '44px',
               background: '#fff',
               border: '1.5px solid #0a0a0a',
               borderRadius: '10px',
@@ -1297,8 +1306,8 @@ export default function ConversationPage() {
           <button
             onClick={() => setShowCamera(true)}
             style={{
-              width: '40px',
-              height: '40px',
+              width: '44px',
+              height: '44px',
               background: '#fff',
               border: '1.5px solid #0a0a0a',
               borderRadius: '10px',
@@ -1316,8 +1325,8 @@ export default function ConversationPage() {
           <button
             onClick={() => setShowRecorder(true)}
             style={{
-              width: '40px',
-              height: '40px',
+              width: '44px',
+              height: '44px',
               background: '#fff',
               border: '1.5px solid #0a0a0a',
               borderRadius: '10px',
@@ -1369,7 +1378,7 @@ export default function ConversationPage() {
             padding: '10px 14px',
             border: '1.5px solid #E5E5E5',
             borderRadius: '12px',
-            fontSize: '14px',
+            fontSize: '16px',
             fontFamily: 'inherit',
             outline: 'none',
             resize: 'none',
@@ -1389,8 +1398,8 @@ export default function ConversationPage() {
           onClick={handleSend}
           disabled={!content.trim() || sending}
           style={{
-            width: '40px',
-            height: '40px',
+            width: '44px',
+            height: '44px',
             background: content.trim() ? '#0a0a0a' : '#E5E5E5',
             border: '1.5px solid #0a0a0a',
             borderRadius: '10px',
@@ -1412,6 +1421,19 @@ export default function ConversationPage() {
         .mobile-back-btn { display: flex; }
         @media (min-width: 769px) {
           .mobile-back-btn { display: none; }
+        }
+        /* Message action row (Delete/Edit/Reply/React/Pin) stays compact
+           inline text on desktop, where a mouse doesn't need a 44px target.
+           On mobile, each one becomes a real touch target — the row gets
+           taller as a direct, unavoidable consequence of that minimum. */
+        @media (max-width: 768px) {
+          .message-action-btn {
+            min-height: 44px;
+            min-width: 44px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+          }
         }
       `}</style>
     </div>

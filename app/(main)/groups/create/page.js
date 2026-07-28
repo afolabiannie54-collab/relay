@@ -217,7 +217,7 @@ export default function CreateGroupPage() {
               padding: '12px 14px',
               border: '1.5px solid #E5E5E5',
               borderRadius: '8px',
-              fontSize: '14px',
+              fontSize: '16px',
               fontFamily: 'inherit',
               outline: 'none',
             }}
@@ -241,7 +241,7 @@ export default function CreateGroupPage() {
               padding: '12px 14px',
               border: '1.5px solid #E5E5E5',
               borderRadius: '8px',
-              fontSize: '14px',
+              fontSize: '16px',
               fontFamily: 'inherit',
               outline: 'none',
             }}
@@ -277,7 +277,7 @@ export default function CreateGroupPage() {
               padding: '12px 14px',
               border: '1.5px solid #E5E5E5',
               borderRadius: '8px',
-              fontSize: '14px',
+              fontSize: '16px',
               fontFamily: 'inherit',
               outline: 'none',
             }}

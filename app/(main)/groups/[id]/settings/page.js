@@ -287,7 +287,7 @@ export default function GroupSettingsPage() {
                     padding: '10px 12px',
                     border: '1.5px solid #E5E5E5',
                     borderRadius: '8px',
-                    fontSize: '14px',
+                    fontSize: '16px',
                     fontFamily: 'inherit',
                     outline: 'none',
                   }}
@@ -307,7 +307,7 @@ export default function GroupSettingsPage() {
                     padding: '10px 12px',
                     border: '1.5px solid #E5E5E5',
                     borderRadius: '8px',
-                    fontSize: '14px',
+                    fontSize: '16px',
                     fontFamily: 'inherit',
                     outline: 'none',
                   }}
@@ -362,7 +362,7 @@ export default function GroupSettingsPage() {
                   padding: '10px 12px',
                   border: '1.5px solid #E5E5E5',
                   borderRadius: '8px',
-                  fontSize: '14px',
+                  fontSize: '16px',
                   fontFamily: 'inherit',
                   outline: 'none',
                   marginBottom: '8px',

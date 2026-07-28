@@ -86,7 +86,7 @@ export default function ResetPasswordPage() {
     padding: '12px 14px',
     border: `1.5px solid ${errors[field] ? '#EF4444' : '#e5e5e5'}`,
     borderRadius: '8px',
-    fontSize: '14px',
+    fontSize: '16px',
     fontFamily: 'inherit',
     outline: 'none',
     background: '#fff',

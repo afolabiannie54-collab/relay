@@ -318,8 +318,11 @@ export default function MainLayout({ children }) {
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
+                justifyContent: 'center',
                 gap: '4px',
                 padding: '6px',
+                minHeight: '44px',
+                minWidth: '44px',
                 position: 'relative',
               }}>
                 <div style={{ position: 'relative' }}>

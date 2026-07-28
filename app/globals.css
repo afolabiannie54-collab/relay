@@ -40,8 +40,42 @@ body {
   height: 100%;
   overflow-x: hidden;
   overscroll-behavior-x: none;
+  overscroll-behavior-y: none;
   background: var(--background);
   font-family: inherit;
+}
+
+/* iOS Safari auto-zooms on focusing any input/textarea/select below 16px.
+   Individual elements already set this explicitly; this is a backstop for
+   anything missed. */
+input, textarea, select {
+  font-size: 16px !important;
+}
+
+/* iOS PWA (standalone) mode handles the on-screen keyboard differently
+   from a regular Safari tab — this reinforces the inline safe-area padding
+   already on the input bar specifically for that context. */
+@supports (-webkit-touch-callout: none) {
+  .chat-input-bar {
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+}
+
+/* Native iOS momentum ("rubber-band") scrolling for the message list, and
+   containment so an overscroll at the top/bottom of the message list
+   doesn't propagate up and trigger the browser's pull-to-refresh. */
+.messages-scroll-area {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: auto;
+  overscroll-behavior-y: contain;
+}
+
+/* Removes the gray tap-flash overlay and the double-tap-to-zoom delay on
+   interactive elements — one of the fastest tells that a UI is "a website"
+   rather than an app. Native apps have neither. */
+a, button, input, textarea, select {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 ::-webkit-scrollbar {

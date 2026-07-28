@@ -83,7 +83,7 @@ export default function SearchPage() {
                 padding: '10px 14px 10px 36px',
                 border: '1.5px solid #0a0a0a',
                 borderRadius: '8px',
-                fontSize: '14px',
+                fontSize: '16px',
                 fontFamily: 'inherit',
                 outline: 'none',
                 background: '#F5F5F5',

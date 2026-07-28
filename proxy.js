@@ -41,9 +41,12 @@ export async function proxy(request) {
   const isAuthRoute = authRoutes.some(route => pathname === route)
 
   if (!user && !isPublicRoute) {
-    // Not logged in, trying to access protected page → redirect to login
+    // Not logged in, trying to access protected page → redirect to login,
+    // preserving where they were headed so a PWA re-opened after the
+    // session expired lands back where the user actually wanted to be.
     const url = request.nextUrl.clone()
     url.pathname = '/login'
+    url.searchParams.set('next', pathname)
     return NextResponse.redirect(url)
   }
 
