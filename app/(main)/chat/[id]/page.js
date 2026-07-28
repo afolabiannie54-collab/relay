@@ -654,6 +654,8 @@ export default function ConversationPage() {
       <div style={{
         flex: 1,
         overflowY: 'auto',
+        overflowX: 'hidden',
+        overscrollBehaviorX: 'none',
         padding: '16px',
         display: 'flex',
         flexDirection: 'column',

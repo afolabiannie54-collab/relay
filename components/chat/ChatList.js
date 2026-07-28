@@ -190,7 +190,7 @@ export default function ChatList({ onSelectConversation }) {
       </div>
 
       {/* Conversation list */}
-      <div style={{ flex: 1, overflowY: 'auto' }}>
+      <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', overscrollBehaviorX: 'none' }}>
         {conversations.length === 0 ? (
           <div style={{
             display: 'flex',

@@ -81,6 +81,7 @@ export default function ChatLayout({ children }) {
         .chat-list-panel, .chat-detail-panel {
           transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
           will-change: transform;
+          overscroll-behavior-x: none;
         }
 
         /* Desktop: both panels always visible side by side, no sliding */

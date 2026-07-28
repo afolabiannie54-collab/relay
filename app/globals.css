@@ -28,6 +28,7 @@
 html {
   height: 100%;
   overflow-x: hidden;
+  overscroll-behavior-x: none;
   font-family: var(--font);
   background: var(--background);
   color: var(--foreground);
@@ -38,6 +39,7 @@ html {
 body {
   height: 100%;
   overflow-x: hidden;
+  overscroll-behavior-x: none;
   background: var(--background);
   font-family: inherit;
 }
