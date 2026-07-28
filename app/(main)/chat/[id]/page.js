@@ -55,6 +55,15 @@ export default function ConversationPage() {
 
   useEffect(() => {
     async function load() {
+      // Reset identity-bearing header state immediately, before reading
+      // any cache. Without this, the previous conversation's name/avatar/
+      // subtitle stays on screen for a render or two after the id changes
+      // (they're only overwritten once the new conversation's own data
+      // arrives) — showing another person's or group's identity briefly.
+      // Blank is a much less jarring failure mode than wrong.
+      setConversation(null)
+      setGroupInfo(null)
+
       // Show whatever's cached immediately — zero loading state for data
       // we've already seen. Fresh data still gets fetched below and swaps
       // in silently as it arrives. Messages use peek() rather than get()
@@ -62,11 +71,13 @@ export default function ConversationPage() {
       // TTL shouldn't also gate whether we get to show something instantly.
       const cachedProfile = cache.get('profile')
       const cachedConv = cache.get(`conversation:${id}`)
+      const cachedGroupInfo = cachedConv?.type === 'group' ? cache.get(`group:${id}`) : null
       const cachedMessagesRaw = cache.peek(`messages:${id}`)
       const cachedMessages = Array.isArray(cachedMessagesRaw) ? cachedMessagesRaw : null
 
       if (cachedProfile) setProfile(cachedProfile)
       if (cachedConv) setConversation(cachedConv)
+      if (cachedGroupInfo) setGroupInfo(cachedGroupInfo)
       if (cachedMessages) {
         setMessages(cachedMessages)
         setLoading(false)
@@ -478,15 +489,15 @@ export default function ConversationPage() {
         >
           ←
         </button>
-        {groupInfo ? (
+        {conversation?.type === 'group' ? (
           <Link href={`/groups/${id}/settings`} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
-            <Avatar src={groupInfo.avatar_url} name={groupInfo.name} size={38} />
+            <Avatar src={groupInfo?.avatar_url} name={groupInfo?.name} size={38} />
             <div>
               <p style={{ fontSize: '15px', fontWeight: '700', color: '#0a0a0a' }}>
-                {groupInfo.name}
+                {groupInfo?.name}
               </p>
               <p style={{ fontSize: '12px', color: '#A3A3A3' }}>
-                {groupInfo.members?.length} members
+                {groupInfo ? `${groupInfo.members?.length} members` : ''}
               </p>
             </div>
           </Link>
