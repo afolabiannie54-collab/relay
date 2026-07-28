@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import ChatList from '@/components/chat/ChatList'
 import ChatEmptyState from '@/components/chat/ChatEmptyState'
@@ -32,6 +32,30 @@ export default function ChatLayout({ children }) {
   // (not the panel itself) so a stale conversation's messages never flash
   // when switching directly from one conversation to another.
   const convId = pathname.split('/')[2] || 'empty'
+
+  // Going back to the list slides the detail panel off-screen via CSS
+  // transform rather than unmounting it. The wrapper below used to be keyed
+  // by convId directly, which meant the key collapsed to 'empty' the
+  // instant isListRoute flipped true — forcing a remount of live children
+  // to <ChatEmptyState /> WHILE the panel was mid-slide-out, which is what
+  // produced the torn/corrupted frame (sliver of old content + gray void).
+  //
+  // Fix: keep the key stable (only ever a real conversation id, never
+  // 'empty') so no remount happens during the slide, and delay swapping
+  // in <ChatEmptyState /> until after the 300ms slide-out transition (see
+  // the `transition` rule below) has had time to finish — at which point
+  // the panel is fully off-screen and the swap is invisible anyway.
+  const stableKeyRef = useRef('empty')
+  if (!isListRoute && convId !== 'empty') stableKeyRef.current = convId
+
+  const [showEmpty, setShowEmpty] = useState(false)
+  useEffect(() => {
+    if (isListRoute) {
+      const t = setTimeout(() => setShowEmpty(true), 320)
+      return () => clearTimeout(t)
+    }
+    setShowEmpty(false)
+  }, [isListRoute])
 
   // iOS-style swipe-from-anywhere-to-go-back on the detail panel. Only
   // active on mobile and only while actually viewing a conversation (not
@@ -102,16 +126,21 @@ export default function ChatLayout({ children }) {
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
-        {/* Keyed by conversation id so switching directly between two
-            conversations remounts the content instead of briefly showing
-            the previous conversation's stale messages. This key lives on
-            an inner wrapper, not the .chat-detail-panel node itself —
-            keying the outer node would also remount it on every
-            list-to-conversation transition, which would skip the CSS
-            transform transition below entirely (a freshly-mounted node
-            has no prior style to animate from). */}
-        <div key={convId} style={{ height: '100%' }}>
-          {isListRoute ? <ChatEmptyState /> : children}
+        {/* Keyed by the last real conversation id so switching directly
+            between two conversations remounts the content instead of
+            briefly showing the previous conversation's stale messages.
+            This key lives on an inner wrapper, not the .chat-detail-panel
+            node itself — keying the outer node would also remount it on
+            every list-to-conversation transition, which would skip the
+            CSS transform transition below entirely (a freshly-mounted
+            node has no prior style to animate from). The key never
+            collapses to 'empty' while sliding out to the list, so this
+            wrapper doesn't remount mid-transform (see stableKeyRef
+            above); it renders null in the meantime instead of swapping
+            to the empty state, which only appears once the slide has
+            finished. */}
+        <div key={stableKeyRef.current} style={{ height: '100%' }}>
+          {isListRoute ? (showEmpty ? <ChatEmptyState /> : null) : children}
         </div>
       </div>
 
