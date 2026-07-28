@@ -46,7 +46,6 @@ export default function ConversationPage() {
   const [showMentions, setShowMentions] = useState(false)
   const [mentionStartIndex, setMentionStartIndex] = useState(-1)
   const { onlineUsers } = useOnlineUsers()
-  const [viewportHeight, setViewportHeight] = useState(null)
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
   const typingTimeout = useRef(null)
@@ -170,23 +169,15 @@ export default function ConversationPage() {
     messagesEndRef.current?.scrollIntoView({ behavior })
   }, [messages])
 
-  // Track the visual viewport height (the space NOT covered by the iOS
-  // keyboard) and mirror it onto the outer conversation container below,
-  // so the container shrinks to exactly the visible area instead of
-  // being pushed off-screen underneath the keyboard. Because the header
-  // and input bar are flexShrink:0 and the messages area is flex:1, the
-  // messages area is what actually absorbs the shrink — header stays
-  // pinned at top, input bar sits right above the keyboard.
+  // Re-pin to the bottom whenever the visual viewport resizes (the iOS
+  // keyboard opening/closing being the main case) so the last message
+  // stays next to the input bar instead of getting scrolled out of view.
   useEffect(() => {
     if (typeof window === 'undefined' || !window.visualViewport) return
     const vv = window.visualViewport
     const handleResize = () => {
-      setViewportHeight(vv.height)
-      requestAnimationFrame(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
-      })
+      messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
     }
-    handleResize()
     vv.addEventListener('resize', handleResize)
     return () => vv.removeEventListener('resize', handleResize)
   }, [])
@@ -484,7 +475,7 @@ export default function ConversationPage() {
 
   return (
     <div style={{
-      height: viewportHeight ? `${viewportHeight}px` : '100%',
+      height: '100%',
       display: 'flex',
       flexDirection: 'column',
       fontFamily: "'Inter', -apple-system, sans-serif",
