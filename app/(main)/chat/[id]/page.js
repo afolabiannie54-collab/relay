@@ -14,7 +14,6 @@ import MediaMessage from '@/components/chat/MediaMessage'
 import AudioRecorder from '@/components/chat/MediaRecorder'
 import CameraCapture from '@/components/chat/CameraCapture'
 import MessageReactions from '@/components/chat/MessageReactions'
-import { navigateWithTransition } from '@/components/chat/ChatLink'
 
 export default function ConversationPage() {
   const { id } = useParams()
@@ -462,7 +461,7 @@ export default function ConversationPage() {
         flexShrink: 0,
       }}>
         <button
-          onClick={() => navigateWithTransition(() => router.push('/chat'))}
+          onClick={() => router.push('/chat')}
           className="mobile-back-btn"
           style={{
             background: 'none',

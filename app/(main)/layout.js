@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import Avatar from '@/components/shared/Avatar'
@@ -17,7 +17,6 @@ export default function MainLayout({ children }) {
   const [profile, setProfile] = useState(null)
   const [pendingRequestsCount, setPendingRequestsCount] = useState(0)
   const [unreadChatsCount, setUnreadChatsCount] = useState(0)
-  const mainContentRef = useRef(null)
 
   usePushNotifications(profile?.id)
 
@@ -110,22 +109,6 @@ export default function MainLayout({ children }) {
       supabase.removeChannel(channel)
     }
   }, [profile?.id])
-
-  // Plays a slide-in animation on the conversation view when navigating
-  // into it on mobile, so the transition doesn't flicker between the old
-  // and new content before the panel-sliding transform in chat/layout.js
-  // takes over.
-  useEffect(() => {
-    const isConversationEntry = /^\/chat\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(pathname)
-    if (!isConversationEntry) return
-
-    const el = mainContentRef.current
-    if (!el) return
-
-    el.classList.add('page-enter')
-    const timeout = setTimeout(() => el.classList.remove('page-enter'), 300)
-    return () => clearTimeout(timeout)
-  }, [pathname])
 
   const navItems = [
     { href: '/chat', label: 'Chats', icon: '💬', badge: unreadChatsCount },
@@ -311,7 +294,7 @@ export default function MainLayout({ children }) {
         overflow: 'hidden',
         minWidth: 0,
       }}>
-        <div ref={mainContentRef} style={{
+        <div style={{
           flex: 1,
           overflowY: 'auto',
         }}>

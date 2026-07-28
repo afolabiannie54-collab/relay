@@ -56,13 +56,3 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--gray-400);
 }
-
-@media (max-width: 768px) {
-  .page-enter {
-    animation: slideInRight 0.25s ease forwards;
-  }
-  @keyframes slideInRight {
-    from { transform: translateX(100%); opacity: 0; }
-    to { transform: translateX(0); opacity: 1; }
-  }
-}
