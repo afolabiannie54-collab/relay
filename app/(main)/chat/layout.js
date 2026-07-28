@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef } from 'react'
+import { useRef, useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import ChatList from '@/components/chat/ChatList'
 import ChatEmptyState from '@/components/chat/ChatEmptyState'
@@ -32,6 +32,43 @@ export default function ChatLayout({ children }) {
   // (not the panel itself) so a stale conversation's messages never flash
   // when switching directly from one conversation to another.
   const convId = pathname.split('/')[2] || 'empty'
+
+  // On mobile, going back to the list slides the detail panel off-screen
+  // rather than unmounting it — remembering the last real conversation's id
+  // and content lets that off-screen panel keep rendering what it already
+  // had instead of tearing down to 'empty' mid-transform (which is what
+  // produced the sliver-of-content-plus-gray-void corruption). These are
+  // only read/written for real conversation routes, never for the list
+  // route itself, so switching directly between two conversations still
+  // remounts fresh (no stale-message flash).
+  const lastConvIdRef = useRef('empty')
+  const lastChildrenRef = useRef(null)
+  useEffect(() => {
+    if (!isListRoute && convId !== 'empty') {
+      lastConvIdRef.current = convId
+      lastChildrenRef.current = children
+    }
+  })
+
+  // Only mobile actually needs the "keep the outgoing content mounted"
+  // treatment above — on desktop, landing on /chat is a deliberate
+  // "nothing selected" state and should show the empty state immediately,
+  // not a stale previously-open conversation. Starts false so server and
+  // first client render agree (no hydration mismatch); corrected right
+  // after mount.
+  const [isMobile, setIsMobile] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)')
+    const update = () => setIsMobile(mq.matches)
+    update()
+    mq.addEventListener('change', update)
+    return () => mq.removeEventListener('change', update)
+  }, [])
+
+  const detailKey = (!isListRoute && convId !== 'empty') ? convId : lastConvIdRef.current
+  const detailContent = isListRoute
+    ? (isMobile && lastChildrenRef.current ? lastChildrenRef.current : <ChatEmptyState />)
+    : children
 
   // iOS-style swipe-from-anywhere-to-go-back on the detail panel. Only
   // active on mobile and only while actually viewing a conversation (not
@@ -109,9 +146,12 @@ export default function ChatLayout({ children }) {
             keying the outer node would also remount it on every
             list-to-conversation transition, which would skip the CSS
             transform transition below entirely (a freshly-mounted node
-            has no prior style to animate from). */}
-        <div key={convId} style={{ height: '100%' }}>
-          {isListRoute ? <ChatEmptyState /> : children}
+            has no prior style to animate from). When sliding out to the
+            list on mobile, detailKey/detailContent hold onto the last
+            real conversation instead of collapsing to 'empty', so this
+            wrapper doesn't remount mid-transform. */}
+        <div key={detailKey} style={{ height: '100%' }}>
+          {detailContent}
         </div>
       </div>
 
