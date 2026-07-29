@@ -14,6 +14,8 @@ import AudioRecorder from '@/components/chat/MediaRecorder'
 import CameraCapture from '@/components/chat/CameraCapture'
 import MessageReactions from '@/components/chat/MessageReactions'
 import ConversationSettingsSheet from '@/components/chat/ConversationSettingsSheet'
+import MessageActionSheet from '@/components/chat/MessageActionSheet'
+import MessageActionBar from '@/components/chat/MessageActionBar'
 
 export default function ConversationPage() {
   const { id } = useParams()
@@ -46,6 +48,11 @@ export default function ConversationPage() {
   const [showMentions, setShowMentions] = useState(false)
   const [mentionStartIndex, setMentionStartIndex] = useState(-1)
   const [showSettingsSheet, setShowSettingsSheet] = useState(false)
+  const [actionSheetMsg, setActionSheetMsg] = useState(null)
+  const [activeMessageDropdown, setActiveMessageDropdown] = useState(null)
+  const longPressTimerRef = useRef(null)
+  const longPressStartRef = useRef(null)
+  const longPressFiredRef = useRef(false)
   const { onlineUsers } = useOnlineUsers()
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
@@ -294,6 +301,8 @@ export default function ConversationPage() {
     const result = await sendMessage(id, text, replyTo?.id || null)
     if (result.error) {
       setContent(text)
+    } else {
+      try { window.navigator.vibrate?.(10) } catch {}
     }
     setSending(false)
     inputRef.current?.focus()
@@ -420,6 +429,55 @@ export default function ConversationPage() {
       else next.add(messageId)
       return next
     })
+  }
+
+  const handleCopyMessage = async (msg) => {
+    try { await navigator.clipboard.writeText(msg.content || '') } catch {}
+  }
+
+  const handleQuickReact = async (messageId, emoji) => {
+    const result = await toggleReaction(messageId, emoji)
+    if (result.success) {
+      try { window.navigator.vibrate?.(10) } catch {}
+      const refreshed = await getReactions(messageId)
+      if (refreshed.data) {
+        setMessageReactions(prev => ({ ...prev, [messageId]: refreshed.data }))
+      }
+    }
+  }
+
+  // Long-press on a message bubble (mobile) opens MessageActionSheet —
+  // same 400ms-hold / 10px-move-cancels pattern used for conversation
+  // tiles in ChatList.
+  const handleMessageTouchStart = (msg) => (e) => {
+    const touch = e.touches[0]
+    if (!touch) return
+    longPressFiredRef.current = false
+    longPressStartRef.current = { x: touch.clientX, y: touch.clientY }
+    longPressTimerRef.current = setTimeout(() => {
+      longPressFiredRef.current = true
+      try { window.navigator.vibrate?.(10) } catch {}
+      setActionSheetMsg(msg)
+    }, 400)
+  }
+
+  const handleMessageTouchMove = (e) => {
+    if (!longPressStartRef.current || !longPressTimerRef.current) return
+    const touch = e.touches[0]
+    if (!touch) return
+    const dx = Math.abs(touch.clientX - longPressStartRef.current.x)
+    const dy = Math.abs(touch.clientY - longPressStartRef.current.y)
+    if (dx > 10 || dy > 10) {
+      clearTimeout(longPressTimerRef.current)
+      longPressTimerRef.current = null
+    }
+  }
+
+  const handleMessageTouchEnd = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current)
+      longPressTimerRef.current = null
+    }
   }
 
   const handleMentionSelect = (member) => {
@@ -688,6 +746,7 @@ export default function ConversationPage() {
                 <div
                   key={msg.id}
                   id={`msg-${msg.id}`}
+                  className="message-row"
                   style={{
                     display: 'flex',
                     flexDirection: isOwn ? 'row-reverse' : 'row',
@@ -793,31 +852,63 @@ export default function ConversationPage() {
                           Cancel
                         </button>
                       </div>
-                    ) : (msg.type === 'image' || msg.type === 'audio' || msg.type === 'file') ? (
-                      <MediaMessage message={msg} isOwn={isOwn} />
                     ) : (
                       <div
-                        style={{
-                          padding: isDeleted ? '8px 12px' : '10px 14px',
-                          background: isDeleted ? '#F5F5F5' : isOwn ? '#0a0a0a' : '#F5F5F5',
-                          color: isDeleted ? '#A3A3A3' : isOwn ? '#fff' : '#0a0a0a',
-                          borderRadius: isOwn ? '16px 4px 16px 16px' : '4px 16px 16px 16px',
-                          border: '1.5px solid #0a0a0a',
-                          fontSize: '14px',
-                          lineHeight: '1.5',
-                          fontStyle: isDeleted ? 'italic' : 'normal',
-                          position: 'relative',
-                          cursor: isOwn && !isDeleted ? 'pointer' : 'default',
-                          wordBreak: 'break-word',
-                        }}
+                        style={{ position: 'relative' }}
+                        onTouchStart={isDeleted ? undefined : handleMessageTouchStart(msg)}
+                        onTouchMove={isDeleted ? undefined : handleMessageTouchMove}
+                        onTouchEnd={isDeleted ? undefined : handleMessageTouchEnd}
                         onContextMenu={e => {
-                          if (!isOwn || isDeleted) return
+                          if (isDeleted) return
                           e.preventDefault()
-                          setEditingId(msg.id)
-                          setEditContent(msg.content)
+                          setActiveMessageDropdown(msg.id)
                         }}
                       >
-                        {isDeleted ? 'This message was deleted' : msg.content}
+                        {(msg.type === 'image' || msg.type === 'audio' || msg.type === 'file') ? (
+                          <MediaMessage message={msg} isOwn={isOwn} />
+                        ) : (
+                          <div
+                            style={{
+                              padding: isDeleted ? '8px 12px' : '10px 14px',
+                              background: isDeleted ? '#F5F5F5' : isOwn ? '#0a0a0a' : '#F5F5F5',
+                              color: isDeleted ? '#A3A3A3' : isOwn ? '#fff' : '#0a0a0a',
+                              borderRadius: isOwn ? '16px 4px 16px 16px' : '4px 16px 16px 16px',
+                              border: '1.5px solid #0a0a0a',
+                              fontSize: '14px',
+                              lineHeight: '1.5',
+                              fontStyle: isDeleted ? 'italic' : 'normal',
+                              wordBreak: 'break-word',
+                            }}
+                          >
+                            {isDeleted ? 'This message was deleted' : msg.content}
+                          </div>
+                        )}
+
+                        {!isDeleted && (
+                          <div
+                            className="message-action-bar-wrap"
+                            style={{
+                              position: 'absolute',
+                              top: '-16px',
+                              [isOwn ? 'left' : 'right']: 0,
+                              zIndex: 5,
+                            }}
+                          >
+                            <MessageActionBar
+                              message={msg}
+                              isOwn={isOwn}
+                              isPinned={pinnedMessageIds.has(msg.id)}
+                              dropdownOpen={activeMessageDropdown === msg.id}
+                              onDropdownOpenChange={(open) => setActiveMessageDropdown(open ? msg.id : null)}
+                              onReply={() => setReplyTo(msg)}
+                              onEdit={() => { setEditingId(msg.id); setEditContent(msg.content) }}
+                              onDelete={() => handleDelete(msg.id)}
+                              onTogglePin={() => handleTogglePin(msg.id)}
+                              onReact={(emoji) => handleQuickReact(msg.id, emoji)}
+                              onCopy={() => handleCopyMessage(msg)}
+                            />
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -834,109 +925,6 @@ export default function ConversationPage() {
                       <span style={{ fontSize: '10px', color: '#A3A3A3' }}>
                         {formatTime(msg.created_at)}
                       </span>
-                      {isOwn && !isDeleted && (
-                        <button
-                          onClick={() => handleDelete(msg.id)}
-                          className="message-action-btn"
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            fontSize: '10px',
-                            color: '#A3A3A3',
-                            padding: '0',
-                            fontFamily: 'inherit',
-                          }}
-                        >
-                          Delete
-                        </button>
-                      )}
-                      {isOwn && !isDeleted && msg.type === 'text' && (
-                        <button
-                          onClick={() => { setEditingId(msg.id); setEditContent(msg.content) }}
-                          className="message-action-btn"
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            fontSize: '10px',
-                            color: '#A3A3A3',
-                            padding: '0',
-                            fontFamily: 'inherit',
-                          }}
-                        >
-                          Edit
-                        </button>
-                      )}
-                      {!isOwn && !isDeleted && (
-                        <button
-                          onClick={() => setReplyTo(msg)}
-                          className="message-action-btn"
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            fontSize: '10px',
-                            color: '#A3A3A3',
-                            padding: '0',
-                            fontFamily: 'inherit',
-                          }}
-                        >
-                          Reply
-                        </button>
-                      )}
-                      {!isDeleted && msg.type !== 'system' && (
-                        <button
-                          onClick={() => setActiveReactionPicker(prev => prev === msg.id ? null : msg.id)}
-                          className="message-action-btn"
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            fontSize: '10px',
-                            color: '#A3A3A3',
-                            padding: '0',
-                            fontFamily: 'inherit',
-                          }}
-                        >
-                          React
-                        </button>
-                      )}
-                      {!isDeleted && msg.type !== 'system' && (
-                        <button
-                          onClick={() => handleTogglePin(msg.id)}
-                          className="message-action-btn"
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            fontSize: '10px',
-                            color: pinnedMessageIds.has(msg.id) ? '#FFB800' : '#A3A3A3',
-                            padding: '0',
-                            fontFamily: 'inherit',
-                            fontWeight: pinnedMessageIds.has(msg.id) ? '700' : '400',
-                          }}
-                        >
-                          {pinnedMessageIds.has(msg.id) ? 'Unpin' : 'Pin'}
-                        </button>
-                      )}
-                      {isOwn && !isDeleted && (
-                        <button
-                          onClick={() => setReplyTo(msg)}
-                          className="message-action-btn"
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            fontSize: '10px',
-                            color: '#A3A3A3',
-                            padding: '0',
-                            fontFamily: 'inherit',
-                          }}
-                        >
-                          Reply
-                        </button>
-                      )}
                     </div>
                     <MessageReactions
                       messageId={msg.id}
@@ -1400,17 +1388,22 @@ export default function ConversationPage() {
         @media (min-width: 769px) {
           .mobile-back-btn { display: none; }
         }
-        /* Message action row (Delete/Edit/Reply/React/Pin) stays compact
-           inline text on desktop, where a mouse doesn't need a 44px target.
-           On mobile, each one becomes a real touch target — the row gets
-           taller as a direct, unavoidable consequence of that minimum. */
+        /* Desktop hover action bar: invisible until the message row is
+           hovered, pure CSS so hovering doesn't trigger a React re-render
+           per message. Hidden entirely on mobile, which uses long-press
+           (MessageActionSheet) instead. */
+        .message-action-bar-wrap {
+          opacity: 0;
+          transition: opacity 0.12s;
+          pointer-events: none;
+        }
+        .message-row:hover .message-action-bar-wrap {
+          opacity: 1;
+          pointer-events: auto;
+        }
         @media (max-width: 768px) {
-          .message-action-btn {
-            min-height: 44px;
-            min-width: 44px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
+          .message-action-bar-wrap {
+            display: none;
           }
         }
       `}</style>
@@ -1428,6 +1421,20 @@ export default function ConversationPage() {
         onOpenSearch={() => setShowSearch(true)}
         onOpenPinned={handleLoadPinned}
         onGroupChanged={reloadGroupInfo}
+      />
+
+      <MessageActionSheet
+        message={actionSheetMsg}
+        isOpen={!!actionSheetMsg}
+        onClose={() => setActionSheetMsg(null)}
+        isOwn={actionSheetMsg?.sender_id === profile?.id}
+        isPinned={actionSheetMsg ? pinnedMessageIds.has(actionSheetMsg.id) : false}
+        onReply={() => setReplyTo(actionSheetMsg)}
+        onEdit={() => { setEditingId(actionSheetMsg.id); setEditContent(actionSheetMsg.content) }}
+        onDelete={() => handleDelete(actionSheetMsg.id)}
+        onTogglePin={() => handleTogglePin(actionSheetMsg.id)}
+        onReact={(emoji) => handleQuickReact(actionSheetMsg.id, emoji)}
+        onCopy={() => handleCopyMessage(actionSheetMsg)}
       />
     </div>
   )
