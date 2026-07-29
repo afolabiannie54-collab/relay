@@ -50,9 +50,17 @@ export default function ConversationPage() {
   const [showSettingsSheet, setShowSettingsSheet] = useState(false)
   const [actionSheetMsg, setActionSheetMsg] = useState(null)
   const [activeMessageDropdown, setActiveMessageDropdown] = useState(null)
+  const [swipeMsgId, setSwipeMsgId] = useState(null)
+  const [swipeDx, setSwipeDx] = useState(0)
   const longPressTimerRef = useRef(null)
   const longPressStartRef = useRef(null)
   const longPressFiredRef = useRef(false)
+  const swipeTriggeredRef = useRef(false)
+  const swipeActiveRef = useRef(false)
+  const [showScrollButton, setShowScrollButton] = useState(false)
+  const [newMessageCount, setNewMessageCount] = useState(0)
+  const isAtBottomRef = useRef(true)
+  const messagesContainerRef = useRef(null)
   const { onlineUsers } = useOnlineUsers()
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
@@ -172,10 +180,41 @@ export default function ConversationPage() {
     if (messages.length === 0) return
     const lastId = messages[messages.length - 1].id
     if (lastId === lastMessageIdRef.current) return
-    const behavior = lastMessageIdRef.current === null ? 'auto' : 'smooth'
+    const isInitial = lastMessageIdRef.current === null
     lastMessageIdRef.current = lastId
-    messagesEndRef.current?.scrollIntoView({ behavior })
+
+    // Only follow new messages to the bottom if the user is already
+    // there (or this is the conversation's first paint) — someone
+    // scrolled up reading history shouldn't get yanked back down.
+    // Otherwise just count it toward the scroll-to-bottom button's badge.
+    if (isInitial || isAtBottomRef.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: isInitial ? 'auto' : 'smooth' })
+      setNewMessageCount(0)
+    } else {
+      setNewMessageCount(c => c + 1)
+    }
   }, [messages])
+
+  // Tracks scroll position within the messages list itself to show/hide
+  // the floating scroll-to-bottom button and know whether new messages
+  // should auto-scroll (above) or just increment its badge.
+  useEffect(() => {
+    const el = messagesContainerRef.current
+    if (!el) return
+    const handleScroll = () => {
+      const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight
+      isAtBottomRef.current = distanceFromBottom < 50
+      setShowScrollButton(distanceFromBottom > 200)
+      if (distanceFromBottom < 50) setNewMessageCount(0)
+    }
+    el.addEventListener('scroll', handleScroll)
+    return () => el.removeEventListener('scroll', handleScroll)
+  }, [])
+
+  const handleScrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    setNewMessageCount(0)
+  }
 
   // Supabase Realtime subscription
   useEffect(() => {
@@ -448,12 +487,20 @@ export default function ConversationPage() {
 
   // Long-press on a message bubble (mobile) opens MessageActionSheet —
   // same 400ms-hold / 10px-move-cancels pattern used for conversation
-  // tiles in ChatList.
+  // tiles in ChatList. Swiping right on the bubble instead (more
+  // horizontal than vertical movement) previews a reply-arrow indicator
+  // and, past a 40px threshold, sets the reply target — both gestures
+  // share one set of touch handlers since they start the same way and
+  // diverge based on how the touch actually moves.
   const handleMessageTouchStart = (msg) => (e) => {
     const touch = e.touches[0]
     if (!touch) return
     longPressFiredRef.current = false
     longPressStartRef.current = { x: touch.clientX, y: touch.clientY }
+    swipeTriggeredRef.current = false
+    swipeActiveRef.current = true
+    setSwipeMsgId(msg.id)
+    setSwipeDx(0)
     longPressTimerRef.current = setTimeout(() => {
       longPressFiredRef.current = true
       try { window.navigator.vibrate?.(10) } catch {}
@@ -461,15 +508,25 @@ export default function ConversationPage() {
     }, 400)
   }
 
-  const handleMessageTouchMove = (e) => {
-    if (!longPressStartRef.current || !longPressTimerRef.current) return
+  const handleMessageTouchMove = (msg) => (e) => {
+    if (!longPressStartRef.current) return
     const touch = e.touches[0]
     if (!touch) return
-    const dx = Math.abs(touch.clientX - longPressStartRef.current.x)
-    const dy = Math.abs(touch.clientY - longPressStartRef.current.y)
-    if (dx > 10 || dy > 10) {
+    const dx = touch.clientX - longPressStartRef.current.x
+    const dy = touch.clientY - longPressStartRef.current.y
+
+    if (longPressTimerRef.current && (Math.abs(dx) > 10 || Math.abs(dy) > 10)) {
       clearTimeout(longPressTimerRef.current)
       longPressTimerRef.current = null
+    }
+
+    if (dx > 0 && dx > Math.abs(dy)) {
+      setSwipeDx(Math.min(dx, 80))
+      if (dx > 40 && !swipeTriggeredRef.current) {
+        swipeTriggeredRef.current = true
+        try { window.navigator.vibrate?.(10) } catch {}
+        setReplyTo(msg)
+      }
     }
   }
 
@@ -478,6 +535,13 @@ export default function ConversationPage() {
       clearTimeout(longPressTimerRef.current)
       longPressTimerRef.current = null
     }
+    longPressStartRef.current = null
+    swipeActiveRef.current = false
+    setSwipeDx(0)
+    // Keep swipeMsgId set through the snap-back transition, then clear
+    // it so a later drag on a different message starts from a clean
+    // state rather than racing this timeout.
+    setTimeout(() => setSwipeMsgId(null), 300)
   }
 
   const handleMentionSelect = (member) => {
@@ -687,17 +751,21 @@ export default function ConversationPage() {
       )}
 
       {/* Messages */}
-      <div className="messages-scroll-area" style={{
-        flex: 1,
-        overflowY: 'auto',
-        overflowX: 'hidden',
-        overscrollBehaviorX: 'none',
-        padding: '16px',
-        paddingBottom: '32px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '2px',
-      }}>
+      <div
+        ref={messagesContainerRef}
+        className="messages-scroll-area"
+        style={{
+          flex: 1,
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          overscrollBehaviorX: 'none',
+          padding: '16px',
+          paddingBottom: '32px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '2px',
+        }}
+      >
         {Object.entries(groupedMessages).map(([date, msgs]) => (
           <div key={date}>
             {/* Date divider */}
@@ -856,7 +924,7 @@ export default function ConversationPage() {
                       <div
                         style={{ position: 'relative' }}
                         onTouchStart={isDeleted ? undefined : handleMessageTouchStart(msg)}
-                        onTouchMove={isDeleted ? undefined : handleMessageTouchMove}
+                        onTouchMove={isDeleted ? undefined : handleMessageTouchMove(msg)}
                         onTouchEnd={isDeleted ? undefined : handleMessageTouchEnd}
                         onContextMenu={e => {
                           if (isDeleted) return
@@ -864,25 +932,43 @@ export default function ConversationPage() {
                           setActiveMessageDropdown(msg.id)
                         }}
                       >
-                        {(msg.type === 'image' || msg.type === 'audio' || msg.type === 'file') ? (
-                          <MediaMessage message={msg} isOwn={isOwn} />
-                        ) : (
-                          <div
-                            style={{
-                              padding: isDeleted ? '8px 12px' : '10px 14px',
-                              background: isDeleted ? '#F5F5F5' : isOwn ? '#0a0a0a' : '#F5F5F5',
-                              color: isDeleted ? '#A3A3A3' : isOwn ? '#fff' : '#0a0a0a',
-                              borderRadius: isOwn ? '16px 4px 16px 16px' : '4px 16px 16px 16px',
-                              border: '1.5px solid #0a0a0a',
-                              fontSize: '14px',
-                              lineHeight: '1.5',
-                              fontStyle: isDeleted ? 'italic' : 'normal',
-                              wordBreak: 'break-word',
-                            }}
-                          >
-                            {isDeleted ? 'This message was deleted' : msg.content}
+                        {!isDeleted && swipeMsgId === msg.id && swipeDx > 0 && (
+                          <div style={{
+                            position: 'absolute',
+                            top: '50%',
+                            left: '-30px',
+                            transform: 'translateY(-50%)',
+                            opacity: Math.min(swipeDx / 40, 1),
+                            fontSize: '18px',
+                            pointerEvents: 'none',
+                          }}>
+                            ↩️
                           </div>
                         )}
+                        <div style={{
+                          transform: `translateX(${swipeMsgId === msg.id ? swipeDx : 0}px)`,
+                          transition: (swipeActiveRef.current && swipeMsgId === msg.id) ? 'none' : 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                        }}>
+                          {(msg.type === 'image' || msg.type === 'audio' || msg.type === 'file') ? (
+                            <MediaMessage message={msg} isOwn={isOwn} />
+                          ) : (
+                            <div
+                              style={{
+                                padding: isDeleted ? '8px 12px' : '10px 14px',
+                                background: isDeleted ? '#F5F5F5' : isOwn ? '#0a0a0a' : '#F5F5F5',
+                                color: isDeleted ? '#A3A3A3' : isOwn ? '#fff' : '#0a0a0a',
+                                borderRadius: isOwn ? '16px 4px 16px 16px' : '4px 16px 16px 16px',
+                                border: '1.5px solid #0a0a0a',
+                                fontSize: '14px',
+                                lineHeight: '1.5',
+                                fontStyle: isDeleted ? 'italic' : 'normal',
+                                wordBreak: 'break-word',
+                              }}
+                            >
+                              {isDeleted ? 'This message was deleted' : msg.content}
+                            </div>
+                          )}
+                        </div>
 
                         {!isDeleted && (
                           <div
@@ -973,6 +1059,54 @@ export default function ConversationPage() {
 
         <div ref={messagesEndRef} />
       </div>
+
+      {showScrollButton && (
+        <button
+          onClick={handleScrollToBottom}
+          aria-label="Scroll to bottom"
+          style={{
+            position: 'fixed',
+            right: '20px',
+            bottom: '96px',
+            width: '40px',
+            height: '40px',
+            borderRadius: '50%',
+            background: '#0a0a0a',
+            border: 'none',
+            color: '#fff',
+            fontSize: '16px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '2px 2px 0 #FFB800',
+            zIndex: 20,
+          }}
+        >
+          ↓
+          {newMessageCount > 0 && (
+            <div style={{
+              position: 'absolute',
+              top: '-6px',
+              right: '-6px',
+              minWidth: '18px',
+              height: '18px',
+              padding: '0 4px',
+              background: '#FFB800',
+              border: '1.5px solid #0a0a0a',
+              borderRadius: '100px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '10px',
+              fontWeight: '800',
+              color: '#0a0a0a',
+            }}>
+              {newMessageCount > 99 ? '99+' : newMessageCount}
+            </div>
+          )}
+        </button>
+      )}
 
       {/* Reply preview */}
       {replyTo && (
