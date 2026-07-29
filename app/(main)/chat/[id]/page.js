@@ -61,6 +61,8 @@ export default function ConversationPage() {
   const [newMessageCount, setNewMessageCount] = useState(0)
   const isAtBottomRef = useRef(true)
   const messagesContainerRef = useRef(null)
+  const [selectMode, setSelectMode] = useState(false)
+  const [selectedMsgIds, setSelectedMsgIds] = useState(new Set())
   const { onlineUsers } = useOnlineUsers()
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
@@ -474,6 +476,42 @@ export default function ConversationPage() {
     try { await navigator.clipboard.writeText(msg.content || '') } catch {}
   }
 
+  const handleEnterSelectMode = (msg) => {
+    setSelectMode(true)
+    setSelectedMsgIds(new Set(msg ? [msg.id] : []))
+  }
+
+  const handleExitSelectMode = () => {
+    setSelectMode(false)
+    setSelectedMsgIds(new Set())
+  }
+
+  const handleToggleSelectMessage = (msgId) => {
+    setSelectedMsgIds(prev => {
+      const next = new Set(prev)
+      if (next.has(msgId)) next.delete(msgId)
+      else next.add(msgId)
+      return next
+    })
+  }
+
+  const selectedMessages = messages.filter(m => selectedMsgIds.has(m.id))
+  const canBulkDelete = selectedMessages.length > 0 && selectedMessages.every(m => m.sender_id === profile?.id)
+
+  const handleBulkDelete = async () => {
+    if (!canBulkDelete) return
+    await Promise.all(selectedMessages.map(m => deleteMessage(m.id)))
+    handleExitSelectMode()
+  }
+
+  const handleBulkCopy = async () => {
+    const text = selectedMessages
+      .filter(m => m.type === 'text')
+      .map(m => m.content)
+      .join('\n')
+    try { await navigator.clipboard.writeText(text) } catch {}
+  }
+
   const handleQuickReact = async (messageId, emoji) => {
     const result = await toggleReaction(messageId, emoji)
     if (result.success) {
@@ -607,6 +645,38 @@ export default function ConversationPage() {
       )}
 
       {/* Header */}
+      {selectMode ? (
+        <div style={{
+          padding: '12px 16px',
+          borderBottom: '1.5px solid #E5E5E5',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          background: '#fff',
+          flexShrink: 0,
+        }}>
+          <button
+            onClick={handleExitSelectMode}
+            style={{
+              background: 'none',
+              border: 'none',
+              fontSize: '18px',
+              cursor: 'pointer',
+              padding: '4px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minWidth: '44px',
+              minHeight: '44px',
+            }}
+          >
+            ✕
+          </button>
+          <p style={{ fontSize: '15px', fontWeight: '700', color: '#0a0a0a' }}>
+            {selectedMsgIds.size} selected
+          </p>
+        </div>
+      ) : (
       <div style={{
         padding: '12px 16px',
         borderBottom: '1.5px solid #E5E5E5',
@@ -691,6 +761,7 @@ export default function ConversationPage() {
           </button>
         </div>
       </div>
+      )}
 
       {showPinnedPanel && (
         <div style={{
@@ -814,16 +885,53 @@ export default function ConversationPage() {
                 <div
                   key={msg.id}
                   id={`msg-${msg.id}`}
-                  className="message-row"
                   style={{
                     display: 'flex',
-                    flexDirection: isOwn ? 'row-reverse' : 'row',
                     alignItems: 'flex-end',
                     gap: '8px',
                     marginBottom: '2px',
                     marginTop: showAvatar ? '8px' : '0',
                   }}
                 >
+                  {selectMode && !isDeleted && (
+                    <button
+                      onClick={() => handleToggleSelectMessage(msg.id)}
+                      aria-label="Select message"
+                      style={{
+                        flexShrink: 0,
+                        width: '22px',
+                        height: '22px',
+                        borderRadius: '50%',
+                        border: `1.5px solid ${selectedMsgIds.has(msg.id) ? '#0a0a0a' : '#E5E5E5'}`,
+                        background: selectedMsgIds.has(msg.id) ? '#0a0a0a' : '#fff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        padding: 0,
+                        marginBottom: '4px',
+                      }}
+                    >
+                      {selectedMsgIds.has(msg.id) && (
+                        <svg width="12" height="12" viewBox="0 0 10 10" fill="none">
+                          <path d="M2 5 L4 7 L8 3" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      )}
+                    </button>
+                  )}
+                  <div
+                    className="message-row"
+                    onClick={selectMode && !isDeleted ? () => handleToggleSelectMessage(msg.id) : undefined}
+                    style={{
+                      display: 'flex',
+                      flexDirection: isOwn ? 'row-reverse' : 'row',
+                      alignItems: 'flex-end',
+                      gap: '8px',
+                      flex: 1,
+                      minWidth: 0,
+                      cursor: selectMode && !isDeleted ? 'pointer' : 'default',
+                    }}
+                  >
                   {/* Avatar for other user */}
                   {!isOwn && (
                     <div style={{ width: '28px', flexShrink: 0 }}>
@@ -923,11 +1031,11 @@ export default function ConversationPage() {
                     ) : (
                       <div
                         style={{ position: 'relative' }}
-                        onTouchStart={isDeleted ? undefined : handleMessageTouchStart(msg)}
-                        onTouchMove={isDeleted ? undefined : handleMessageTouchMove(msg)}
-                        onTouchEnd={isDeleted ? undefined : handleMessageTouchEnd}
+                        onTouchStart={isDeleted || selectMode ? undefined : handleMessageTouchStart(msg)}
+                        onTouchMove={isDeleted || selectMode ? undefined : handleMessageTouchMove(msg)}
+                        onTouchEnd={isDeleted || selectMode ? undefined : handleMessageTouchEnd}
                         onContextMenu={e => {
-                          if (isDeleted) return
+                          if (isDeleted || selectMode) return
                           e.preventDefault()
                           setActiveMessageDropdown(msg.id)
                         }}
@@ -970,7 +1078,7 @@ export default function ConversationPage() {
                           )}
                         </div>
 
-                        {!isDeleted && (
+                        {!isDeleted && !selectMode && (
                           <div
                             className="message-action-bar-wrap"
                             style={{
@@ -1026,6 +1134,7 @@ export default function ConversationPage() {
                         }
                       }}
                     />
+                  </div>
                   </div>
                 </div>
               )
@@ -1364,6 +1473,71 @@ export default function ConversationPage() {
       )}
 
       {/* Input */}
+      {selectMode ? (
+        <div style={{
+          position: 'sticky',
+          bottom: 0,
+          padding: '12px 16px',
+          paddingBottom: 'calc(12px + env(safe-area-inset-bottom))',
+          borderTop: '1.5px solid #E5E5E5',
+          display: 'flex',
+          gap: '10px',
+          background: '#fff',
+          flexShrink: 0,
+        }}>
+          <button
+            onClick={handleBulkDelete}
+            disabled={!canBulkDelete}
+            style={{
+              flex: 1,
+              padding: '12px',
+              background: 'none',
+              border: 'none',
+              color: canBulkDelete ? '#EF4444' : '#E5E5E5',
+              fontSize: '14px',
+              fontWeight: '700',
+              cursor: canBulkDelete ? 'pointer' : 'not-allowed',
+              fontFamily: 'inherit',
+            }}
+          >
+            🗑️ Delete
+          </button>
+          <button
+            disabled
+            title="Coming soon"
+            style={{
+              flex: 1,
+              padding: '12px',
+              background: 'none',
+              border: 'none',
+              color: '#E5E5E5',
+              fontSize: '14px',
+              fontWeight: '700',
+              cursor: 'not-allowed',
+              fontFamily: 'inherit',
+            }}
+          >
+            ➡️ Forward
+          </button>
+          <button
+            onClick={handleBulkCopy}
+            disabled={selectedMsgIds.size === 0}
+            style={{
+              flex: 1,
+              padding: '12px',
+              background: 'none',
+              border: 'none',
+              color: selectedMsgIds.size > 0 ? '#0a0a0a' : '#E5E5E5',
+              fontSize: '14px',
+              fontWeight: '700',
+              cursor: selectedMsgIds.size > 0 ? 'pointer' : 'not-allowed',
+              fontFamily: 'inherit',
+            }}
+          >
+            📋 Copy all
+          </button>
+        </div>
+      ) : (
       <div className="chat-input-bar" style={{
         position: 'sticky',
         bottom: 0,
@@ -1516,6 +1690,7 @@ export default function ConversationPage() {
           →
         </button>
       </div>
+      )}
 
       <style>{`
         .mobile-back-btn { display: flex; }
@@ -1555,6 +1730,7 @@ export default function ConversationPage() {
         onOpenSearch={() => setShowSearch(true)}
         onOpenPinned={handleLoadPinned}
         onGroupChanged={reloadGroupInfo}
+        onSelectMessages={() => handleEnterSelectMode(null)}
       />
 
       <MessageActionSheet
@@ -1569,6 +1745,7 @@ export default function ConversationPage() {
         onTogglePin={() => handleTogglePin(actionSheetMsg.id)}
         onReact={(emoji) => handleQuickReact(actionSheetMsg.id, emoji)}
         onCopy={() => handleCopyMessage(actionSheetMsg)}
+        onSelect={() => handleEnterSelectMode(actionSheetMsg)}
       />
     </div>
   )

@@ -43,6 +43,7 @@ export default function ConversationSettingsSheet({
   onOpenSearch,
   onOpenPinned,
   onGroupChanged,
+  onSelectMessages,
 }) {
   const router = useRouter()
   const [muteStatus, setMuteStatus] = useState({ muted: false, mutedUntil: null })
@@ -270,6 +271,9 @@ export default function ConversationSettingsSheet({
           <button style={rowStyle} onClick={() => { onClose?.(); onOpenSearch?.() }}>
             <span>🔍 Search in conversation</span>
             <span style={{ color: '#A3A3A3' }}>→</span>
+          </button>
+          <button style={rowStyle} onClick={() => { onClose?.(); onSelectMessages?.() }}>
+            <span>☑️ Select messages</span>
           </button>
 
           {isGroup ? (
