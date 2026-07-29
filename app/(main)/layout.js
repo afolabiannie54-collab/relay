@@ -296,9 +296,18 @@ export default function MainLayout({ children }) {
         overflow: 'hidden',
         minWidth: 0,
       }}>
+        {/* Conversation routes manage their own internal scrolling (a
+            fixed header, a flex:1 messages area, a fixed input bar) and
+            must fill this wrapper's height exactly rather than being able
+            to scroll within it — otherwise THIS wrapper is what scrolls
+            when the iOS keyboard opens, dragging the conversation's own
+            header up with it even though the header is sticky (sticky is
+            relative to whichever ancestor actually scrolls). Every other
+            page under (main) still gets a normal scrollable wrapper. */}
         <div style={{
           flex: 1,
-          overflowY: 'auto',
+          minHeight: 0,
+          overflowY: isConversationPage ? 'hidden' : 'auto',
           overflowX: 'hidden',
         }}>
           {children}
