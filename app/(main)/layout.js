@@ -10,7 +10,6 @@ import { getRequestsCount } from '@/actions/notifications'
 import { getUnreadChatsCount } from '@/actions/messages'
 import { createClient } from '@/lib/supabase/client'
 import { usePushNotifications } from '@/hooks/usePushNotifications'
-import { useAppHeight } from '@/hooks/useAppHeight'
 import { signOut } from '@/actions/auth'
 
 export default function MainLayout({ children }) {
@@ -20,7 +19,6 @@ export default function MainLayout({ children }) {
   const [unreadChatsCount, setUnreadChatsCount] = useState(0)
 
   usePushNotifications(profile?.id)
-  useAppHeight()
 
   useEffect(() => {
     async function load() {
@@ -139,7 +137,7 @@ export default function MainLayout({ children }) {
     <PresenceProvider userId={profile?.id}>
     <div style={{
       display: 'flex',
-      height: 'var(--app-height, 100dvh)',
+      height: '100dvh',
       overflow: 'hidden',
       fontFamily: "'Inter', -apple-system, sans-serif",
       background: '#F5F5F5',
@@ -152,7 +150,7 @@ export default function MainLayout({ children }) {
         borderRight: '1.5px solid #0a0a0a',
         display: 'flex',
         flexDirection: 'column',
-        height: 'var(--app-height, 100dvh)',
+        height: '100dvh',
       }}
         className="desktop-sidebar"
       >
@@ -296,18 +294,9 @@ export default function MainLayout({ children }) {
         overflow: 'hidden',
         minWidth: 0,
       }}>
-        {/* Conversation routes manage their own internal scrolling (a
-            fixed header, a flex:1 messages area, a fixed input bar) and
-            must fill this wrapper's height exactly rather than being able
-            to scroll within it — otherwise THIS wrapper is what scrolls
-            when the iOS keyboard opens, dragging the conversation's own
-            header up with it even though the header is sticky (sticky is
-            relative to whichever ancestor actually scrolls). Every other
-            page under (main) still gets a normal scrollable wrapper. */}
         <div style={{
           flex: 1,
-          minHeight: 0,
-          overflowY: isConversationPage ? 'hidden' : 'auto',
+          overflowY: 'auto',
           overflowX: 'hidden',
         }}>
           {children}
