@@ -1,19 +1,26 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import Link from 'next/link'
+import { useState, useEffect, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import Avatar from '@/components/shared/Avatar'
 import ChatLink from '@/components/chat/ChatLink'
+import NewConversationSheet from '@/components/chat/NewConversationSheet'
 import { getConversations, getMessages } from '@/actions/messages'
 import { getMutedConversationIds } from '@/actions/conversations'
+import { getUnreadCount as getUnreadNotificationCount, getRequestsCount } from '@/actions/notifications'
 import { createClient } from '@/lib/supabase/client'
 import { cache } from '@/lib/cache'
 
 export default function ChatList({ onSelectConversation }) {
+  const router = useRouter()
   const [conversations, setConversations] = useState([])
   const [userId, setUserId] = useState(null)
   const [mutedIds, setMutedIds] = useState([])
   const [loading, setLoading] = useState(true)
+  const [filterQuery, setFilterQuery] = useState('')
+  const [unreadNotifCount, setUnreadNotifCount] = useState(0)
+  const [requestsCount, setRequestsCount] = useState(0)
+  const [showNewConversation, setShowNewConversation] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -33,10 +40,12 @@ export default function ChatList({ onSelectConversation }) {
 
       const supabase = createClient()
 
-      const [userResult, convsResult, mutedResult] = await Promise.all([
+      const [userResult, convsResult, mutedResult, notifResult, requestsResult] = await Promise.all([
         supabase.auth.getUser(),
         getConversations(),
         cachedMuted ? Promise.resolve({ data: cachedMuted }) : getMutedConversationIds(),
+        getUnreadNotificationCount(),
+        getRequestsCount(),
       ])
 
       if (userResult.data.user) setUserId(userResult.data.user.id)
@@ -49,6 +58,8 @@ export default function ChatList({ onSelectConversation }) {
         setMutedIds(mutedResult.data)
         cache.set('muted-ids', mutedResult.data, 30000)
       }
+      setUnreadNotifCount(notifResult.count || 0)
+      setRequestsCount(requestsResult.count || 0)
       setLoading(false)
     }
     load()
@@ -87,6 +98,50 @@ export default function ChatList({ onSelectConversation }) {
     }
   }, [])
 
+  // Realtime: bell badge (new notification rows for me) and the message
+  // requests row (pending message requests / group invites addressed to
+  // me) — both moved here from the app shell now that Requests is no
+  // longer a bottom-nav tab.
+  useEffect(() => {
+    if (!userId) return
+
+    const supabase = createClient()
+
+    const channel = supabase
+      .channel('chat-list-badges')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'notifications',
+        filter: `user_id=eq.${userId}`,
+      }, () => {
+        setUnreadNotifCount(c => c + 1)
+      })
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'message_requests',
+        filter: `receiver_id=eq.${userId}`,
+      }, async () => {
+        const result = await getRequestsCount()
+        setRequestsCount(result.count || 0)
+      })
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'group_invites',
+        filter: `invitee_id=eq.${userId}`,
+      }, async () => {
+        const result = await getRequestsCount()
+        setRequestsCount(result.count || 0)
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [userId])
+
   async function prefetchConversation(convId) {
     if (cache.get(`messages:${convId}`)) return
     const result = await getMessages(convId)
@@ -116,6 +171,21 @@ export default function ChatList({ onSelectConversation }) {
   }
 
   const getUnreadCount = (conv) => conv.unread_count || 0
+
+  const filteredConversations = useMemo(() => {
+    const q = filterQuery.trim().toLowerCase()
+    if (!q) return conversations
+    return conversations.filter(conv => {
+      const isGroup = conv.type === 'group'
+      const otherUser = conv.other_participants?.[0]
+      const name = (isGroup ? conv.group_info?.name : otherUser?.display_name) || ''
+      const lastMessageContent = conv.last_message?.content || ''
+      return (
+        name.toLowerCase().includes(q) ||
+        lastMessageContent.toLowerCase().includes(q)
+      )
+    })
+  }, [conversations, filterQuery])
 
   if (loading) {
     return (
@@ -149,44 +219,86 @@ export default function ChatList({ onSelectConversation }) {
       }}>
         <h1 style={{ fontSize: '20px', fontWeight: '800', color: '#0a0a0a' }}>Messages</h1>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <Link href="/chat/hidden" style={{
-            fontSize: '13px',
-            fontWeight: '600',
-            color: '#A3A3A3',
-            textDecoration: 'none',
-            marginRight: '4px',
-          }}>
-            Hidden
-          </Link>
-          <Link href="/groups/create" style={{
-            width: '44px',
-            height: '44px',
-            border: '1.5px solid #0a0a0a',
-            borderRadius: '8px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            textDecoration: 'none',
-            fontSize: '16px',
-            background: '#fff',
-          }}>
-            👥
-          </Link>
-          <Link href="/search" style={{
-            width: '44px',
-            height: '44px',
-            border: '1.5px solid #0a0a0a',
-            borderRadius: '8px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            textDecoration: 'none',
-            fontSize: '16px',
-            background: '#fff',
-          }}>
-            ✏️
-          </Link>
+          <button
+            onClick={() => router.push('/notifications')}
+            aria-label="Notifications"
+            style={{
+              position: 'relative',
+              width: '44px',
+              height: '44px',
+              border: '1.5px solid #0a0a0a',
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '16px',
+              background: '#fff',
+              cursor: 'pointer',
+            }}
+          >
+            🔔
+            {unreadNotifCount > 0 && (
+              <div style={{
+                position: 'absolute',
+                top: '-4px',
+                right: '-4px',
+                minWidth: '16px',
+                height: '16px',
+                padding: '0 3px',
+                background: '#FFB800',
+                border: '1.5px solid #0a0a0a',
+                borderRadius: '100px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '9px',
+                fontWeight: '800',
+              }}>
+                {unreadNotifCount > 99 ? '99+' : unreadNotifCount}
+              </div>
+            )}
+          </button>
+          <button
+            onClick={() => setShowNewConversation(true)}
+            aria-label="New conversation"
+            style={{
+              width: '44px',
+              height: '44px',
+              border: '1.5px solid #0a0a0a',
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '20px',
+              fontWeight: '700',
+              background: '#fff',
+              cursor: 'pointer',
+            }}
+          >
+            +
+          </button>
         </div>
+      </div>
+
+      {/* Filter bar */}
+      <div style={{ padding: '10px 20px', borderBottom: '1px solid #F5F5F5', background: '#fff' }}>
+        <input
+          type="text"
+          value={filterQuery}
+          onChange={e => setFilterQuery(e.target.value)}
+          placeholder="Search conversations..."
+          style={{
+            width: '100%',
+            padding: '8px 12px',
+            border: '1px solid #E5E5E5',
+            borderRadius: '100px',
+            fontSize: '13px',
+            fontFamily: 'inherit',
+            outline: 'none',
+            background: '#F5F5F5',
+            boxSizing: 'border-box',
+          }}
+        />
       </div>
 
       {/* Conversation list */}
@@ -198,6 +310,54 @@ export default function ChatList({ onSelectConversation }) {
         overscrollBehaviorY: 'contain',
         WebkitOverflowScrolling: 'touch',
       }}>
+        {requestsCount > 0 && (
+          <div
+            onClick={() => router.push('/requests')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              padding: '14px 20px',
+              borderBottom: '1.5px solid #0a0a0a',
+              cursor: 'pointer',
+              background: '#FFF8E1',
+            }}
+          >
+            <div style={{
+              width: '44px',
+              height: '44px',
+              borderRadius: '50%',
+              background: '#FFB800',
+              border: '1.5px solid #0a0a0a',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '18px',
+              flexShrink: 0,
+            }}>
+              📨
+            </div>
+            <p style={{ flex: 1, fontSize: '14px', fontWeight: '700', color: '#0a0a0a' }}>
+              Message Requests
+            </p>
+            <div style={{
+              minWidth: '22px',
+              height: '22px',
+              padding: '0 6px',
+              background: '#0a0a0a',
+              borderRadius: '100px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '12px',
+              fontWeight: '800',
+              color: '#fff',
+            }}>
+              {requestsCount > 99 ? '99+' : requestsCount}
+            </div>
+          </div>
+        )}
+
         {conversations.length === 0 ? (
           <div style={{
             display: 'flex',
@@ -213,21 +373,30 @@ export default function ChatList({ onSelectConversation }) {
             <p style={{ fontSize: '14px', color: '#A3A3A3', marginBottom: '24px' }}>
               Search for people and start a conversation.
             </p>
-            <Link href="/search" style={{
-              padding: '10px 20px',
-              background: '#0a0a0a',
-              color: '#fff',
-              borderRadius: '8px',
-              textDecoration: 'none',
-              fontSize: '14px',
-              fontWeight: '600',
-              boxShadow: '3px 3px 0 #FFB800',
-            }}>
+            <button
+              onClick={() => setShowNewConversation(true)}
+              style={{
+                padding: '10px 20px',
+                background: '#0a0a0a',
+                color: '#fff',
+                borderRadius: '8px',
+                border: 'none',
+                fontSize: '14px',
+                fontWeight: '600',
+                boxShadow: '3px 3px 0 #FFB800',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+              }}
+            >
               Find people
-            </Link>
+            </button>
+          </div>
+        ) : filteredConversations.length === 0 ? (
+          <div style={{ padding: '40px 20px', textAlign: 'center' }}>
+            <p style={{ fontSize: '14px', color: '#A3A3A3' }}>No conversations match "{filterQuery}"</p>
           </div>
         ) : (
-          conversations.map(conv => {
+          filteredConversations.map(conv => {
             const lastMessage = conv.last_message
             const isGroup = conv.type === 'group'
             const otherUser = conv.other_participants?.[0]
@@ -330,6 +499,8 @@ export default function ChatList({ onSelectConversation }) {
           })
         )}
       </div>
+
+      <NewConversationSheet isOpen={showNewConversation} onClose={() => setShowNewConversation(false)} />
     </div>
   )
 }
