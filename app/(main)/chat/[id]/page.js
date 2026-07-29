@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import Link from 'next/link'
 import Avatar from '@/components/shared/Avatar'
 import { getMessages, sendMessage, getConversation, markConversationRead, editMessage, deleteMessage, uploadMedia, getReactions, toggleReaction, getPinnedMessages, togglePin, searchMessages } from '@/actions/messages'
 import { getGroupInfo } from '@/actions/groups'
@@ -14,6 +13,7 @@ import MediaMessage from '@/components/chat/MediaMessage'
 import AudioRecorder from '@/components/chat/MediaRecorder'
 import CameraCapture from '@/components/chat/CameraCapture'
 import MessageReactions from '@/components/chat/MessageReactions'
+import ConversationSettingsSheet from '@/components/chat/ConversationSettingsSheet'
 
 export default function ConversationPage() {
   const { id } = useParams()
@@ -45,6 +45,7 @@ export default function ConversationPage() {
   const [mentionResults, setMentionResults] = useState([])
   const [showMentions, setShowMentions] = useState(false)
   const [mentionStartIndex, setMentionStartIndex] = useState(-1)
+  const [showSettingsSheet, setShowSettingsSheet] = useState(false)
   const { onlineUsers } = useOnlineUsers()
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
@@ -401,6 +402,14 @@ export default function ConversationPage() {
     setShowPinnedPanel(true)
   }
 
+  const reloadGroupInfo = async () => {
+    const result = await getGroupInfo(id)
+    if (result.data) {
+      setGroupInfo(result.data)
+      cache.set(`group:${id}`, result.data, 60000)
+    }
+  }
+
   const handleTogglePin = async (messageId) => {
     const result = await togglePin(id, messageId)
     if (result.error) alert(result.error)
@@ -504,7 +513,10 @@ export default function ConversationPage() {
           ←
         </button>
         {conversation?.type === 'group' ? (
-          <Link href={`/groups/${id}/settings`} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
+          <button
+            onClick={() => setShowSettingsSheet(true)}
+            style={{ background: 'none', border: 'none', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '10px', flex: 1, cursor: 'pointer', padding: 0, textAlign: 'left', fontFamily: 'inherit' }}
+          >
             <Avatar src={groupInfo?.avatar_url} name={groupInfo?.name} size={38} />
             <div>
               <p style={{ fontSize: '15px', fontWeight: '700', color: '#0a0a0a' }}>
@@ -514,9 +526,12 @@ export default function ConversationPage() {
                 {groupInfo ? `${groupInfo.members?.length} members` : ''}
               </p>
             </div>
-          </Link>
+          </button>
         ) : otherParticipant ? (
-          <Link href={`/u/${otherParticipant.username}?from=conversation&convId=${id}`} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
+          <button
+            onClick={() => setShowSettingsSheet(true)}
+            style={{ background: 'none', border: 'none', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '10px', flex: 1, cursor: 'pointer', padding: 0, textAlign: 'left', fontFamily: 'inherit' }}
+          >
             <Avatar src={otherParticipant.avatar_url} name={otherParticipant.display_name} size={38} />
             <div>
               <p style={{ fontSize: '15px', fontWeight: '700', color: '#0a0a0a' }}>
@@ -531,47 +546,11 @@ export default function ConversationPage() {
                 }
               </p>
             </div>
-          </Link>
+          </button>
         ) : null}
         <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto' }}>
           <button
-            onClick={() => setShowSearch(prev => !prev)}
-            style={{
-              width: '44px',
-              height: '44px',
-              background: showSearch ? '#F5F5F5' : '#fff',
-              border: '1.5px solid #0a0a0a',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontSize: '16px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-            title="Search messages"
-          >
-            🔍
-          </button>
-          <button
-            onClick={handleLoadPinned}
-            style={{
-              width: '44px',
-              height: '44px',
-              background: showPinnedPanel ? '#F5F5F5' : '#fff',
-              border: '1.5px solid #0a0a0a',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontSize: '16px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-            title="Pinned messages"
-          >
-            📌
-          </button>
-          <Link
-            href={`/chat/${id}/settings`}
+            onClick={() => setShowSettingsSheet(true)}
             style={{
               width: '44px',
               height: '44px',
@@ -583,12 +562,11 @@ export default function ConversationPage() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              textDecoration: 'none',
             }}
-            title="Conversation settings"
+            title="Conversation info"
           >
-            ⚙️
-          </Link>
+            ℹ️
+          </button>
         </div>
       </div>
 
@@ -1436,6 +1414,21 @@ export default function ConversationPage() {
           }
         }
       `}</style>
+
+      <ConversationSettingsSheet
+        isOpen={showSettingsSheet}
+        onClose={() => setShowSettingsSheet(false)}
+        conversationId={id}
+        isGroup={conversation?.type === 'group'}
+        myRole={conversation?.role}
+        otherParticipant={otherParticipant}
+        isOnline={onlineUsers.includes(otherParticipant?.id)}
+        groupInfo={groupInfo}
+        pinnedCount={pinnedMessages.length}
+        onOpenSearch={() => setShowSearch(true)}
+        onOpenPinned={handleLoadPinned}
+        onGroupChanged={reloadGroupInfo}
+      />
     </div>
   )
 }
