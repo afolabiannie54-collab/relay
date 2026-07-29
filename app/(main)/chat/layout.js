@@ -17,9 +17,13 @@ const FULL_WIDTH_ROUTES = ['/chat/hidden']
 // never unmounts while switching conversations.
 //
 // On desktop (>768px) both panels sit side by side. On mobile only one
-// is visible at a time; both stay mounted (absolutely positioned,
-// slid off-screen via transform) so switching between them can animate
-// instead of hard-cutting between mount/unmount.
+// panel is rendered at a time via a plain conditional — no transform
+// slide, no keyed-remount tricks. A CSS transform slide was tried here
+// and repeatedly caused intermittent corruption (a torn frame briefly
+// visible) and stale-content flashes because it raced with React's own
+// mount/unmount of the conversation page mid-transition. An instant
+// switch has none of those failure modes; a proper animation can come
+// back later as part of a deliberate UI pass, built to not race React.
 export default function ChatLayout({ children }) {
   const pathname = usePathname()
   const router = useRouter()
@@ -73,7 +77,7 @@ export default function ChatLayout({ children }) {
   return (
     <div className="chat-shell" style={{ display: 'flex', height: '100dvh', overflow: 'hidden', position: 'relative' }}>
       <div
-        className={`chat-list-panel ${isListRoute ? 'chat-panel-visible' : 'chat-panel-hidden-left'}`}
+        className={`chat-list-panel ${isListRoute ? '' : 'chat-panel-hidden'}`}
         style={{
           width: '360px',
           flexShrink: 0,
@@ -87,7 +91,7 @@ export default function ChatLayout({ children }) {
       </div>
 
       <div
-        className={`chat-detail-panel ${isListRoute ? 'chat-panel-hidden-right' : 'chat-panel-visible'}`}
+        className={`chat-detail-panel ${isListRoute ? 'chat-panel-hidden' : ''}`}
         style={{
           flex: 1,
           minWidth: 0,
@@ -100,12 +104,7 @@ export default function ChatLayout({ children }) {
       >
         {/* Keyed by conversation id so switching directly between two
             conversations remounts the content instead of briefly showing
-            the previous conversation's stale messages. This key lives on
-            an inner wrapper, not the .chat-detail-panel node itself —
-            keying the outer node would also remount it on every
-            list-to-conversation transition, which would skip the CSS
-            transform transition below entirely (a freshly-mounted node
-            has no prior style to animate from). */}
+            the previous conversation's stale messages. */}
         <div key={convId} style={{ height: '100%' }}>
           {isListRoute ? <ChatEmptyState /> : children}
         </div>
@@ -113,20 +112,18 @@ export default function ChatLayout({ children }) {
 
       <style>{`
         .chat-list-panel, .chat-detail-panel {
-          transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-          will-change: transform;
           overscroll-behavior-x: none;
         }
 
-        /* Desktop: both panels always visible side by side, no sliding */
+        /* Desktop: both panels always visible side by side */
         @media (min-width: 769px) {
           .chat-list-panel, .chat-detail-panel {
-            transform: none !important;
             position: relative;
           }
         }
 
-        /* Mobile: one panel full-screen at a time, sliding via transform */
+        /* Mobile: only the active panel is shown, full screen, switched
+           instantly via display — no animation, no transform. */
         @media (max-width: 768px) {
           .chat-list-panel, .chat-detail-panel {
             width: 100% !important;
@@ -136,14 +133,8 @@ export default function ChatLayout({ children }) {
             left: 0;
             border-right: none !important;
           }
-          .chat-panel-visible {
-            transform: translateX(0);
-          }
-          .chat-panel-hidden-left {
-            transform: translateX(-110%);
-          }
-          .chat-panel-hidden-right {
-            transform: translateX(110%);
+          .chat-panel-hidden {
+            display: none;
           }
         }
       `}</style>
