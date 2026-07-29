@@ -15,6 +15,10 @@ export default function EditProfileForm({ initialProfile }) {
   const [formData, setFormData] = useState({
     display_name: initialProfile?.display_name || '',
     bio: initialProfile?.bio || '',
+    website: initialProfile?.website || '',
+    twitter: initialProfile?.twitter || '',
+    instagram: initialProfile?.instagram || '',
+    linkedin: initialProfile?.linkedin || '',
   })
 
   // Username change state
@@ -41,6 +45,10 @@ export default function EditProfileForm({ initialProfile }) {
     const data = new FormData()
     data.append('display_name', formData.display_name)
     data.append('bio', formData.bio)
+    data.append('website', formData.website)
+    data.append('twitter', formData.twitter)
+    data.append('instagram', formData.instagram)
+    data.append('linkedin', formData.linkedin)
 
     const result = await updateProfile(data)
 
@@ -315,6 +323,58 @@ export default function EditProfileForm({ initialProfile }) {
                 onFocus={e => e.target.style.borderColor = '#0a0a0a'}
                 onBlur={e => e.target.style.borderColor = '#e5e5e5'}
               />
+            </div>
+
+            <div>
+              <label style={{ fontSize: '13px', fontWeight: '700', color: '#0a0a0a', display: 'block', marginBottom: '10px' }}>
+                Social links
+              </label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <input
+                  name="website"
+                  type="text"
+                  value={formData.website}
+                  onChange={handleChange}
+                  placeholder="https://yoursite.com"
+                  maxLength={100}
+                  style={inputStyle}
+                  onFocus={e => e.target.style.borderColor = '#0a0a0a'}
+                  onBlur={e => e.target.style.borderColor = '#e5e5e5'}
+                />
+                <input
+                  name="twitter"
+                  type="text"
+                  value={formData.twitter}
+                  onChange={handleChange}
+                  placeholder="@username (Twitter/X)"
+                  maxLength={100}
+                  style={inputStyle}
+                  onFocus={e => e.target.style.borderColor = '#0a0a0a'}
+                  onBlur={e => e.target.style.borderColor = '#e5e5e5'}
+                />
+                <input
+                  name="instagram"
+                  type="text"
+                  value={formData.instagram}
+                  onChange={handleChange}
+                  placeholder="@username (Instagram)"
+                  maxLength={100}
+                  style={inputStyle}
+                  onFocus={e => e.target.style.borderColor = '#0a0a0a'}
+                  onBlur={e => e.target.style.borderColor = '#e5e5e5'}
+                />
+                <input
+                  name="linkedin"
+                  type="text"
+                  value={formData.linkedin}
+                  onChange={handleChange}
+                  placeholder="linkedin.com/in/username"
+                  maxLength={100}
+                  style={inputStyle}
+                  onFocus={e => e.target.style.borderColor = '#0a0a0a'}
+                  onBlur={e => e.target.style.borderColor = '#e5e5e5'}
+                />
+              </div>
             </div>
 
             <button

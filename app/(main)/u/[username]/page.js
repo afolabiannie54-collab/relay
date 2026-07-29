@@ -4,6 +4,19 @@ import Avatar from '@/components/shared/Avatar'
 import Link from 'next/link'
 import MessageButton from '@/components/profile/MessageButton'
 import CopyUsernameButton from '@/components/profile/CopyUsernameButton'
+import ProfileMenu from '@/components/profile/ProfileMenu'
+import OnlineStatus from '@/components/profile/OnlineStatus'
+
+function socialHref(platform, value) {
+  if (!value) return null
+  const trimmed = value.trim()
+  if (/^https?:\/\//i.test(trimmed)) return trimmed
+  const handle = trimmed.replace(/^@/, '')
+  if (platform === 'twitter') return `https://twitter.com/${handle}`
+  if (platform === 'instagram') return `https://instagram.com/${handle}`
+  if (platform === 'linkedin') return `https://${trimmed.replace(/^https?:\/\//i, '')}`
+  return `https://${trimmed}`
+}
 
 export default async function ProfilePage({ params, searchParams }) {
   const { username } = await params
@@ -73,20 +86,12 @@ export default async function ProfilePage({ params, searchParams }) {
   const profile = result.data
   const isOwnProfile = user?.id === profile.id
 
-  const formatLastSeen = (lastSeen) => {
-    if (!lastSeen) return null
-    const date = new Date(lastSeen)
-    const now = new Date()
-    const diff = now - date
-    const minutes = Math.floor(diff / 60000)
-    const hours = Math.floor(diff / 3600000)
-    const days = Math.floor(diff / 86400000)
-    if (minutes < 1) return 'Just now'
-    if (minutes < 60) return `${minutes}m ago`
-    if (hours < 24) return `${hours}h ago`
-    if (days < 7) return `${days}d ago`
-    return date.toLocaleDateString()
-  }
+  const socialLinks = [
+    { key: 'website', icon: '🌐', href: socialHref('website', profile.website) },
+    { key: 'twitter', icon: '𝕏', href: socialHref('twitter', profile.twitter) },
+    { key: 'instagram', icon: '📸', href: socialHref('instagram', profile.instagram) },
+    { key: 'linkedin', icon: '💼', href: socialHref('linkedin', profile.linkedin) },
+  ].filter(link => link.href)
 
   return (
     <div style={{
@@ -97,10 +102,10 @@ export default async function ProfilePage({ params, searchParams }) {
       <div style={{
         background: '#fff',
         borderBottom: '1.5px solid #0a0a0a',
-        padding: '16px 24px',
+        padding: '16px 20px',
         display: 'flex',
         alignItems: 'center',
-        gap: '16px',
+        justifyContent: 'space-between',
         position: 'sticky',
         top: 0,
         zIndex: 10,
@@ -108,66 +113,97 @@ export default async function ProfilePage({ params, searchParams }) {
         <Link href={backHref} style={{
           textDecoration: 'none',
           color: '#0a0a0a',
-          fontSize: '14px',
-          fontWeight: '600',
+          fontSize: '18px',
+          width: '44px',
+          height: '44px',
+          display: 'flex',
+          alignItems: 'center',
         }}>
-          ← Back
+          ←
         </Link>
         <span style={{ fontSize: '16px', fontWeight: '700' }}>Profile</span>
+        {isOwnProfile ? (
+          <ProfileMenu isOwnProfile username={profile.username} displayName={profile.display_name} backHref={backHref} />
+        ) : (
+          <ProfileMenu isOwnProfile={false} userId={profile.id} username={profile.username} displayName={profile.display_name} backHref={backHref} />
+        )}
       </div>
 
-      <div style={{ maxWidth: '600px', margin: '0 auto', padding: '32px 24px' }}>
+      <div style={{ maxWidth: '520px', margin: '0 auto', padding: '32px 24px' }}>
         <div style={{
           background: '#fff',
           border: '1.5px solid #0a0a0a',
           borderRadius: '16px',
-          padding: '32px',
+          padding: '32px 24px',
           boxShadow: '4px 4px 0 #0a0a0a',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          textAlign: 'center',
         }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: '20px',
-            marginBottom: '24px',
-          }}>
-            <Avatar src={profile.avatar_url} name={profile.display_name} size={80} />
-            <div style={{ flex: 1 }}>
-              <h1 style={{ fontSize: '22px', fontWeight: '800', color: '#0a0a0a', marginBottom: '2px' }}>
-                {profile.display_name}
-              </h1>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '8px' }}>
-                <p style={{ fontSize: '14px', color: '#A3A3A3' }}>
-                  @{profile.username}
-                </p>
-                <CopyUsernameButton username={profile.username} />
-              </div>
-              {profile.last_seen && (
-                <p style={{ fontSize: '12px', color: '#A3A3A3' }}>
-                  Last seen {formatLastSeen(profile.last_seen)}
-                </p>
-              )}
-            </div>
+          <Avatar src={profile.avatar_url} name={profile.display_name} size={96} />
+          <h1 style={{ fontSize: '22px', fontWeight: '800', color: '#0a0a0a', marginTop: '16px', marginBottom: '4px' }}>
+            {profile.display_name}
+          </h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '6px' }}>
+            <p style={{ fontSize: '14px', color: '#A3A3A3' }}>
+              @{profile.username}
+            </p>
+            <CopyUsernameButton username={profile.username} />
           </div>
 
+          <OnlineStatus userId={profile.id} lastSeen={profile.last_seen} showLastSeen={profile.show_last_seen} />
+
+          {isOwnProfile && (
+            <p style={{ fontSize: '11px', color: '#A3A3A3', marginTop: '4px' }}>
+              This is how others see you
+            </p>
+          )}
+
           {profile.bio && (
-            <div style={{
-              padding: '16px',
-              background: '#F5F5F5',
-              borderRadius: '8px',
-              marginBottom: '24px',
+            <p style={{
               fontSize: '14px',
               color: '#525252',
               lineHeight: '1.6',
+              marginTop: '16px',
+              whiteSpace: 'pre-wrap',
             }}>
               {profile.bio}
+            </p>
+          )}
+
+          {socialLinks.length > 0 && (
+            <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
+              {socialLinks.map(link => (
+                <a
+                  key={link.key}
+                  href={link.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '50%',
+                    background: '#F5F5F5',
+                    border: '1.5px solid #0a0a0a',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '15px',
+                    textDecoration: 'none',
+                  }}
+                >
+                  {link.icon}
+                </a>
+              ))}
             </div>
           )}
 
-          <p style={{ fontSize: '12px', color: '#A3A3A3', marginBottom: '24px' }}>
+          <p style={{ fontSize: '12px', color: '#A3A3A3', marginTop: '20px' }}>
             Member since {new Date(profile.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
           </p>
 
-          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+          <div style={{ marginTop: '20px' }}>
             {isOwnProfile ? (
               <Link href="/settings/profile" style={{
                 padding: '10px 20px',

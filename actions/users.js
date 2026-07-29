@@ -23,12 +23,16 @@ export async function getProfileByUsername(username) {
 
   const { data, error } = await supabase
     .from('users')
-    .select('id, username, display_name, avatar_url, bio, last_seen, created_at')
+    .select(`
+      id, username, display_name, avatar_url, bio, last_seen, created_at,
+      website, twitter, instagram, linkedin,
+      privacy_settings(show_last_seen)
+    `)
     .eq('username', username)
     .single()
 
   if (error) return { error: 'User not found' }
-  return { data }
+  return { data: { ...data, show_last_seen: data.privacy_settings?.show_last_seen ?? true } }
 }
 
 export async function updateProfile(formData) {
@@ -39,6 +43,10 @@ export async function updateProfile(formData) {
 
   const display_name = formData.get('display_name')
   const bio = formData.get('bio')
+  const website = formData.get('website')
+  const twitter = formData.get('twitter')
+  const instagram = formData.get('instagram')
+  const linkedin = formData.get('linkedin')
 
   if (!display_name?.trim()) return { error: 'Display name is required' }
 
@@ -47,6 +55,10 @@ export async function updateProfile(formData) {
     .update({
       display_name: display_name.trim(),
       bio: bio?.trim() || null,
+      website: website?.trim() || null,
+      twitter: twitter?.trim() || null,
+      instagram: instagram?.trim() || null,
+      linkedin: linkedin?.trim() || null,
       updated_at: new Date().toISOString(),
     })
     .eq('id', user.id)

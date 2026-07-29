@@ -2,11 +2,13 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
-import { sendMessageRequest } from '@/actions/messages'
-import { getExistingConversation } from '@/actions/messages'
-import { blockUser } from '@/actions/blocks'
+import { sendMessageRequest, getExistingConversation } from '@/actions/messages'
 
+const MESSAGE_MAX = 2000
+
+// Primary profile-page action: contextual "Send message" (first contact,
+// goes through the message-request flow) vs "Open chat" (a DM already
+// exists). Blocking now lives in ProfileMenu's three-dot menu, not here.
 export default function MessageButton({ receiverId, displayName }) {
   const [showCompose, setShowCompose] = useState(false)
   const [message, setMessage] = useState('')
@@ -14,8 +16,6 @@ export default function MessageButton({ receiverId, displayName }) {
   const [error, setError] = useState(null)
   const [existingConvId, setExistingConvId] = useState(null)
   const [checking, setChecking] = useState(true)
-  const [blocking, setBlocking] = useState(false)
-  const [blocked, setBlocked] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -30,11 +30,12 @@ export default function MessageButton({ receiverId, displayName }) {
   }, [receiverId])
 
   const handleSend = async () => {
-    if (!message.trim()) return
+    const text = message.trim()
+    if (!text) return
     setSending(true)
     setError(null)
 
-    const result = await sendMessageRequest(receiverId, message)
+    const result = await sendMessageRequest(receiverId, text)
 
     if (result.error) {
       if (result.conversationId) {
@@ -49,67 +50,27 @@ export default function MessageButton({ receiverId, displayName }) {
     router.push(`/chat/${result.conversationId}`)
   }
 
-  const handleBlock = async () => {
-    if (!confirm(`Block ${displayName}? They won't be able to message you, and this conversation will be hidden.`)) return
-    setBlocking(true)
-    const result = await blockUser(receiverId)
-    setBlocking(false)
-    if (!result.error) {
-      setBlocked(true)
-    }
-  }
-
-  const blockButtonStyle = {
-    padding: '10px 20px',
-    background: '#fff',
-    color: '#EF4444',
-    border: '1.5px solid #EF4444',
-    borderRadius: '8px',
-    fontSize: '14px',
-    fontWeight: '600',
-    cursor: blocking ? 'not-allowed' : 'pointer',
-    fontFamily: 'inherit',
-  }
-
-  if (blocked) {
-    return (
-      <div>
-        <p style={{ fontSize: '14px', fontWeight: '600', color: '#0a0a0a', marginBottom: '8px' }}>
-          User blocked
-        </p>
-        <Link href="/chat" style={{ fontSize: '13px', color: '#525252', textDecoration: 'underline' }}>
-          Back to chat
-        </Link>
-      </div>
-    )
-  }
-
   if (checking) return null
 
   if (existingConvId) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'flex-start' }}>
-        <button
-          onClick={() => router.push(`/chat/${existingConvId}`)}
-          style={{
-            padding: '10px 20px',
-            background: '#0a0a0a',
-            color: '#fff',
-            border: '1.5px solid #0a0a0a',
-            borderRadius: '8px',
-            fontSize: '14px',
-            fontWeight: '600',
-            cursor: 'pointer',
-            fontFamily: 'inherit',
-            boxShadow: '3px 3px 0 #FFB800',
-          }}
-        >
-          Open chat
-        </button>
-        <button onClick={handleBlock} disabled={blocking} style={blockButtonStyle}>
-          {blocking ? 'Blocking...' : 'Block'}
-        </button>
-      </div>
+      <button
+        onClick={() => router.push(`/chat/${existingConvId}`)}
+        style={{
+          padding: '10px 20px',
+          background: '#0a0a0a',
+          color: '#fff',
+          border: '1.5px solid #0a0a0a',
+          borderRadius: '8px',
+          fontSize: '14px',
+          fontWeight: '600',
+          cursor: 'pointer',
+          fontFamily: 'inherit',
+          boxShadow: '3px 3px 0 #FFB800',
+        }}
+      >
+        Open chat
+      </button>
     )
   }
 
@@ -131,9 +92,10 @@ export default function MessageButton({ receiverId, displayName }) {
         )}
         <textarea
           value={message}
-          onChange={e => setMessage(e.target.value)}
+          onChange={e => setMessage(e.target.value.slice(0, MESSAGE_MAX))}
           placeholder={`Say something to ${displayName}...`}
           rows={3}
+          maxLength={MESSAGE_MAX}
           autoFocus
           style={{
             width: '100%',
@@ -191,27 +153,22 @@ export default function MessageButton({ receiverId, displayName }) {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'flex-start' }}>
-      <button
-        onClick={() => setShowCompose(true)}
-        style={{
-          padding: '10px 20px',
-          background: '#0a0a0a',
-          color: '#fff',
-          border: '1.5px solid #0a0a0a',
-          borderRadius: '8px',
-          fontSize: '14px',
-          fontWeight: '600',
-          cursor: 'pointer',
-          fontFamily: 'inherit',
-          boxShadow: '3px 3px 0 #FFB800',
-        }}
-      >
-        Message
-      </button>
-      <button onClick={handleBlock} disabled={blocking} style={blockButtonStyle}>
-        {blocking ? 'Blocking...' : 'Block'}
-      </button>
-    </div>
+    <button
+      onClick={() => setShowCompose(true)}
+      style={{
+        padding: '10px 20px',
+        background: '#0a0a0a',
+        color: '#fff',
+        border: '1.5px solid #0a0a0a',
+        borderRadius: '8px',
+        fontSize: '14px',
+        fontWeight: '600',
+        cursor: 'pointer',
+        fontFamily: 'inherit',
+        boxShadow: '3px 3px 0 #FFB800',
+      }}
+    >
+      Send message
+    </button>
   )
 }
