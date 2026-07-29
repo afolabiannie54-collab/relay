@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState, useEffect } from 'react'
+import { useRef } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import ChatList from '@/components/chat/ChatList'
 import ChatEmptyState from '@/components/chat/ChatEmptyState'
@@ -33,62 +33,14 @@ export default function ChatLayout({ children }) {
   // when switching directly from one conversation to another.
   const convId = pathname.split('/')[2] || 'empty'
 
-  // Going back to the list slides the detail panel off-screen via CSS
-  // transform rather than unmounting it. The wrapper below used to be keyed
-  // by convId directly, which meant the key collapsed to 'empty' the
-  // instant isListRoute flipped true — forcing a remount of live children
-  // to <ChatEmptyState /> WHILE the panel was mid-slide-out, which is what
-  // produced the torn/corrupted frame (sliver of old content + gray void).
-  //
-  // Fix: keep the key stable (only ever a real conversation id, never
-  // 'empty') so no remount happens during the slide, and delay swapping
-  // in <ChatEmptyState /> until after the 300ms slide-out transition (see
-  // the `transition` rule below) has had time to finish — at which point
-  // the panel is fully off-screen and the swap is invisible anyway.
-  const stableKeyRef = useRef('empty')
-  if (!isListRoute && convId !== 'empty') stableKeyRef.current = convId
-
-  const [showEmpty, setShowEmpty] = useState(false)
-  useEffect(() => {
-    if (isListRoute) {
-      const t = setTimeout(() => setShowEmpty(true), 320)
-      return () => clearTimeout(t)
-    }
-    setShowEmpty(false)
-  }, [isListRoute])
-
-  // Single source of truth for height: the shell itself tracks
-  // window.visualViewport, which shrinks (from the bottom only) when the
-  // iOS keyboard opens — unlike 100dvh, which ignores the keyboard
-  // entirely. Every descendant below (panels, the conversation page's own
-  // container, its flex:1 messages area) just fills 100% of whatever
-  // height it's given, so the shrink propagates down and only the
-  // flex:1 messages area actually absorbs it: header and input bar
-  // (both flexShrink:0) stay pinned in place. On desktop the keyboard
-  // never opens, so vh just tracks the full viewport — same as 100dvh.
-  const [vh, setVh] = useState(null)
-  useEffect(() => {
-    if (typeof window === 'undefined' || !window.visualViewport) return
-    const vv = window.visualViewport
-    const onResize = () => setVh(vv.height)
-    onResize()
-    vv.addEventListener('resize', onResize)
-    return () => vv.removeEventListener('resize', onResize)
-  }, [])
-  const shellHeight = vh ? `${vh}px` : '100dvh'
-
   // iOS-style swipe-from-anywhere-to-go-back on the detail panel. Only
   // active on mobile and only while actually viewing a conversation (not
   // the list itself). A mostly-vertical drag (normal message-list
   // scrolling) is rejected by the deltaX-vs-deltaY comparison, so this
-  // doesn't fight with scrolling. Ignores touches starting very close to
-  // the left edge — that strip is where iOS's own native edge-swipe-back
-  // gesture activates, and having both respond to the same touch can
-  // trigger overlapping navigations.
+  // doesn't fight with scrolling.
   const handleTouchStart = (e) => {
     const touch = e.touches[0]
     if (!touch) return
-    if (touch.clientX < 24) return
     touchStartRef.current = { x: touch.clientX, y: touch.clientY }
   }
 
@@ -119,7 +71,7 @@ export default function ChatLayout({ children }) {
   }
 
   return (
-    <div className="chat-shell" style={{ display: 'flex', height: shellHeight, overflow: 'hidden', position: 'relative' }}>
+    <div className="chat-shell" style={{ display: 'flex', height: '100dvh', overflow: 'hidden', position: 'relative' }}>
       <div
         className={`chat-list-panel ${isListRoute ? 'chat-panel-visible' : 'chat-panel-hidden-left'}`}
         style={{
@@ -127,7 +79,7 @@ export default function ChatLayout({ children }) {
           flexShrink: 0,
           borderRight: '1.5px solid #0a0a0a',
           background: '#fff',
-          height: '100%',
+          height: '100dvh',
           overflow: 'hidden',
         }}
       >
@@ -139,28 +91,23 @@ export default function ChatLayout({ children }) {
         style={{
           flex: 1,
           minWidth: 0,
-          height: '100%',
+          height: '100dvh',
           overflow: 'hidden',
           background: '#fff',
         }}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
-        {/* Keyed by the last real conversation id so switching directly
-            between two conversations remounts the content instead of
-            briefly showing the previous conversation's stale messages.
-            This key lives on an inner wrapper, not the .chat-detail-panel
-            node itself — keying the outer node would also remount it on
-            every list-to-conversation transition, which would skip the
-            CSS transform transition below entirely (a freshly-mounted
-            node has no prior style to animate from). The key never
-            collapses to 'empty' while sliding out to the list, so this
-            wrapper doesn't remount mid-transform (see stableKeyRef
-            above); it renders null in the meantime instead of swapping
-            to the empty state, which only appears once the slide has
-            finished. */}
-        <div key={stableKeyRef.current} style={{ height: '100%' }}>
-          {isListRoute ? (showEmpty ? <ChatEmptyState /> : null) : children}
+        {/* Keyed by conversation id so switching directly between two
+            conversations remounts the content instead of briefly showing
+            the previous conversation's stale messages. This key lives on
+            an inner wrapper, not the .chat-detail-panel node itself —
+            keying the outer node would also remount it on every
+            list-to-conversation transition, which would skip the CSS
+            transform transition below entirely (a freshly-mounted node
+            has no prior style to animate from). */}
+        <div key={convId} style={{ height: '100%' }}>
+          {isListRoute ? <ChatEmptyState /> : children}
         </div>
       </div>
 
