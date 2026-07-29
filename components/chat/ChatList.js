@@ -1,15 +1,20 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Avatar from '@/components/shared/Avatar'
 import ChatLink from '@/components/chat/ChatLink'
 import NewConversationSheet from '@/components/chat/NewConversationSheet'
+import ConversationActionSheet from '@/components/chat/ConversationActionSheet'
+import ConversationContextMenu from '@/components/chat/ConversationContextMenu'
 import { getConversations, getMessages } from '@/actions/messages'
 import { getMutedConversationIds } from '@/actions/conversations'
 import { getUnreadCount as getUnreadNotificationCount, getRequestsCount } from '@/actions/notifications'
 import { createClient } from '@/lib/supabase/client'
 import { cache } from '@/lib/cache'
+
+const LONG_PRESS_MS = 400
+const LONG_PRESS_MOVE_TOLERANCE = 10
 
 export default function ChatList({ onSelectConversation }) {
   const router = useRouter()
@@ -18,6 +23,11 @@ export default function ChatList({ onSelectConversation }) {
   const [mutedIds, setMutedIds] = useState([])
   const [loading, setLoading] = useState(true)
   const [filterQuery, setFilterQuery] = useState('')
+  const [actionSheetConv, setActionSheetConv] = useState(null)
+  const [contextMenu, setContextMenu] = useState(null)
+  const longPressTimerRef = useRef(null)
+  const longPressStartRef = useRef(null)
+  const longPressFiredRef = useRef(false)
   const [unreadNotifCount, setUnreadNotifCount] = useState(0)
   const [requestsCount, setRequestsCount] = useState(0)
   const [showNewConversation, setShowNewConversation] = useState(false)
@@ -65,19 +75,19 @@ export default function ChatList({ onSelectConversation }) {
     load()
   }, [])
 
-  useEffect(() => {
-    async function refresh() {
-      const result = await getConversations()
-      if (result.data) {
-        setConversations(result.data)
-        cache.set('conversations', result.data, 10000)
-      }
+  async function refreshConversations() {
+    const result = await getConversations()
+    if (result.data) {
+      setConversations(result.data)
+      cache.set('conversations', result.data, 10000)
     }
+  }
 
+  useEffect(() => {
     // Same-tab signal fired the instant a conversation is marked read —
     // guarantees this list reflects it immediately regardless of whether
     // the browser actually remounts this component on back-navigation.
-    window.addEventListener('relay:conversation-read', refresh)
+    window.addEventListener('relay:conversation-read', refreshConversations)
 
     const supabase = createClient()
     const channel = supabase
@@ -88,12 +98,12 @@ export default function ChatList({ onSelectConversation }) {
         table: 'messages',
       }, () => {
         cache.invalidate('conversations')
-        refresh()
+        refreshConversations()
       })
       .subscribe()
 
     return () => {
-      window.removeEventListener('relay:conversation-read', refresh)
+      window.removeEventListener('relay:conversation-read', refreshConversations)
       supabase.removeChannel(channel)
     }
   }, [])
@@ -146,6 +156,54 @@ export default function ChatList({ onSelectConversation }) {
     if (cache.get(`messages:${convId}`)) return
     const result = await getMessages(convId)
     if (result.data) cache.set(`messages:${convId}`, result.data, 20000)
+  }
+
+  const handleRowTouchStart = (conv) => (e) => {
+    const touch = e.touches[0]
+    if (!touch) return
+    longPressFiredRef.current = false
+    longPressStartRef.current = { x: touch.clientX, y: touch.clientY }
+    longPressTimerRef.current = setTimeout(() => {
+      longPressFiredRef.current = true
+      try { window.navigator.vibrate?.(10) } catch {}
+      setActionSheetConv(conv)
+    }, LONG_PRESS_MS)
+  }
+
+  const handleRowTouchMove = (e) => {
+    if (!longPressStartRef.current || !longPressTimerRef.current) return
+    const touch = e.touches[0]
+    if (!touch) return
+    const dx = Math.abs(touch.clientX - longPressStartRef.current.x)
+    const dy = Math.abs(touch.clientY - longPressStartRef.current.y)
+    if (dx > LONG_PRESS_MOVE_TOLERANCE || dy > LONG_PRESS_MOVE_TOLERANCE) {
+      clearTimeout(longPressTimerRef.current)
+      longPressTimerRef.current = null
+    }
+  }
+
+  const handleRowTouchEnd = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current)
+      longPressTimerRef.current = null
+    }
+  }
+
+  // Suppresses the tile's own navigation when the touch that just ended
+  // was a long press (which already opened the action sheet) rather than
+  // a tap.
+  const handleRowClick = (conv) => (e) => {
+    if (longPressFiredRef.current) {
+      e.preventDefault()
+      longPressFiredRef.current = false
+      return
+    }
+    onSelectConversation?.(conv.conversation_id)
+  }
+
+  const handleRowContextMenu = (conv) => (e) => {
+    e.preventDefault()
+    setContextMenu({ conversation: conv, position: { x: e.clientX, y: e.clientY } })
   }
 
   const formatTime = (timestamp) => {
@@ -409,7 +467,7 @@ export default function ChatList({ onSelectConversation }) {
                 key={conv.conversation_id}
                 href={`/chat/${conv.conversation_id}`}
                 style={{ textDecoration: 'none' }}
-                onClick={() => onSelectConversation?.(conv.conversation_id)}
+                onClick={handleRowClick(conv)}
               >
                 <div style={{
                   display: 'flex',
@@ -426,7 +484,10 @@ export default function ChatList({ onSelectConversation }) {
                     prefetchConversation(conv.conversation_id)
                   }}
                   onMouseLeave={e => e.currentTarget.style.background = '#fff'}
-                  onTouchStart={() => prefetchConversation(conv.conversation_id)}
+                  onTouchStart={(e) => { prefetchConversation(conv.conversation_id); handleRowTouchStart(conv)(e) }}
+                  onTouchMove={handleRowTouchMove}
+                  onTouchEnd={handleRowTouchEnd}
+                  onContextMenu={handleRowContextMenu(conv)}
                 >
                   <Avatar
                     src={avatarUrl}
@@ -501,6 +562,22 @@ export default function ChatList({ onSelectConversation }) {
       </div>
 
       <NewConversationSheet isOpen={showNewConversation} onClose={() => setShowNewConversation(false)} />
+
+      <ConversationActionSheet
+        conversation={actionSheetConv}
+        isMuted={actionSheetConv ? mutedIds.includes(actionSheetConv.conversation_id) : false}
+        isOpen={!!actionSheetConv}
+        onClose={() => setActionSheetConv(null)}
+        onChanged={refreshConversations}
+      />
+
+      <ConversationContextMenu
+        conversation={contextMenu?.conversation || null}
+        isMuted={contextMenu ? mutedIds.includes(contextMenu.conversation.conversation_id) : false}
+        position={contextMenu?.position || null}
+        onClose={() => setContextMenu(null)}
+        onChanged={refreshConversations}
+      />
     </div>
   )
 }

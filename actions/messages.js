@@ -441,6 +441,36 @@ export async function markConversationRead(conversationId) {
   return { success: true }
 }
 
+export async function markConversationUnread(conversationId) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) return { error: 'Not authenticated' }
+
+  const { data: lastMessage } = await supabase
+    .from('messages')
+    .select('created_at')
+    .eq('conversation_id', conversationId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  // last_read_at just before the last message so the unread-count query
+  // (created_at > last_read_at) counts it, without needing a separate
+  // unread-tracking table.
+  const beforeLastMessage = lastMessage
+    ? new Date(new Date(lastMessage.created_at).getTime() - 1000).toISOString()
+    : null
+
+  await supabase
+    .from('conversation_participants')
+    .update({ last_read_at: beforeLastMessage })
+    .eq('conversation_id', conversationId)
+    .eq('user_id', user.id)
+
+  return { success: true }
+}
+
 export async function hideConversation(conversationId) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
