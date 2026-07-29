@@ -169,6 +169,24 @@ export default function ConversationPage() {
     messagesEndRef.current?.scrollIntoView({ behavior })
   }, [messages])
 
+  // The shell's height shrinks to the real visual viewport when the iOS
+  // keyboard opens (see hooks/useAppHeight), which frees up the header
+  // and input bar to stay put while only the messages area gets shorter.
+  // But shrinking a scrolled-to-bottom container doesn't itself keep the
+  // scroll position pinned to the bottom — without this, the last message
+  // ends up scrolled out of view above the input bar instead of sitting
+  // right above it, the way every native chat app behaves when its
+  // keyboard opens.
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.visualViewport) return
+    const vv = window.visualViewport
+    const handleResize = () => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
+    }
+    vv.addEventListener('resize', handleResize)
+    return () => vv.removeEventListener('resize', handleResize)
+  }, [])
+
   // Supabase Realtime subscription
   useEffect(() => {
     const supabase = createClient()
@@ -475,7 +493,9 @@ export default function ConversationPage() {
         />
       )}
 
-      {/* Header */}
+      {/* Header — sticky and above the messages so it can never scroll
+          out of view; flexShrink:0 keeps it from being squeezed as the
+          messages area shrinks when the keyboard opens. */}
       <div style={{
         padding: '12px 16px',
         borderBottom: '1.5px solid #E5E5E5',
@@ -484,6 +504,9 @@ export default function ConversationPage() {
         gap: '12px',
         background: '#fff',
         flexShrink: 0,
+        position: 'sticky',
+        top: 0,
+        zIndex: 10,
       }}>
         <button
           onClick={() => router.push('/chat')}
