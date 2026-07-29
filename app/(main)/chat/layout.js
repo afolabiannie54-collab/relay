@@ -39,10 +39,12 @@ export default function ChatLayout({ children }) {
 
   // iOS-style swipe-from-anywhere-to-go-back on the detail panel. Only
   // active on mobile and only while actually viewing a conversation (not
-  // the list itself). A mostly-vertical drag (normal message-list
-  // scrolling) is rejected by the deltaX-vs-deltaY comparison, so this
-  // doesn't fight with scrolling.
+  // the list itself) — /chat is a terminal parent in the navigation
+  // hierarchy, there is nowhere to swipe back to from it. A mostly-
+  // vertical drag (normal message-list scrolling) is rejected by the
+  // deltaX-vs-deltaY comparison, so this doesn't fight with scrolling.
   const handleTouchStart = (e) => {
+    if (pathname === '/chat') return
     const touch = e.touches[0]
     if (!touch) return
     touchStartRef.current = { x: touch.clientX, y: touch.clientY }

@@ -516,7 +516,7 @@ export default function ConversationPage() {
             </div>
           </Link>
         ) : otherParticipant ? (
-          <Link href={`/u/${otherParticipant.username}`} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
+          <Link href={`/u/${otherParticipant.username}?from=conversation&convId=${id}`} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
             <Avatar src={otherParticipant.avatar_url} name={otherParticipant.display_name} size={38} />
             <div>
               <p style={{ fontSize: '15px', fontWeight: '700', color: '#0a0a0a' }}>

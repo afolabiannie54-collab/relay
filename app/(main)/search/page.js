@@ -158,7 +158,7 @@ export default function SearchPage() {
             {results.map(user => (
               <Link
                 key={user.id}
-                href={`/u/${user.username}`}
+                href={`/u/${user.username}?from=search`}
                 style={{ textDecoration: 'none' }}
               >
                 <div style={{

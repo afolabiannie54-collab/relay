@@ -5,12 +5,27 @@ import Link from 'next/link'
 import MessageButton from '@/components/profile/MessageButton'
 import CopyUsernameButton from '@/components/profile/CopyUsernameButton'
 
-export default async function ProfilePage({ params }) {
+export default async function ProfilePage({ params, searchParams }) {
   const { username } = await params
+  const sp = await searchParams
   const result = await getProfileByUsername(username)
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+
+  // Fixed parent hierarchy: this page has no single correct parent (it's
+  // reachable from search, a conversation's header, a conversation's
+  // settings, or a notification), so the caller tells us where "back"
+  // should go via ?from=. Anything unrecognized (including no param at
+  // all, e.g. opened from a notification) falls back to /chat.
+  let backHref = '/chat'
+  if (sp?.from === 'search') {
+    backHref = '/search'
+  } else if (sp?.from === 'conversation' && sp?.convId) {
+    backHref = `/chat/${sp.convId}`
+  } else if (sp?.from === 'conversation-settings' && sp?.convId) {
+    backHref = `/chat/${sp.convId}/settings`
+  }
 
   if (result.error) {
     return (
@@ -37,7 +52,7 @@ export default async function ProfilePage({ params }) {
           <p style={{ fontSize: '14px', color: '#525252', marginBottom: '24px' }}>
             @{username} does not exist or may have been deleted.
           </p>
-          <Link href="/chat" style={{
+          <Link href={backHref} style={{
             display: 'inline-block',
             padding: '10px 20px',
             background: '#0a0a0a',
@@ -90,7 +105,7 @@ export default async function ProfilePage({ params }) {
         top: 0,
         zIndex: 10,
       }}>
-        <Link href="/chat" style={{
+        <Link href={backHref} style={{
           textDecoration: 'none',
           color: '#0a0a0a',
           fontSize: '14px',

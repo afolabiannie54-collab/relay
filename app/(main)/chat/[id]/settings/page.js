@@ -348,7 +348,7 @@ export default function ConversationSettingsPage() {
           marginBottom: '20px',
         }}>
           {!isGroup && (
-            <Link href={`/u/${otherParticipant?.username}`} style={{ textDecoration: 'none' }}>
+            <Link href={`/u/${otherParticipant?.username}?from=conversation-settings&convId=${id}`} style={{ textDecoration: 'none' }}>
               <div style={{
                 padding: '16px 20px',
                 display: 'flex',

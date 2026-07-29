@@ -6,7 +6,6 @@ import { usePathname } from 'next/navigation'
 import Avatar from '@/components/shared/Avatar'
 import { getOwnProfile } from '@/actions/users'
 import { PresenceProvider } from '@/lib/presence-context'
-import { getRequestsCount } from '@/actions/notifications'
 import { getUnreadChatsCount } from '@/actions/messages'
 import { createClient } from '@/lib/supabase/client'
 import { usePushNotifications } from '@/hooks/usePushNotifications'
@@ -15,7 +14,6 @@ import { signOut } from '@/actions/auth'
 export default function MainLayout({ children }) {
   const pathname = usePathname()
   const [profile, setProfile] = useState(null)
-  const [pendingRequestsCount, setPendingRequestsCount] = useState(0)
   const [unreadChatsCount, setUnreadChatsCount] = useState(0)
 
   usePushNotifications(profile?.id)
@@ -27,44 +25,6 @@ export default function MainLayout({ children }) {
     }
     load()
   }, [])
-
-  useEffect(() => {
-    async function loadCount() {
-      const requestsResult = await getRequestsCount()
-      setPendingRequestsCount(requestsResult.count || 0)
-    }
-    loadCount()
-
-    if (!profile?.id) return
-
-    const supabase = createClient()
-
-    const requestsChannel = supabase
-      .channel('requests-count')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'message_requests',
-        filter: `receiver_id=eq.${profile.id}`,
-      }, async () => {
-        const result = await getRequestsCount()
-        setPendingRequestsCount(result.count || 0)
-      })
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'group_invites',
-        filter: `invitee_id=eq.${profile.id}`,
-      }, async () => {
-        const result = await getRequestsCount()
-        setPendingRequestsCount(result.count || 0)
-      })
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(requestsChannel)
-    }
-  }, [profile?.id])
 
   useEffect(() => {
     async function loadChatsUnread() {
@@ -113,7 +73,6 @@ export default function MainLayout({ children }) {
   const navItems = [
     { href: '/chat', label: 'Chats', icon: '💬', badge: unreadChatsCount },
     { href: '/search', label: 'Search', icon: '🔍' },
-    { href: '/requests', label: 'Requests', icon: '📨', badge: pendingRequestsCount },
     { href: '/settings', label: 'Settings', icon: '⚙️' },
   ]
 
