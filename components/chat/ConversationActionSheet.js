@@ -23,9 +23,8 @@ function vibrate() {
 // isHidden switches this to the reduced menu used on /chat/hidden:
 // Unhide, Delete conversation, Block user (DM only) — mute/read-state/
 // group-management don't apply to a conversation that isn't in the
-// active list. onSelectMode (not offered in the isHidden menu) enters
-// bulk-select mode on the list with this conversation pre-selected.
-export default function ConversationActionSheet({ conversation, isMuted, isOpen, onClose, onChanged, isHidden = false, onSelectMode }) {
+// active list.
+export default function ConversationActionSheet({ conversation, isMuted, isOpen, onClose, onChanged, isHidden = false }) {
   const router = useRouter()
   const [mode, setMode] = useState('menu')
   const [confirmAction, setConfirmAction] = useState(null)
@@ -76,11 +75,6 @@ export default function ConversationActionSheet({ conversation, isMuted, isOpen,
     vibrate()
     await hideConversation(conversation.conversation_id)
     onChanged?.()
-    close()
-  }
-
-  const handleSelectMode = () => {
-    onSelectMode?.(conversation)
     close()
   }
 
@@ -182,9 +176,6 @@ export default function ConversationActionSheet({ conversation, isMuted, isOpen,
                 </button>
                 <button style={rowStyle} onClick={handleHide}>
                   🙈 Hide conversation
-                </button>
-                <button style={rowStyle} onClick={handleSelectMode}>
-                  ☑️ Select
                 </button>
 
                 {isGroup ? (

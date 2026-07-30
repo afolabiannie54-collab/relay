@@ -33,6 +33,7 @@ export default function ChatList({ onSelectConversation }) {
   const [requestsCount, setRequestsCount] = useState(0)
   const [hiddenCount, setHiddenCount] = useState(0)
   const [showNewConversation, setShowNewConversation] = useState(false)
+  const [showListMenu, setShowListMenu] = useState(false)
   const [bulkSelectMode, setBulkSelectMode] = useState(false)
   const [selectedConvIds, setSelectedConvIds] = useState(new Set())
   const [bulkConfirmAction, setBulkConfirmAction] = useState(null)
@@ -244,12 +245,6 @@ export default function ChatList({ onSelectConversation }) {
     setContextMenu({ conversation: conv, position: { x: e.clientX, y: e.clientY } })
   }
 
-  const handleMenuButtonClick = (conv) => (e) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setActionSheetConv(conv)
-  }
-
   const handleEnterBulkSelect = (conv) => {
     setBulkSelectMode(true)
     setSelectedConvIds(new Set(conv ? [conv.conversation_id] : []))
@@ -398,74 +393,140 @@ export default function ChatList({ onSelectConversation }) {
         </div>
       ) : (
       <div style={{
-        padding: '16px 20px',
+        padding: '12px 20px 16px',
         borderBottom: '1.5px solid #E5E5E5',
         background: '#fff',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
       }}>
-        <h1 style={{ fontSize: '20px', fontWeight: '800', color: '#0a0a0a' }}>Messages</h1>
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <button
-            onClick={() => router.push('/notifications')}
-            aria-label="Notifications"
-            style={{
-              position: 'relative',
-              width: '44px',
-              height: '44px',
-              border: '1.5px solid #0a0a0a',
-              borderRadius: '8px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '16px',
-              background: '#fff',
-              cursor: 'pointer',
-            }}
-          >
-            🔔
-            {unreadNotifCount > 0 && (
-              <div style={{
-                position: 'absolute',
-                top: '-4px',
-                right: '-4px',
-                minWidth: '16px',
-                height: '16px',
-                padding: '0 3px',
-                background: '#FFB800',
+        {/* Icon toolbar — its own row, not sharing space with the title,
+            so neither is cramped (matches WhatsApp's layout: a menu
+            button on one side and the action icons on the other, on a
+            row above the title). */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => setShowListMenu(v => !v)}
+              aria-label="Chat list options"
+              style={{
+                width: '44px',
+                height: '44px',
                 border: '1.5px solid #0a0a0a',
-                borderRadius: '100px',
+                borderRadius: '8px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '9px',
-                fontWeight: '800',
-              }}>
-                {unreadNotifCount > 99 ? '99+' : unreadNotifCount}
-              </div>
+                fontSize: '18px',
+                background: '#fff',
+                cursor: 'pointer',
+              }}
+            >
+              ⋯
+            </button>
+            {showListMenu && (
+              <>
+                <div
+                  onClick={() => setShowListMenu(false)}
+                  style={{ position: 'fixed', inset: 0, zIndex: 10 }}
+                />
+                <div style={{
+                  position: 'absolute',
+                  top: '50px',
+                  left: 0,
+                  minWidth: '170px',
+                  background: '#fff',
+                  border: '1.5px solid #0a0a0a',
+                  borderRadius: '10px',
+                  boxShadow: '4px 4px 0 #0a0a0a',
+                  zIndex: 11,
+                  padding: '6px 0',
+                }}>
+                  <button
+                    onClick={() => { setShowListMenu(false); handleEnterBulkSelect(null) }}
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      textAlign: 'left',
+                      padding: '10px 16px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      color: '#0a0a0a',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontFamily: 'inherit',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    ☑️ Select chats
+                  </button>
+                </div>
+              </>
             )}
-          </button>
-          <button
-            onClick={() => setShowNewConversation(true)}
-            aria-label="New conversation"
-            style={{
-              width: '44px',
-              height: '44px',
-              border: '1.5px solid #0a0a0a',
-              borderRadius: '8px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '20px',
-              fontWeight: '700',
-              background: '#fff',
-              cursor: 'pointer',
-            }}
-          >
-            +
-          </button>
+          </div>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <button
+              onClick={() => router.push('/notifications')}
+              aria-label="Notifications"
+              style={{
+                position: 'relative',
+                width: '44px',
+                height: '44px',
+                border: '1.5px solid #0a0a0a',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '16px',
+                background: '#fff',
+                cursor: 'pointer',
+              }}
+            >
+              🔔
+              {unreadNotifCount > 0 && (
+                <div style={{
+                  position: 'absolute',
+                  top: '-4px',
+                  right: '-4px',
+                  minWidth: '16px',
+                  height: '16px',
+                  padding: '0 3px',
+                  background: '#FFB800',
+                  border: '1.5px solid #0a0a0a',
+                  borderRadius: '100px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '9px',
+                  fontWeight: '800',
+                }}>
+                  {unreadNotifCount > 99 ? '99+' : unreadNotifCount}
+                </div>
+              )}
+            </button>
+            <button
+              onClick={() => setShowNewConversation(true)}
+              aria-label="New conversation"
+              style={{
+                width: '44px',
+                height: '44px',
+                border: '1.5px solid #0a0a0a',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '20px',
+                fontWeight: '700',
+                background: '#fff',
+                cursor: 'pointer',
+              }}
+            >
+              +
+            </button>
+          </div>
         </div>
+
+        {/* Title — its own row underneath, full width, no longer sharing
+            the line with the icons. */}
+        <h1 style={{ fontSize: '26px', fontWeight: '800', color: '#0a0a0a' }}>Messages</h1>
       </div>
       )}
 
@@ -604,7 +665,6 @@ export default function ChatList({ onSelectConversation }) {
                 onClick={handleRowClick(conv)}
               >
                 <div
-                  className="chat-tile"
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -625,7 +685,7 @@ export default function ChatList({ onSelectConversation }) {
                     onTouchEnd={handleRowTouchEnd}
                     onContextMenu={handleRowContextMenu(conv)}
                   >
-                  {bulkSelectMode ? (
+                  {bulkSelectMode && (
                     <div
                       aria-hidden="true"
                       style={{
@@ -645,27 +705,6 @@ export default function ChatList({ onSelectConversation }) {
                     >
                       {isSelected ? '✓' : ''}
                     </div>
-                  ) : (
-                    // Desktop-only: a checkbox that fades in on tile hover,
-                    // an alternate faster entry into bulk-select alongside
-                    // the ⋯ menu's "Select" option. Clicking it enters
-                    // select mode with this conversation pre-selected
-                    // instead of navigating.
-                    <button
-                      className="chat-tile-hover-checkbox"
-                      aria-label="Select conversation"
-                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEnterBulkSelect(conv) }}
-                      style={{
-                        width: '22px',
-                        height: '22px',
-                        borderRadius: '50%',
-                        border: '1.5px solid #0a0a0a',
-                        background: '#fff',
-                        cursor: 'pointer',
-                        flexShrink: 0,
-                        padding: 0,
-                      }}
-                    />
                   )}
                   <Avatar
                     src={avatarUrl}
@@ -732,28 +771,6 @@ export default function ChatList({ onSelectConversation }) {
                       )}
                     </div>
                   </div>
-                  {!bulkSelectMode && (
-                    <button
-                      className="chat-tile-menu-btn"
-                      onClick={handleMenuButtonClick(conv)}
-                      aria-label="Conversation options"
-                      style={{
-                        width: '44px',
-                        height: '44px',
-                        flexShrink: 0,
-                        background: 'none',
-                        border: 'none',
-                        fontSize: '18px',
-                        color: '#525252',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      ⋯
-                    </button>
-                  )}
                 </div>
               </ChatLink>
             )
@@ -864,7 +881,6 @@ export default function ChatList({ onSelectConversation }) {
         isOpen={!!actionSheetConv}
         onClose={() => setActionSheetConv(null)}
         onChanged={refreshConversations}
-        onSelectMode={handleEnterBulkSelect}
       />
 
       <ConversationContextMenu
@@ -873,7 +889,6 @@ export default function ChatList({ onSelectConversation }) {
         position={contextMenu?.position || null}
         onClose={() => setContextMenu(null)}
         onChanged={refreshConversations}
-        onSelectMode={handleEnterBulkSelect}
       />
 
       <ConfirmSheet
@@ -886,36 +901,6 @@ export default function ChatList({ onSelectConversation }) {
         onConfirm={handleBulkDelete}
       />
 
-      <style>{`
-        .chat-tile-menu-btn {
-          opacity: 0.4;
-        }
-        .chat-tile-hover-checkbox {
-          display: none;
-        }
-        @media (min-width: 769px) {
-          .chat-tile-menu-btn {
-            opacity: 0;
-            transition: opacity 0.12s;
-          }
-          .chat-tile:hover .chat-tile-menu-btn {
-            opacity: 0.5;
-          }
-          .chat-tile-menu-btn:hover,
-          .chat-tile-menu-btn:focus-visible {
-            opacity: 1;
-          }
-          .chat-tile-hover-checkbox {
-            display: block;
-            opacity: 0;
-            transition: opacity 0.12s;
-          }
-          .chat-tile:hover .chat-tile-hover-checkbox,
-          .chat-tile-hover-checkbox:focus-visible {
-            opacity: 1;
-          }
-        }
-      `}</style>
     </div>
   )
 }
