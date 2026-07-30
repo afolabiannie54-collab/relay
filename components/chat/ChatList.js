@@ -7,8 +7,9 @@ import ChatLink from '@/components/chat/ChatLink'
 import NewConversationSheet from '@/components/chat/NewConversationSheet'
 import ConversationActionSheet from '@/components/chat/ConversationActionSheet'
 import ConversationContextMenu from '@/components/chat/ConversationContextMenu'
-import { getConversations, getMessages, getHiddenConversationCount } from '@/actions/messages'
-import { getMutedConversationIds } from '@/actions/conversations'
+import ConfirmSheet from '@/components/shared/ConfirmSheet'
+import { getConversations, getMessages, getHiddenConversationCount, markConversationRead, hideConversation } from '@/actions/messages'
+import { getMutedConversationIds, muteConversation, deleteConversationForUser } from '@/actions/conversations'
 import { getUnreadCount as getUnreadNotificationCount, getRequestsCount } from '@/actions/notifications'
 import { createClient } from '@/lib/supabase/client'
 import { cache } from '@/lib/cache'
@@ -32,6 +33,10 @@ export default function ChatList({ onSelectConversation }) {
   const [requestsCount, setRequestsCount] = useState(0)
   const [hiddenCount, setHiddenCount] = useState(0)
   const [showNewConversation, setShowNewConversation] = useState(false)
+  const [bulkSelectMode, setBulkSelectMode] = useState(false)
+  const [selectedConvIds, setSelectedConvIds] = useState(new Set())
+  const [bulkConfirmAction, setBulkConfirmAction] = useState(null)
+  const [bulkActing, setBulkActing] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -171,6 +176,7 @@ export default function ChatList({ onSelectConversation }) {
   }
 
   const handleRowTouchStart = (conv) => (e) => {
+    if (bulkSelectMode) return
     const touch = e.touches[0]
     if (!touch) return
     longPressFiredRef.current = false
@@ -203,8 +209,14 @@ export default function ChatList({ onSelectConversation }) {
 
   // Suppresses the tile's own navigation when the touch that just ended
   // was a long press (which already opened the action sheet) rather than
-  // a tap.
+  // a tap. In bulk-select mode, a tap toggles the tile's selection
+  // instead of navigating.
   const handleRowClick = (conv) => (e) => {
+    if (bulkSelectMode) {
+      e.preventDefault()
+      toggleSelectConv(conv.conversation_id)
+      return
+    }
     if (longPressFiredRef.current) {
       e.preventDefault()
       longPressFiredRef.current = false
@@ -214,8 +226,69 @@ export default function ChatList({ onSelectConversation }) {
   }
 
   const handleRowContextMenu = (conv) => (e) => {
+    if (bulkSelectMode) return
     e.preventDefault()
     setContextMenu({ conversation: conv, position: { x: e.clientX, y: e.clientY } })
+  }
+
+  const handleMenuButtonClick = (conv) => (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setActionSheetConv(conv)
+  }
+
+  const handleEnterBulkSelect = (conv) => {
+    setBulkSelectMode(true)
+    setSelectedConvIds(new Set(conv ? [conv.conversation_id] : []))
+  }
+
+  const handleExitBulkSelect = () => {
+    setBulkSelectMode(false)
+    setSelectedConvIds(new Set())
+  }
+
+  const toggleSelectConv = (convId) => {
+    setSelectedConvIds(prev => {
+      const next = new Set(prev)
+      if (next.has(convId)) next.delete(convId)
+      else next.add(convId)
+      return next
+    })
+  }
+
+  const handleBulkMarkRead = async () => {
+    setBulkActing(true)
+    await Promise.all([...selectedConvIds].map(id => markConversationRead(id)))
+    await refreshConversations()
+    setBulkActing(false)
+    handleExitBulkSelect()
+  }
+
+  const handleBulkHide = async () => {
+    setBulkActing(true)
+    await Promise.all([...selectedConvIds].map(id => hideConversation(id)))
+    await refreshConversations()
+    setBulkActing(false)
+    handleExitBulkSelect()
+  }
+
+  const handleBulkMute = async () => {
+    setBulkActing(true)
+    await Promise.all([...selectedConvIds].map(id => muteConversation(id, null)))
+    cache.invalidate('muted-ids')
+    const mutedResult = await getMutedConversationIds()
+    if (mutedResult.data) setMutedIds(mutedResult.data)
+    setBulkActing(false)
+    handleExitBulkSelect()
+  }
+
+  const handleBulkDelete = async () => {
+    setBulkActing(true)
+    await Promise.all([...selectedConvIds].map(id => deleteConversationForUser(id)))
+    await refreshConversations()
+    setBulkActing(false)
+    setBulkConfirmAction(null)
+    handleExitBulkSelect()
   }
 
   const formatTime = (timestamp) => {
@@ -279,6 +352,38 @@ export default function ChatList({ onSelectConversation }) {
       fontFamily: "'Inter', -apple-system, sans-serif",
     }}>
       {/* Header */}
+      {bulkSelectMode ? (
+        <div style={{
+          padding: '16px 20px',
+          borderBottom: '1.5px solid #E5E5E5',
+          background: '#fff',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+        }}>
+          <button
+            onClick={handleExitBulkSelect}
+            aria-label="Exit select mode"
+            style={{
+              background: 'none',
+              border: 'none',
+              fontSize: '18px',
+              cursor: 'pointer',
+              padding: '4px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minWidth: '44px',
+              minHeight: '44px',
+            }}
+          >
+            ✕
+          </button>
+          <p style={{ fontSize: '16px', fontWeight: '800', color: '#0a0a0a' }}>
+            {selectedConvIds.size} selected
+          </p>
+        </div>
+      ) : (
       <div style={{
         padding: '16px 20px',
         borderBottom: '1.5px solid #E5E5E5',
@@ -349,27 +454,30 @@ export default function ChatList({ onSelectConversation }) {
           </button>
         </div>
       </div>
+      )}
 
       {/* Filter bar */}
-      <div style={{ padding: '10px 20px', borderBottom: '1px solid #F5F5F5', background: '#fff' }}>
-        <input
-          type="text"
-          value={filterQuery}
-          onChange={e => setFilterQuery(e.target.value)}
-          placeholder="Search conversations..."
-          style={{
-            width: '100%',
-            padding: '8px 12px',
-            border: '1px solid #E5E5E5',
-            borderRadius: '100px',
-            fontSize: '13px',
-            fontFamily: 'inherit',
-            outline: 'none',
-            background: '#F5F5F5',
-            boxSizing: 'border-box',
-          }}
-        />
-      </div>
+      {!bulkSelectMode && (
+        <div style={{ padding: '10px 20px', borderBottom: '1px solid #F5F5F5', background: '#fff' }}>
+          <input
+            type="text"
+            value={filterQuery}
+            onChange={e => setFilterQuery(e.target.value)}
+            placeholder="Search conversations..."
+            style={{
+              width: '100%',
+              padding: '8px 12px',
+              border: '1px solid #E5E5E5',
+              borderRadius: '100px',
+              fontSize: '13px',
+              fontFamily: 'inherit',
+              outline: 'none',
+              background: '#F5F5F5',
+              boxSizing: 'border-box',
+            }}
+          />
+        </div>
+      )}
 
       {/* Conversation list */}
       <div style={{
@@ -380,7 +488,7 @@ export default function ChatList({ onSelectConversation }) {
         overscrollBehaviorY: 'contain',
         WebkitOverflowScrolling: 'touch',
       }}>
-        {requestsCount > 0 && (
+        {!bulkSelectMode && requestsCount > 0 && (
           <div
             onClick={() => router.push('/requests')}
             style={{
@@ -473,6 +581,7 @@ export default function ChatList({ onSelectConversation }) {
             const displayName = isGroup ? conv.group_info?.name : otherUser?.display_name
             const avatarUrl = isGroup ? conv.group_info?.avatar_url : otherUser?.avatar_url
             const isMuted = mutedIds.includes(conv.conversation_id)
+            const isSelected = selectedConvIds.has(conv.conversation_id)
 
             return (
               <ChatLink
@@ -481,26 +590,70 @@ export default function ChatList({ onSelectConversation }) {
                 style={{ textDecoration: 'none' }}
                 onClick={handleRowClick(conv)}
               >
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  padding: '14px 20px',
-                  borderBottom: '1px solid #F5F5F5',
-                  cursor: 'pointer',
-                  background: '#fff',
-                  transition: 'background 0.1s',
-                }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.background = '#F9F9F9'
-                    prefetchConversation(conv.conversation_id)
+                <div
+                  className="chat-tile"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    padding: '14px 20px',
+                    borderBottom: '1px solid #F5F5F5',
+                    cursor: 'pointer',
+                    background: isSelected ? '#FFF8E1' : '#fff',
+                    transition: 'background 0.1s',
                   }}
-                  onMouseLeave={e => e.currentTarget.style.background = '#fff'}
-                  onTouchStart={(e) => { prefetchConversation(conv.conversation_id); handleRowTouchStart(conv)(e) }}
-                  onTouchMove={handleRowTouchMove}
-                  onTouchEnd={handleRowTouchEnd}
-                  onContextMenu={handleRowContextMenu(conv)}
-                >
+                    onMouseEnter={e => {
+                      if (!isSelected) e.currentTarget.style.background = '#F9F9F9'
+                      prefetchConversation(conv.conversation_id)
+                    }}
+                    onMouseLeave={e => { e.currentTarget.style.background = isSelected ? '#FFF8E1' : '#fff' }}
+                    onTouchStart={(e) => { prefetchConversation(conv.conversation_id); handleRowTouchStart(conv)(e) }}
+                    onTouchMove={handleRowTouchMove}
+                    onTouchEnd={handleRowTouchEnd}
+                    onContextMenu={handleRowContextMenu(conv)}
+                  >
+                  {bulkSelectMode ? (
+                    <div
+                      aria-hidden="true"
+                      style={{
+                        width: '22px',
+                        height: '22px',
+                        borderRadius: '50%',
+                        border: '1.5px solid #0a0a0a',
+                        background: isSelected ? '#0a0a0a' : '#fff',
+                        color: '#fff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '12px',
+                        fontWeight: '800',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {isSelected ? '✓' : ''}
+                    </div>
+                  ) : (
+                    // Desktop-only: a checkbox that fades in on tile hover,
+                    // an alternate faster entry into bulk-select alongside
+                    // the ⋯ menu's "Select" option. Clicking it enters
+                    // select mode with this conversation pre-selected
+                    // instead of navigating.
+                    <button
+                      className="chat-tile-hover-checkbox"
+                      aria-label="Select conversation"
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEnterBulkSelect(conv) }}
+                      style={{
+                        width: '22px',
+                        height: '22px',
+                        borderRadius: '50%',
+                        border: '1.5px solid #0a0a0a',
+                        background: '#fff',
+                        cursor: 'pointer',
+                        flexShrink: 0,
+                        padding: 0,
+                      }}
+                    />
+                  )}
                   <Avatar
                     src={avatarUrl}
                     name={displayName}
@@ -566,6 +719,28 @@ export default function ChatList({ onSelectConversation }) {
                       )}
                     </div>
                   </div>
+                  {!bulkSelectMode && (
+                    <button
+                      className="chat-tile-menu-btn"
+                      onClick={handleMenuButtonClick(conv)}
+                      aria-label="Conversation options"
+                      style={{
+                        width: '44px',
+                        height: '44px',
+                        flexShrink: 0,
+                        background: 'none',
+                        border: 'none',
+                        fontSize: '18px',
+                        color: '#525252',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      ⋯
+                    </button>
+                  )}
                 </div>
               </ChatLink>
             )
@@ -575,42 +750,87 @@ export default function ChatList({ onSelectConversation }) {
         {/* Always visible, unlike the conditional Message Requests row —
             hidden chats aren't a transient state to clear, they're a
             permanent shelf users should always be able to find. */}
-        <div
-          onClick={() => router.push('/chat/hidden')}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            padding: '14px 20px',
-            cursor: 'pointer',
-            background: '#fff',
-          }}
-          onMouseEnter={e => e.currentTarget.style.background = '#F9F9F9'}
-          onMouseLeave={e => e.currentTarget.style.background = '#fff'}
-        >
-          <div style={{
-            width: '44px',
-            height: '44px',
-            borderRadius: '50%',
-            background: '#F5F5F5',
-            border: '1.5px solid #0a0a0a',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '18px',
-            flexShrink: 0,
-          }}>
-            🔒
+        {!bulkSelectMode && (
+          <div
+            onClick={() => router.push('/chat/hidden')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              padding: '14px 20px',
+              cursor: 'pointer',
+              background: '#fff',
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = '#F9F9F9'}
+            onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+          >
+            <div style={{
+              width: '44px',
+              height: '44px',
+              borderRadius: '50%',
+              background: '#F5F5F5',
+              border: '1.5px solid #0a0a0a',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '18px',
+              flexShrink: 0,
+            }}>
+              🔒
+            </div>
+            <p style={{ flex: 1, fontSize: '14px', fontWeight: '600', color: '#525252' }}>
+              Hidden chats
+            </p>
+            {hiddenCount > 0 && (
+              <span style={{ fontSize: '13px', color: '#A3A3A3', fontWeight: '600' }}>
+                {hiddenCount > 99 ? '99+' : hiddenCount}
+              </span>
+            )}
           </div>
-          <p style={{ flex: 1, fontSize: '14px', fontWeight: '600', color: '#525252' }}>
-            Hidden chats
-          </p>
-          {hiddenCount > 0 && (
-            <span style={{ fontSize: '13px', color: '#A3A3A3', fontWeight: '600' }}>
-              {hiddenCount > 99 ? '99+' : hiddenCount}
-            </span>
-          )}
-        </div>
+        )}
+
+        {bulkSelectMode && (
+          <div
+            className="bulk-action-bar"
+            style={{
+              position: 'sticky',
+              bottom: 0,
+              display: 'flex',
+              borderTop: '1.5px solid #0a0a0a',
+              background: '#fff',
+              zIndex: 5,
+            }}
+          >
+            <button
+              onClick={handleBulkMarkRead}
+              disabled={selectedConvIds.size === 0 || bulkActing}
+              style={bulkActionBtnStyle(selectedConvIds.size === 0 || bulkActing)}
+            >
+              ✓ Read
+            </button>
+            <button
+              onClick={handleBulkMute}
+              disabled={selectedConvIds.size === 0 || bulkActing}
+              style={bulkActionBtnStyle(selectedConvIds.size === 0 || bulkActing)}
+            >
+              🔕 Mute
+            </button>
+            <button
+              onClick={handleBulkHide}
+              disabled={selectedConvIds.size === 0 || bulkActing}
+              style={bulkActionBtnStyle(selectedConvIds.size === 0 || bulkActing)}
+            >
+              🙈 Hide
+            </button>
+            <button
+              onClick={() => setBulkConfirmAction('delete')}
+              disabled={selectedConvIds.size === 0 || bulkActing}
+              style={{ ...bulkActionBtnStyle(selectedConvIds.size === 0 || bulkActing), color: '#EF4444', borderRight: 'none' }}
+            >
+              🗑️ Delete
+            </button>
+          </div>
+        )}
       </div>
 
       <NewConversationSheet isOpen={showNewConversation} onClose={() => setShowNewConversation(false)} />
@@ -621,6 +841,7 @@ export default function ChatList({ onSelectConversation }) {
         isOpen={!!actionSheetConv}
         onClose={() => setActionSheetConv(null)}
         onChanged={refreshConversations}
+        onSelectMode={handleEnterBulkSelect}
       />
 
       <ConversationContextMenu
@@ -629,7 +850,64 @@ export default function ChatList({ onSelectConversation }) {
         position={contextMenu?.position || null}
         onClose={() => setContextMenu(null)}
         onChanged={refreshConversations}
+        onSelectMode={handleEnterBulkSelect}
       />
+
+      <ConfirmSheet
+        isOpen={bulkConfirmAction === 'delete'}
+        onClose={() => setBulkConfirmAction(null)}
+        title={`Delete ${selectedConvIds.size} conversation${selectedConvIds.size === 1 ? '' : 's'}?`}
+        message="This removes them from your list permanently. The other participants' copies are not affected."
+        confirmLabel="Delete"
+        confirmStyle="danger"
+        onConfirm={handleBulkDelete}
+      />
+
+      <style>{`
+        .chat-tile-menu-btn {
+          opacity: 0.4;
+        }
+        .chat-tile-hover-checkbox {
+          display: none;
+        }
+        @media (min-width: 769px) {
+          .chat-tile-menu-btn {
+            opacity: 0;
+            transition: opacity 0.12s;
+          }
+          .chat-tile:hover .chat-tile-menu-btn {
+            opacity: 0.5;
+          }
+          .chat-tile-menu-btn:hover,
+          .chat-tile-menu-btn:focus-visible {
+            opacity: 1;
+          }
+          .chat-tile-hover-checkbox {
+            display: block;
+            opacity: 0;
+            transition: opacity 0.12s;
+          }
+          .chat-tile:hover .chat-tile-hover-checkbox,
+          .chat-tile-hover-checkbox:focus-visible {
+            opacity: 1;
+          }
+        }
+      `}</style>
     </div>
   )
+}
+
+function bulkActionBtnStyle(disabled) {
+  return {
+    flex: 1,
+    padding: '14px 8px',
+    background: 'none',
+    border: 'none',
+    borderRight: '1px solid #F5F5F5',
+    fontSize: '13px',
+    fontWeight: '600',
+    color: disabled ? '#D4D4D4' : '#0a0a0a',
+    cursor: disabled ? 'not-allowed' : 'pointer',
+    fontFamily: 'inherit',
+  }
 }

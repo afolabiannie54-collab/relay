@@ -15,8 +15,9 @@ import { searchUsers } from '@/actions/users'
 // is {x, y} in viewport coordinates (from the contextmenu event) or null
 // to stay closed. isHidden mirrors ConversationActionSheet's reduced
 // menu for /chat/hidden: Unhide, Delete conversation, Block user (DM
-// only).
-export default function ConversationContextMenu({ conversation, isMuted, position, onClose, onChanged, isHidden = false }) {
+// only). onSelectMode (not offered in the isHidden menu) enters
+// bulk-select mode on the list with this conversation pre-selected.
+export default function ConversationContextMenu({ conversation, isMuted, position, onClose, onChanged, isHidden = false, onSelectMode }) {
   const [mounted, setMounted] = useState(false)
   const [showAddMember, setShowAddMember] = useState(false)
   const [confirmAction, setConfirmAction] = useState(null)
@@ -59,6 +60,11 @@ export default function ConversationContextMenu({ conversation, isMuted, positio
   const handleHide = async () => {
     await hideConversation(conversation.conversation_id)
     onChanged?.()
+    onClose?.()
+  }
+
+  const handleSelectMode = () => {
+    onSelectMode?.(conversation)
     onClose?.()
   }
 
@@ -158,6 +164,7 @@ export default function ConversationContextMenu({ conversation, isMuted, positio
             <button style={rowStyle} onClick={handleToggleMute}>{isMuted ? '🔔 Unmute' : '🔕 Mute'}</button>
             <button style={rowStyle} onClick={handleToggleRead}>{isUnread ? '✓ Mark as read' : '● Mark as unread'}</button>
             <button style={rowStyle} onClick={handleHide}>🙈 Hide conversation</button>
+            <button style={rowStyle} onClick={handleSelectMode}>☑️ Select</button>
             {isGroup ? (
               <>
                 {canManageGroup && (
