@@ -43,8 +43,13 @@ export default function ChatLayout({ children }) {
   // hierarchy, there is nowhere to swipe back to from it. A mostly-
   // vertical drag (normal message-list scrolling) is rejected by the
   // deltaX-vs-deltaY comparison, so this doesn't fight with scrolling.
+  // Touches starting on a message bubble are ignored entirely — that's
+  // swipe-to-reply's territory (chat/[id]/page.js), not nav-back's, and
+  // the two gestures start identically (a rightward drag) so this has
+  // to be decided before either one starts tracking.
   const handleTouchStart = (e) => {
     if (pathname === '/chat') return
+    if (e.target.closest?.('.message-bubble')) return
     const touch = e.touches[0]
     if (!touch) return
     touchStartRef.current = { x: touch.clientX, y: touch.clientY }

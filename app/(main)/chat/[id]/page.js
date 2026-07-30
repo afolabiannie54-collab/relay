@@ -216,7 +216,7 @@ export default function ConversationPage() {
   }, [])
 
   const handleScrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
     setNewMessageCount(0)
   }
 
@@ -566,6 +566,10 @@ export default function ConversationPage() {
     }
 
     if (dx > 0 && dx > Math.abs(dy)) {
+      // This is a reply swipe, not a nav-back swipe — stop it here so
+      // chat/layout.js's swipe-to-go-back handler (attached higher up
+      // the tree, on the same touch sequence) never sees it.
+      e.stopPropagation()
       setSwipeDx(Math.min(dx, 80))
       if (dx > 40 && !swipeTriggeredRef.current) {
         swipeTriggeredRef.current = true
@@ -1038,6 +1042,7 @@ export default function ConversationPage() {
                       </div>
                     ) : (
                       <div
+                        className="message-bubble"
                         style={{ position: 'relative' }}
                         onTouchStart={isDeleted || selectMode ? undefined : handleMessageTouchStart(msg)}
                         onTouchMove={isDeleted || selectMode ? undefined : handleMessageTouchMove(msg)}
@@ -1185,8 +1190,8 @@ export default function ConversationPage() {
             position: 'fixed',
             right: '20px',
             bottom: '96px',
-            width: '40px',
-            height: '40px',
+            width: '44px',
+            height: '44px',
             borderRadius: '50%',
             background: '#0a0a0a',
             border: 'none',

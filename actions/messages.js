@@ -548,6 +548,21 @@ export async function getHiddenConversations() {
   return { data: data || [] }
 }
 
+export async function getHiddenConversationCount() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) return { count: 0 }
+
+  const { count, error } = await supabase
+    .from('conversation_hidden')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', user.id)
+
+  if (error) return { count: 0 }
+  return { count: count || 0 }
+}
+
 export async function getExistingConversation(otherUserId) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

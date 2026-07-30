@@ -7,7 +7,7 @@ import ChatLink from '@/components/chat/ChatLink'
 import NewConversationSheet from '@/components/chat/NewConversationSheet'
 import ConversationActionSheet from '@/components/chat/ConversationActionSheet'
 import ConversationContextMenu from '@/components/chat/ConversationContextMenu'
-import { getConversations, getMessages } from '@/actions/messages'
+import { getConversations, getMessages, getHiddenConversationCount } from '@/actions/messages'
 import { getMutedConversationIds } from '@/actions/conversations'
 import { getUnreadCount as getUnreadNotificationCount, getRequestsCount } from '@/actions/notifications'
 import { createClient } from '@/lib/supabase/client'
@@ -30,6 +30,7 @@ export default function ChatList({ onSelectConversation }) {
   const longPressFiredRef = useRef(false)
   const [unreadNotifCount, setUnreadNotifCount] = useState(0)
   const [requestsCount, setRequestsCount] = useState(0)
+  const [hiddenCount, setHiddenCount] = useState(0)
   const [showNewConversation, setShowNewConversation] = useState(false)
 
   useEffect(() => {
@@ -50,12 +51,13 @@ export default function ChatList({ onSelectConversation }) {
 
       const supabase = createClient()
 
-      const [userResult, convsResult, mutedResult, notifResult, requestsResult] = await Promise.all([
+      const [userResult, convsResult, mutedResult, notifResult, requestsResult, hiddenResult] = await Promise.all([
         supabase.auth.getUser(),
         getConversations(),
         cachedMuted ? Promise.resolve({ data: cachedMuted }) : getMutedConversationIds(),
         getUnreadNotificationCount(),
         getRequestsCount(),
+        getHiddenConversationCount(),
       ])
 
       if (userResult.data.user) setUserId(userResult.data.user.id)
@@ -70,6 +72,7 @@ export default function ChatList({ onSelectConversation }) {
       }
       setUnreadNotifCount(notifResult.count || 0)
       setRequestsCount(requestsResult.count || 0)
+      setHiddenCount(hiddenResult.count || 0)
       setLoading(false)
     }
     load()
@@ -144,6 +147,15 @@ export default function ChatList({ onSelectConversation }) {
       }, async () => {
         const result = await getRequestsCount()
         setRequestsCount(result.count || 0)
+      })
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'conversation_hidden',
+        filter: `user_id=eq.${userId}`,
+      }, async () => {
+        const result = await getHiddenConversationCount()
+        setHiddenCount(result.count || 0)
       })
       .subscribe()
 
@@ -559,6 +571,46 @@ export default function ChatList({ onSelectConversation }) {
             )
           })
         )}
+
+        {/* Always visible, unlike the conditional Message Requests row —
+            hidden chats aren't a transient state to clear, they're a
+            permanent shelf users should always be able to find. */}
+        <div
+          onClick={() => router.push('/chat/hidden')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            padding: '14px 20px',
+            cursor: 'pointer',
+            background: '#fff',
+          }}
+          onMouseEnter={e => e.currentTarget.style.background = '#F9F9F9'}
+          onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+        >
+          <div style={{
+            width: '44px',
+            height: '44px',
+            borderRadius: '50%',
+            background: '#F5F5F5',
+            border: '1.5px solid #0a0a0a',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '18px',
+            flexShrink: 0,
+          }}>
+            🔒
+          </div>
+          <p style={{ flex: 1, fontSize: '14px', fontWeight: '600', color: '#525252' }}>
+            Hidden chats
+          </p>
+          {hiddenCount > 0 && (
+            <span style={{ fontSize: '13px', color: '#A3A3A3', fontWeight: '600' }}>
+              {hiddenCount > 99 ? '99+' : hiddenCount}
+            </span>
+          )}
+        </div>
       </div>
 
       <NewConversationSheet isOpen={showNewConversation} onClose={() => setShowNewConversation(false)} />
