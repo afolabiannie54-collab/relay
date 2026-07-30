@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { sendMessageRequest, getExistingConversation } from '@/actions/messages'
+import { cache } from '@/lib/cache'
 
 const MESSAGE_MAX = 2000
 
@@ -19,8 +20,22 @@ export default function MessageButton({ receiverId, displayName }) {
   const router = useRouter()
 
   useEffect(() => {
+    // Cached as the resolved conversationId, or `false` for "checked, no
+    // DM exists" — distinct from `null` (never checked) — so a repeat
+    // visit to this profile resolves instantly instead of visibly
+    // flashing "Send message" before switching to "Open chat".
+    const cacheKey = `existing-dm:${receiverId}`
+    const cached = cache.get(cacheKey)
+    if (cached !== null) {
+      setExistingConvId(cached || null)
+      setChecking(false)
+      return
+    }
+
+    setChecking(true)
     async function check() {
       const result = await getExistingConversation(receiverId)
+      cache.set(cacheKey, result.conversationId || false, 30000)
       if (result.conversationId) {
         setExistingConvId(result.conversationId)
       }
@@ -50,7 +65,27 @@ export default function MessageButton({ receiverId, displayName }) {
     router.push(`/chat/${result.conversationId}`)
   }
 
-  if (checking) return null
+  if (checking) {
+    return (
+      <button
+        disabled
+        style={{
+          padding: '10px 20px',
+          background: '#525252',
+          color: '#fff',
+          border: '1.5px solid #0a0a0a',
+          borderRadius: '8px',
+          fontSize: '14px',
+          fontWeight: '600',
+          cursor: 'not-allowed',
+          fontFamily: 'inherit',
+          opacity: 0.6,
+        }}
+      >
+        ···
+      </button>
+    )
+  }
 
   if (existingConvId) {
     return (

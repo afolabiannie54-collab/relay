@@ -7,6 +7,7 @@ import Avatar from '@/components/shared/Avatar'
 import { getConversations, getExistingConversation } from '@/actions/messages'
 import { createGroup, uploadGroupAvatar } from '@/actions/groups'
 import { searchUsers } from '@/actions/users'
+import { cache } from '@/lib/cache'
 
 const GROUP_NAME_MAX = 50
 const GROUP_DESCRIPTION_MAX = 200
@@ -90,11 +91,25 @@ export default function NewConversationSheet({ isOpen, onClose }) {
       toggleMember(user)
       return
     }
-    setOpening(true)
-    const existing = await getExistingConversation(user.id)
-    setOpening(false)
-    if (existing.conversationId) {
-      router.push(`/chat/${existing.conversationId}`)
+
+    // Cached as the resolved conversationId, or `false` for "checked, no
+    // DM exists" — distinct from `null` (never checked) — so tapping the
+    // same recent contact twice doesn't redo the round trip.
+    const cacheKey = `existing-dm:${user.id}`
+    const cached = cache.get(cacheKey)
+    let conversationId
+    if (cached !== null) {
+      conversationId = cached || null
+    } else {
+      setOpening(true)
+      const existing = await getExistingConversation(user.id)
+      setOpening(false)
+      conversationId = existing.conversationId || null
+      cache.set(cacheKey, conversationId || false, 30000)
+    }
+
+    if (conversationId) {
+      router.push(`/chat/${conversationId}`)
     } else {
       router.push(`/u/${user.username}`)
     }

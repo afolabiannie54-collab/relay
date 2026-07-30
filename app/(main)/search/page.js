@@ -9,6 +9,7 @@ import ConfirmSheet from '@/components/shared/ConfirmSheet'
 import { searchUsers } from '@/actions/users'
 import { getExistingConversation } from '@/actions/messages'
 import { blockUser } from '@/actions/blocks'
+import { cache } from '@/lib/cache'
 
 export default function SearchPage() {
   const [query, setQuery] = useState('')
@@ -18,6 +19,7 @@ export default function SearchPage() {
   const [error, setError] = useState(null)
   const [menuUser, setMenuUser] = useState(null)
   const [menuConvId, setMenuConvId] = useState(null)
+  const [checkingConv, setCheckingConv] = useState(false)
   const [blockTarget, setBlockTarget] = useState(null)
   const searchTimeout = useRef(null)
   const router = useRouter()
@@ -51,14 +53,31 @@ export default function SearchPage() {
 
   const openMenu = async (user) => {
     setMenuUser(user)
+
+    // Cached as the resolved conversationId, or `false` for "checked,
+    // no DM exists" — distinct from `null`, which means never checked.
+    // Avoids the Open-chat/Send-request label ever flashing the wrong
+    // one before flipping to the right one on repeat opens.
+    const cacheKey = `existing-dm:${user.id}`
+    const cached = cache.get(cacheKey)
+    if (cached !== null) {
+      setMenuConvId(cached || null)
+      setCheckingConv(false)
+      return
+    }
+
     setMenuConvId(null)
+    setCheckingConv(true)
     const result = await getExistingConversation(user.id)
+    cache.set(cacheKey, result.conversationId || false, 30000)
     setMenuConvId(result.conversationId || null)
+    setCheckingConv(false)
   }
 
   const closeMenu = () => {
     setMenuUser(null)
     setMenuConvId(null)
+    setCheckingConv(false)
   }
 
   const handleOpenOrRequest = () => {
@@ -291,8 +310,12 @@ export default function SearchPage() {
             </div>
           </div>
           <div style={{ padding: '8px 0' }}>
-            <button style={menuRowStyle} onClick={handleOpenOrRequest}>
-              {menuConvId ? '💬 Open chat' : '✉️ Send message request'}
+            <button
+              style={{ ...menuRowStyle, opacity: checkingConv ? 0.5 : 1 }}
+              onClick={handleOpenOrRequest}
+              disabled={checkingConv}
+            >
+              {checkingConv ? '···' : menuConvId ? '💬 Open chat' : '✉️ Send message request'}
             </button>
             <button style={menuRowStyle} onClick={handleViewProfile}>👤 View profile</button>
             <button style={menuRowStyle} onClick={handleShareProfile}>🔗 Share profile</button>
