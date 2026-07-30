@@ -263,6 +263,11 @@ export default function GroupSettingsPage() {
                   maxLength={GROUP_NAME_MAX}
                   style={{ width: '100%', padding: '10px 12px', border: '1.5px solid #E5E5E5', borderRadius: '8px', fontSize: '16px', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
                 />
+                {formData.name.length >= GROUP_NAME_MAX * 0.8 && (
+                  <p style={{ fontSize: '11px', color: formData.name.length >= GROUP_NAME_MAX ? '#EF4444' : '#A3A3A3', textAlign: 'right', marginTop: '4px' }}>
+                    {formData.name.length}/{GROUP_NAME_MAX}
+                  </p>
+                )}
               </div>
               <div>
                 <label style={{ fontSize: '13px', fontWeight: '600', display: 'block', marginBottom: '6px' }}>Description</label>
@@ -274,6 +279,11 @@ export default function GroupSettingsPage() {
                   maxLength={GROUP_DESCRIPTION_MAX}
                   style={{ width: '100%', padding: '10px 12px', border: '1.5px solid #E5E5E5', borderRadius: '8px', fontSize: '16px', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
                 />
+                {formData.description.length >= GROUP_DESCRIPTION_MAX * 0.8 && (
+                  <p style={{ fontSize: '11px', color: formData.description.length >= GROUP_DESCRIPTION_MAX ? '#EF4444' : '#A3A3A3', textAlign: 'right', marginTop: '4px' }}>
+                    {formData.description.length}/{GROUP_DESCRIPTION_MAX}
+                  </p>
+                )}
               </div>
               {isDirty && (
                 <button

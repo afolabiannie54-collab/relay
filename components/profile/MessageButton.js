@@ -107,10 +107,20 @@ export default function MessageButton({ receiverId, displayName }) {
             outline: 'none',
             resize: 'none',
             lineHeight: '1.5',
-            marginBottom: '10px',
+            marginBottom: '4px',
             boxSizing: 'border-box',
           }}
         />
+        {message.length >= MESSAGE_MAX * 0.8 && (
+          <p style={{
+            fontSize: '11px',
+            color: message.length >= MESSAGE_MAX ? '#EF4444' : '#A3A3A3',
+            textAlign: 'right',
+            marginBottom: '6px',
+          }}>
+            {message.length}/{MESSAGE_MAX}
+          </p>
+        )}
         <div style={{ display: 'flex', gap: '10px' }}>
           <button
             onClick={handleSend}

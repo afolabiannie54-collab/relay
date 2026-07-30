@@ -986,6 +986,7 @@ export default function ConversationPage() {
                             if (e.key === 'Enter') handleEdit(msg.id)
                             if (e.key === 'Escape') { setEditingId(null); setEditContent('') }
                           }}
+                          maxLength={2000}
                           autoFocus
                           style={{
                             flex: 1,
@@ -1544,12 +1545,20 @@ export default function ConversationPage() {
         padding: '12px 16px',
         paddingBottom: 'calc(12px + env(safe-area-inset-bottom))',
         borderTop: '1.5px solid #E5E5E5',
-        display: 'flex',
-        gap: '10px',
-        alignItems: 'flex-end',
         background: '#fff',
         flexShrink: 0,
       }}>
+        {content.length >= 1600 && (
+          <p style={{
+            fontSize: '11px',
+            color: content.length >= 2000 ? '#EF4444' : '#A3A3A3',
+            textAlign: 'right',
+            marginBottom: '4px',
+          }}>
+            {content.length}/2000
+          </p>
+        )}
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
         <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
           <input
             type="file"
@@ -1647,6 +1656,7 @@ export default function ConversationPage() {
           onKeyDown={handleKeyDown}
           placeholder="Message..."
           rows={1}
+          maxLength={2000}
           style={{
             flex: 1,
             padding: '10px 14px',
@@ -1689,6 +1699,7 @@ export default function ConversationPage() {
         >
           →
         </button>
+        </div>
       </div>
       )}
 

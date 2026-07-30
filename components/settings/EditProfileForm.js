@@ -144,6 +144,22 @@ export default function EditProfileForm({ initialProfile }) {
     setSavingUsername(false)
   }
 
+  // Shown once a field is within 20% of its max length, so it stays out
+  // of the way until it's actually relevant.
+  const CharCount = ({ value, max }) => {
+    if (value.length < max * 0.8) return null
+    return (
+      <p style={{
+        fontSize: '11px',
+        color: value.length >= max ? '#EF4444' : '#A3A3A3',
+        textAlign: 'right',
+        marginTop: '4px',
+      }}>
+        {value.length}/{max}
+      </p>
+    )
+  }
+
   const inputStyle = {
     width: '100%',
     padding: '12px 14px',
@@ -299,10 +315,12 @@ export default function EditProfileForm({ initialProfile }) {
                 type="text"
                 value={formData.display_name}
                 onChange={handleChange}
+                maxLength={50}
                 style={inputStyle}
                 onFocus={e => e.target.style.borderColor = '#0a0a0a'}
                 onBlur={e => e.target.style.borderColor = '#e5e5e5'}
               />
+              <CharCount value={formData.display_name} max={50} />
             </div>
 
             <div>
@@ -315,6 +333,7 @@ export default function EditProfileForm({ initialProfile }) {
                 onChange={handleChange}
                 placeholder="Tell people a little about yourself..."
                 rows={3}
+                maxLength={160}
                 style={{
                   ...inputStyle,
                   resize: 'vertical',
@@ -323,6 +342,7 @@ export default function EditProfileForm({ initialProfile }) {
                 onFocus={e => e.target.style.borderColor = '#0a0a0a'}
                 onBlur={e => e.target.style.borderColor = '#e5e5e5'}
               />
+              <CharCount value={formData.bio} max={160} />
             </div>
 
             <div>
@@ -330,50 +350,62 @@ export default function EditProfileForm({ initialProfile }) {
                 Social links
               </label>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <input
-                  name="website"
-                  type="text"
-                  value={formData.website}
-                  onChange={handleChange}
-                  placeholder="https://yoursite.com"
-                  maxLength={100}
-                  style={inputStyle}
-                  onFocus={e => e.target.style.borderColor = '#0a0a0a'}
-                  onBlur={e => e.target.style.borderColor = '#e5e5e5'}
-                />
-                <input
-                  name="twitter"
-                  type="text"
-                  value={formData.twitter}
-                  onChange={handleChange}
-                  placeholder="@username (Twitter/X)"
-                  maxLength={100}
-                  style={inputStyle}
-                  onFocus={e => e.target.style.borderColor = '#0a0a0a'}
-                  onBlur={e => e.target.style.borderColor = '#e5e5e5'}
-                />
-                <input
-                  name="instagram"
-                  type="text"
-                  value={formData.instagram}
-                  onChange={handleChange}
-                  placeholder="@username (Instagram)"
-                  maxLength={100}
-                  style={inputStyle}
-                  onFocus={e => e.target.style.borderColor = '#0a0a0a'}
-                  onBlur={e => e.target.style.borderColor = '#e5e5e5'}
-                />
-                <input
-                  name="linkedin"
-                  type="text"
-                  value={formData.linkedin}
-                  onChange={handleChange}
-                  placeholder="linkedin.com/in/username"
-                  maxLength={100}
-                  style={inputStyle}
-                  onFocus={e => e.target.style.borderColor = '#0a0a0a'}
-                  onBlur={e => e.target.style.borderColor = '#e5e5e5'}
-                />
+                <div>
+                  <input
+                    name="website"
+                    type="text"
+                    value={formData.website}
+                    onChange={handleChange}
+                    placeholder="https://yoursite.com"
+                    maxLength={100}
+                    style={inputStyle}
+                    onFocus={e => e.target.style.borderColor = '#0a0a0a'}
+                    onBlur={e => e.target.style.borderColor = '#e5e5e5'}
+                  />
+                  <CharCount value={formData.website} max={100} />
+                </div>
+                <div>
+                  <input
+                    name="twitter"
+                    type="text"
+                    value={formData.twitter}
+                    onChange={handleChange}
+                    placeholder="@username (Twitter/X)"
+                    maxLength={100}
+                    style={inputStyle}
+                    onFocus={e => e.target.style.borderColor = '#0a0a0a'}
+                    onBlur={e => e.target.style.borderColor = '#e5e5e5'}
+                  />
+                  <CharCount value={formData.twitter} max={100} />
+                </div>
+                <div>
+                  <input
+                    name="instagram"
+                    type="text"
+                    value={formData.instagram}
+                    onChange={handleChange}
+                    placeholder="@username (Instagram)"
+                    maxLength={100}
+                    style={inputStyle}
+                    onFocus={e => e.target.style.borderColor = '#0a0a0a'}
+                    onBlur={e => e.target.style.borderColor = '#e5e5e5'}
+                  />
+                  <CharCount value={formData.instagram} max={100} />
+                </div>
+                <div>
+                  <input
+                    name="linkedin"
+                    type="text"
+                    value={formData.linkedin}
+                    onChange={handleChange}
+                    placeholder="linkedin.com/in/username"
+                    maxLength={100}
+                    style={inputStyle}
+                    onFocus={e => e.target.style.borderColor = '#0a0a0a'}
+                    onBlur={e => e.target.style.borderColor = '#e5e5e5'}
+                  />
+                  <CharCount value={formData.linkedin} max={100} />
+                </div>
               </div>
             </div>
 
@@ -449,11 +481,13 @@ export default function EditProfileForm({ initialProfile }) {
                   value={newUsername}
                   onChange={handleUsernameChange}
                   placeholder={profile?.username}
+                  maxLength={20}
                   style={{ ...inputStyle, paddingLeft: '28px' }}
                   onFocus={e => e.target.style.borderColor = '#0a0a0a'}
                   onBlur={e => e.target.style.borderColor = '#e5e5e5'}
                 />
               </div>
+              <CharCount value={newUsername} max={20} />
 
               {usernameState === 'checking' && (
                 <p style={{ fontSize: '12px', color: '#A3A3A3' }}>Checking availability...</p>
