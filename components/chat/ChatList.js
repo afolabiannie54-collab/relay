@@ -38,6 +38,19 @@ export default function ChatList({ onSelectConversation }) {
   const [bulkConfirmAction, setBulkConfirmAction] = useState(null)
   const [bulkActing, setBulkActing] = useState(false)
 
+  // Tells app/(main)/layout.js to hide the bottom tab bar while this is
+  // active — WhatsApp replaces its tab bar with the bulk-action bar
+  // rather than showing both at once, and the two components are too
+  // far apart in the tree to share this via props alone. The cleanup
+  // fires false on unmount so navigating away mid-select doesn't leave
+  // the tab bar permanently hidden.
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('relay:bulk-select-mode', { detail: { active: bulkSelectMode } }))
+    return () => {
+      window.dispatchEvent(new CustomEvent('relay:bulk-select-mode', { detail: { active: false } }))
+    }
+  }, [bulkSelectMode])
+
   useEffect(() => {
     async function load() {
       // Paint cached data immediately — no spinner for a list we've

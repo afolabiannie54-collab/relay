@@ -20,6 +20,7 @@ export default function MainLayout({ children }) {
   // avoid its own first-paint flash on a warm session.
   const [profile, setProfile] = useState(() => cache.peek('profile'))
   const [unreadChatsCount, setUnreadChatsCount] = useState(0)
+  const [bulkSelectActive, setBulkSelectActive] = useState(false)
 
   usePushNotifications(profile?.id)
 
@@ -77,6 +78,17 @@ export default function MainLayout({ children }) {
       supabase.removeChannel(channel)
     }
   }, [profile?.id])
+
+  // ChatList (several layers down: this layout -> chat/layout.js's shell
+  // -> ChatList) dispatches this whenever bulk-select mode toggles, so
+  // the bottom tab bar can hide in favor of the bulk-action bar — same
+  // WhatsApp-style behavior as swapping the tab bar for a contextual
+  // action bar, rather than showing both stacked on top of each other.
+  useEffect(() => {
+    const handleBulkSelect = (e) => setBulkSelectActive(!!e.detail?.active)
+    window.addEventListener('relay:bulk-select-mode', handleBulkSelect)
+    return () => window.removeEventListener('relay:bulk-select-mode', handleBulkSelect)
+  }, [])
 
   const navItems = [
     { href: '/chat', label: 'Chats', icon: '💬', badge: unreadChatsCount },
@@ -244,7 +256,7 @@ export default function MainLayout({ children }) {
 
         {/* Mobile bottom nav */}
         <div
-          className={isConversationPage ? 'mobile-nav hide-mobile-nav' : 'mobile-nav'}
+          className={(isConversationPage || bulkSelectActive) ? 'mobile-nav hide-mobile-nav' : 'mobile-nav'}
           style={{
             display: 'none',
             borderTop: '1.5px solid #0a0a0a',
