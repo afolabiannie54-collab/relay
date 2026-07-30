@@ -104,7 +104,7 @@ export default function MessageActionSheet({
           {isOwn && (
             <button style={{ ...rowStyle, color: '#EF4444' }} onClick={() => { onDelete?.(); onClose?.() }}>🗑️ Delete</button>
           )}
-          <button style={rowStyle} onClick={() => { onSelect?.(); onClose?.() }}>☑️ Select</button>
+          <button style={rowStyle} onClick={() => { onSelect?.(); onClose?.() }}>☑️ Select messages</button>
           <div style={{ borderTop: '1px solid #E5E5E5', margin: '4px 0' }} />
           <button style={{ ...rowStyle, color: '#A3A3A3' }} onClick={onClose}>Cancel</button>
         </div>
