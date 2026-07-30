@@ -9,7 +9,6 @@ import { PresenceProvider } from '@/lib/presence-context'
 import { getUnreadChatsCount } from '@/actions/messages'
 import { createClient } from '@/lib/supabase/client'
 import { usePushNotifications } from '@/hooks/usePushNotifications'
-import { signOut } from '@/actions/auth'
 
 export default function MainLayout({ children }) {
   const pathname = usePathname()
@@ -75,11 +74,6 @@ export default function MainLayout({ children }) {
     { href: '/search', label: 'Search', icon: '🔍' },
     { href: '/settings', label: 'Settings', icon: '⚙️' },
   ]
-
-  const handleSignOut = async () => {
-    await signOut()
-    window.location.href = '/login'
-  }
 
   const isActive = (href) => {
     if (href === '/chat') return pathname === '/chat' || pathname.startsWith('/chat/')
@@ -182,7 +176,7 @@ export default function MainLayout({ children }) {
           ))}
         </nav>
 
-        {/* Profile at bottom */}
+        {/* Profile at bottom — sign out lives in Settings > Security now */}
         <div style={{
           padding: '16px',
           borderTop: '1.5px solid #E5E5E5',
@@ -220,28 +214,6 @@ export default function MainLayout({ children }) {
               </div>
             </div>
           </Link>
-          <button
-            onClick={handleSignOut}
-            style={{
-              width: '100%',
-              padding: '8px 12px',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '13px',
-              color: '#A3A3A3',
-              fontFamily: 'inherit',
-              textAlign: 'left',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              borderTop: '1px solid #E5E5E5',
-              marginTop: '4px',
-              paddingTop: '12px',
-            }}
-          >
-            Sign out
-          </button>
         </div>
       </div>
 

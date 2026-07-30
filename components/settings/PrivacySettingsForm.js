@@ -3,14 +3,15 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { updatePrivacySettings } from '@/actions/users'
-import { usePushNotifications } from '@/hooks/usePushNotifications'
 
-export default function PrivacySettingsForm({ initialSettings, userId }) {
+// Notification preferences (push subscription + per-category toggles) live
+// on their own page now — see components/settings/NotificationSettingsForm.js
+// — this form is scoped to privacy only: who can message you, and what
+// others can see about you.
+export default function PrivacySettingsForm({ initialSettings }) {
   const [settings, setSettings] = useState(initialSettings)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState(null)
-
-  const { permission, subscribed, loading: pushLoading, subscribe, unsubscribe } = usePushNotifications(userId)
 
   const handleAutoSave = async (updatedSettings) => {
     const data = new FormData()
@@ -109,7 +110,7 @@ export default function PrivacySettingsForm({ initialSettings, userId }) {
         }}>
           ← Back
         </Link>
-        <span style={{ fontSize: '16px', fontWeight: '700' }}>Privacy & Notifications</span>
+        <span style={{ fontSize: '16px', fontWeight: '700' }}>Privacy</span>
       </div>
 
       <div style={{ maxWidth: '600px', margin: '0 auto', padding: '32px 24px' }}>
@@ -141,70 +142,6 @@ export default function PrivacySettingsForm({ initialSettings, userId }) {
             {error}
           </div>
         )}
-
-        <div style={{
-          background: '#fff',
-          border: '1.5px solid #0a0a0a',
-          borderRadius: '16px',
-          overflow: 'hidden',
-          boxShadow: '4px 4px 0 #0a0a0a',
-          marginBottom: '20px',
-        }}>
-          <div style={{ padding: '16px 20px', borderBottom: '1px solid #F5F5F5' }}>
-            <p style={{ fontSize: '15px', fontWeight: '700', marginBottom: '4px' }}>Push notifications</p>
-            <p style={{ fontSize: '13px', color: '#A3A3A3' }}>
-              {permission === 'denied'
-                ? 'Notifications blocked. Enable them in your browser settings.'
-                : subscribed
-                ? 'Push notifications are enabled on this device.'
-                : 'Get notified about messages and mentions even when the app is closed.'}
-            </p>
-          </div>
-          <div style={{ padding: '16px 20px' }}>
-            {permission === 'denied' ? (
-              <p style={{ fontSize: '13px', color: '#EF4444' }}>
-                Go to browser settings → Site settings → Notifications → Allow relaymsg.vercel.app
-              </p>
-            ) : subscribed ? (
-              <button
-                onClick={unsubscribe}
-                disabled={pushLoading}
-                style={{
-                  padding: '9px 18px',
-                  background: '#fff',
-                  color: '#EF4444',
-                  border: '1.5px solid #EF4444',
-                  borderRadius: '8px',
-                  fontSize: '13px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
-                }}
-              >
-                {pushLoading ? 'Disabling...' : 'Disable on this device'}
-              </button>
-            ) : (
-              <button
-                onClick={subscribe}
-                disabled={pushLoading}
-                style={{
-                  padding: '9px 18px',
-                  background: '#0a0a0a',
-                  color: '#fff',
-                  border: '1.5px solid #0a0a0a',
-                  borderRadius: '8px',
-                  fontSize: '13px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
-                  boxShadow: '2px 2px 0 #FFB800',
-                }}
-              >
-                {pushLoading ? 'Enabling...' : 'Enable on this device'}
-              </button>
-            )}
-          </div>
-        </div>
 
         {/* Privacy */}
         <p style={{
@@ -276,52 +213,6 @@ export default function PrivacySettingsForm({ initialSettings, userId }) {
             <Toggle
               value={settings?.discoverable}
               onChange={() => handleToggle('discoverable')}
-            />
-          </div>
-        </div>
-
-        {/* Notifications */}
-        <p style={{
-          fontSize: '11px',
-          fontWeight: '700',
-          color: '#A3A3A3',
-          letterSpacing: '1px',
-          textTransform: 'uppercase',
-          marginBottom: '8px',
-          paddingLeft: '4px',
-        }}>Notifications</p>
-
-        <div style={{
-          background: '#fff',
-          border: '1.5px solid #0a0a0a',
-          borderRadius: '16px',
-          overflow: 'hidden',
-          boxShadow: '4px 4px 0 #0a0a0a',
-          marginBottom: '20px',
-        }}>
-          <SettingRow label="Direct messages">
-            <Toggle
-              value={settings?.message_notifications}
-              onChange={() => handleToggle('message_notifications')}
-            />
-          </SettingRow>
-          <SettingRow label="Group messages">
-            <Toggle
-              value={settings?.group_notifications}
-              onChange={() => handleToggle('group_notifications')}
-            />
-          </SettingRow>
-          <SettingRow label="Mentions">
-            <Toggle
-              value={settings?.mention_notifications}
-              onChange={() => handleToggle('mention_notifications')}
-            />
-          </SettingRow>
-          <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
-            <p style={{ fontSize: '14px', fontWeight: '600', color: '#0a0a0a' }}>Reactions</p>
-            <Toggle
-              value={settings?.reaction_notifications}
-              onChange={() => handleToggle('reaction_notifications')}
             />
           </div>
         </div>

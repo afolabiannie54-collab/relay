@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { getOwnProfile } from '@/actions/users'
+import { signOut } from '@/actions/auth'
 import Avatar from '@/components/shared/Avatar'
 import SignOutAllRow from '@/components/settings/SignOutAllRow'
 import { cache } from '@/lib/cache'
@@ -20,6 +21,11 @@ export default function SettingsPage() {
     }
     load()
   }, [])
+
+  const handleSignOut = async () => {
+    await signOut()
+    window.location.href = '/login'
+  }
 
   if (!profile) return null
 
@@ -40,14 +46,6 @@ export default function SettingsPage() {
         top: 0,
         zIndex: 10,
       }}>
-        <Link href="/chat" style={{
-          textDecoration: 'none',
-          color: '#0a0a0a',
-          fontSize: '14px',
-          fontWeight: '600',
-        }}>
-          ← Back
-        </Link>
         <span style={{ fontSize: '16px', fontWeight: '700' }}>Settings</span>
       </div>
 
@@ -86,13 +84,19 @@ export default function SettingsPage() {
               { label: 'Edit profile', href: '/settings/profile' },
               { label: 'Privacy settings', href: '/settings/privacy' },
               { label: 'Blocked users', href: '/settings/blocked' },
-              { label: 'Notifications', href: '/notifications' },
             ]
           },
           {
-            title: 'Session',
+            title: 'Notifications',
+            items: [
+              { label: 'Notification preferences', href: '/settings/notifications' },
+            ]
+          },
+          {
+            title: 'Security',
             items: [
               { label: 'Active sessions', href: '/settings/sessions' },
+              { label: 'Sign out', action: 'signOut' },
               { label: 'Sign out all devices', action: 'signOutAll' },
             ]
           },
@@ -125,6 +129,24 @@ export default function SettingsPage() {
               {section.items.map((item, i) => (
                 item.action === 'signOutAll' ? (
                   <SignOutAllRow key="signOutAll" isLast={i === section.items.length - 1} />
+                ) : item.action === 'signOut' ? (
+                  <div
+                    key="signOut"
+                    onClick={handleSignOut}
+                    style={{
+                      padding: '16px 20px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      borderBottom: i < section.items.length - 1 ? '1px solid #F5F5F5' : 'none',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <span style={{ fontSize: '14px', fontWeight: '500', color: '#0a0a0a' }}>
+                      Sign out
+                    </span>
+                    <span style={{ color: '#A3A3A3', fontSize: '14px' }}>→</span>
+                  </div>
                 ) : (
                   <Link key={item.href} href={item.href} style={{ textDecoration: 'none' }}>
                     <div style={{
