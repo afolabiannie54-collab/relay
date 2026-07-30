@@ -6,7 +6,7 @@ import BottomSheet from '@/components/shared/BottomSheet'
 import ConfirmSheet from '@/components/shared/ConfirmSheet'
 import Avatar from '@/components/shared/Avatar'
 import { muteConversation, unmuteConversation, deleteConversationForUser } from '@/actions/conversations'
-import { markConversationRead, markConversationUnread, hideConversation } from '@/actions/messages'
+import { markConversationRead, markConversationUnread, hideConversation, unhideConversation } from '@/actions/messages'
 import { leaveGroup, addMember } from '@/actions/groups'
 import { blockUser } from '@/actions/blocks'
 import { searchUsers } from '@/actions/users'
@@ -19,7 +19,12 @@ function vibrate() {
 // one row from getConversations() (has conversation_id, type,
 // other_participants, group_info, role, unread_count). onChanged is
 // called after any action that should make the list re-fetch.
-export default function ConversationActionSheet({ conversation, isMuted, isOpen, onClose, onChanged }) {
+//
+// isHidden switches this to the reduced menu used on /chat/hidden:
+// Unhide, Delete conversation, Block user (DM only) — mute/read-state/
+// group-management don't apply to a conversation that isn't in the
+// active list.
+export default function ConversationActionSheet({ conversation, isMuted, isOpen, onClose, onChanged, isHidden = false }) {
   const router = useRouter()
   const [mode, setMode] = useState('menu')
   const [confirmAction, setConfirmAction] = useState(null)
@@ -69,6 +74,13 @@ export default function ConversationActionSheet({ conversation, isMuted, isOpen,
   const handleHide = async () => {
     vibrate()
     await hideConversation(conversation.conversation_id)
+    onChanged?.()
+    close()
+  }
+
+  const handleUnhide = async () => {
+    vibrate()
+    await unhideConversation(conversation.conversation_id)
     onChanged?.()
     close()
   }
@@ -134,44 +146,68 @@ export default function ConversationActionSheet({ conversation, isMuted, isOpen,
           </div>
 
           <div style={{ padding: '8px 0' }}>
-            <button style={rowStyle} onClick={handleToggleMute}>
-              {isMuted ? '🔔 Unmute' : '🔕 Mute'}
-            </button>
-            <button style={rowStyle} onClick={handleToggleRead}>
-              {isUnread ? '✓ Mark as read' : '● Mark as unread'}
-            </button>
-            <button style={rowStyle} onClick={handleHide}>
-              🙈 Hide conversation
-            </button>
-
-            {isGroup ? (
+            {isHidden ? (
               <>
-                {canManageGroup && (
-                  <button style={rowStyle} onClick={() => setMode('addMember')}>
-                    ➕ Add member
-                  </button>
-                )}
-                <button
-                  style={{ ...rowStyle, color: '#EF4444' }}
-                  onClick={() => setConfirmAction('leave')}
-                >
-                  🚪 Leave group
+                <button style={rowStyle} onClick={handleUnhide}>
+                  🙉 Unhide
                 </button>
-              </>
-            ) : (
-              <>
                 <button
                   style={{ ...rowStyle, color: '#EF4444' }}
                   onClick={() => setConfirmAction('delete')}
                 >
                   🗑️ Delete conversation
                 </button>
-                <button
-                  style={{ ...rowStyle, color: '#EF4444' }}
-                  onClick={() => setConfirmAction('block')}
-                >
-                  🚫 Block user
+                {!isGroup && (
+                  <button
+                    style={{ ...rowStyle, color: '#EF4444' }}
+                    onClick={() => setConfirmAction('block')}
+                  >
+                    🚫 Block user
+                  </button>
+                )}
+              </>
+            ) : (
+              <>
+                <button style={rowStyle} onClick={handleToggleMute}>
+                  {isMuted ? '🔔 Unmute' : '🔕 Mute'}
                 </button>
+                <button style={rowStyle} onClick={handleToggleRead}>
+                  {isUnread ? '✓ Mark as read' : '● Mark as unread'}
+                </button>
+                <button style={rowStyle} onClick={handleHide}>
+                  🙈 Hide conversation
+                </button>
+
+                {isGroup ? (
+                  <>
+                    {canManageGroup && (
+                      <button style={rowStyle} onClick={() => setMode('addMember')}>
+                        ➕ Add member
+                      </button>
+                    )}
+                    <button
+                      style={{ ...rowStyle, color: '#EF4444' }}
+                      onClick={() => setConfirmAction('leave')}
+                    >
+                      🚪 Leave group
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      style={{ ...rowStyle, color: '#EF4444' }}
+                      onClick={() => setConfirmAction('delete')}
+                    >
+                      🗑️ Delete conversation
+                    </button>
+                    <button
+                      style={{ ...rowStyle, color: '#EF4444' }}
+                      onClick={() => setConfirmAction('block')}
+                    >
+                      🚫 Block user
+                    </button>
+                  </>
+                )}
               </>
             )}
           </div>

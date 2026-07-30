@@ -1,29 +1,82 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Avatar from '@/components/shared/Avatar'
-import { getHiddenConversations, unhideConversation } from '@/actions/messages'
+import ChatLink from '@/components/chat/ChatLink'
+import ConversationActionSheet from '@/components/chat/ConversationActionSheet'
+import ConversationContextMenu from '@/components/chat/ConversationContextMenu'
+import { getHiddenConversations } from '@/actions/messages'
+
+const LONG_PRESS_MS = 400
+const LONG_PRESS_MOVE_TOLERANCE = 10
 
 export default function HiddenConversationsPage() {
   const [conversations, setConversations] = useState([])
   const [loading, setLoading] = useState(true)
-  const [unhidingId, setUnhidingId] = useState(null)
+  const [actionSheetConv, setActionSheetConv] = useState(null)
+  const [contextMenu, setContextMenu] = useState(null)
+  const longPressTimerRef = useRef(null)
+  const longPressStartRef = useRef(null)
+  const longPressFiredRef = useRef(false)
+
+  async function refreshHidden() {
+    const result = await getHiddenConversations()
+    if (result.data) setConversations(result.data)
+  }
 
   useEffect(() => {
     async function load() {
-      const result = await getHiddenConversations()
-      if (result.data) setConversations(result.data)
+      await refreshHidden()
       setLoading(false)
     }
     load()
   }, [])
 
-  const handleUnhide = async (conversationId) => {
-    setUnhidingId(conversationId)
-    await unhideConversation(conversationId)
-    setConversations(prev => prev.filter(c => c.conversation_id !== conversationId))
-    setUnhidingId(null)
+  const handleRowTouchStart = (conv) => (e) => {
+    const touch = e.touches[0]
+    if (!touch) return
+    longPressFiredRef.current = false
+    longPressStartRef.current = { x: touch.clientX, y: touch.clientY }
+    longPressTimerRef.current = setTimeout(() => {
+      longPressFiredRef.current = true
+      try { window.navigator.vibrate?.(10) } catch {}
+      setActionSheetConv(conv)
+    }, LONG_PRESS_MS)
+  }
+
+  const handleRowTouchMove = (e) => {
+    if (!longPressStartRef.current || !longPressTimerRef.current) return
+    const touch = e.touches[0]
+    if (!touch) return
+    const dx = Math.abs(touch.clientX - longPressStartRef.current.x)
+    const dy = Math.abs(touch.clientY - longPressStartRef.current.y)
+    if (dx > LONG_PRESS_MOVE_TOLERANCE || dy > LONG_PRESS_MOVE_TOLERANCE) {
+      clearTimeout(longPressTimerRef.current)
+      longPressTimerRef.current = null
+    }
+  }
+
+  const handleRowTouchEnd = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current)
+      longPressTimerRef.current = null
+    }
+  }
+
+  const handleRowContextMenu = (conv) => (e) => {
+    e.preventDefault()
+    setContextMenu({ conversation: conv, position: { x: e.clientX, y: e.clientY } })
+  }
+
+  // Suppresses the tile's own navigation when the touch that just ended
+  // was a long press (which already opened the action sheet) rather
+  // than a tap — same pattern as the main chat list.
+  const handleRowClick = () => (e) => {
+    if (longPressFiredRef.current) {
+      e.preventDefault()
+      longPressFiredRef.current = false
+    }
   }
 
   const formatTime = (timestamp) => {
@@ -116,68 +169,80 @@ export default function HiddenConversationsPage() {
             const avatarUrl = isGroup ? conv.group_info?.avatar_url : otherUser?.avatar_url
 
             return (
-              <div
+              <ChatLink
                 key={conv.conversation_id}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  padding: '14px 20px',
-                  borderBottom: '1px solid #F5F5F5',
-                  background: '#fff',
-                }}
+                href={`/chat/${conv.conversation_id}`}
+                style={{ textDecoration: 'none' }}
+                onClick={handleRowClick()}
               >
-                <Avatar src={avatarUrl} name={displayName} size={48} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    padding: '14px 20px',
+                    borderBottom: '1px solid #F5F5F5',
+                    background: '#fff',
+                    cursor: 'pointer',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#F9F9F9'}
+                  onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+                  onTouchStart={handleRowTouchStart(conv)}
+                  onTouchMove={handleRowTouchMove}
+                  onTouchEnd={handleRowTouchEnd}
+                  onContextMenu={handleRowContextMenu(conv)}
+                >
+                  <Avatar src={avatarUrl} name={displayName} size={48} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
+                      <p style={{
+                        fontSize: '15px',
+                        fontWeight: '700',
+                        color: '#0a0a0a',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}>
+                        {displayName || 'Unknown'}
+                      </p>
+                      <span style={{ fontSize: '11px', color: '#A3A3A3', flexShrink: 0, marginLeft: '8px' }}>
+                        {formatTime(lastMessage?.created_at)}
+                      </span>
+                    </div>
                     <p style={{
-                      fontSize: '15px',
-                      fontWeight: '700',
-                      color: '#0a0a0a',
+                      fontSize: '13px',
+                      color: '#A3A3A3',
                       whiteSpace: 'nowrap',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
                     }}>
-                      {displayName || 'Unknown'}
+                      {getLastMessagePreview(lastMessage)}
                     </p>
-                    <span style={{ fontSize: '11px', color: '#A3A3A3', flexShrink: 0, marginLeft: '8px' }}>
-                      {formatTime(lastMessage?.created_at)}
-                    </span>
                   </div>
-                  <p style={{
-                    fontSize: '13px',
-                    color: '#A3A3A3',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                  }}>
-                    {getLastMessagePreview(lastMessage)}
-                  </p>
                 </div>
-                <button
-                  onClick={() => handleUnhide(conv.conversation_id)}
-                  disabled={unhidingId === conv.conversation_id}
-                  style={{
-                    padding: '8px 16px',
-                    background: '#0a0a0a',
-                    color: '#fff',
-                    border: '1.5px solid #0a0a0a',
-                    borderRadius: '8px',
-                    fontSize: '13px',
-                    fontWeight: '600',
-                    cursor: unhidingId === conv.conversation_id ? 'not-allowed' : 'pointer',
-                    fontFamily: 'inherit',
-                    boxShadow: unhidingId === conv.conversation_id ? 'none' : '2px 2px 0 #FFB800',
-                    flexShrink: 0,
-                  }}
-                >
-                  {unhidingId === conv.conversation_id ? 'Unhiding...' : 'Unhide'}
-                </button>
-              </div>
+              </ChatLink>
             )
           })
         )}
       </div>
+
+      <ConversationActionSheet
+        conversation={actionSheetConv}
+        isMuted={false}
+        isHidden
+        isOpen={!!actionSheetConv}
+        onClose={() => setActionSheetConv(null)}
+        onChanged={refreshHidden}
+      />
+
+      <ConversationContextMenu
+        conversation={contextMenu?.conversation || null}
+        isMuted={false}
+        isHidden
+        position={contextMenu?.position || null}
+        onClose={() => setContextMenu(null)}
+        onChanged={refreshHidden}
+      />
     </div>
   )
 }
