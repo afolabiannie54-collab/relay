@@ -1,9 +1,14 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Avatar from '@/components/shared/Avatar'
+import BottomSheet from '@/components/shared/BottomSheet'
+import ConfirmSheet from '@/components/shared/ConfirmSheet'
 import { searchUsers } from '@/actions/users'
+import { getExistingConversation } from '@/actions/messages'
+import { blockUser } from '@/actions/blocks'
 
 export default function SearchPage() {
   const [query, setQuery] = useState('')
@@ -11,7 +16,11 @@ export default function SearchPage() {
   const [loading, setLoading] = useState(false)
   const [searched, setSearched] = useState(false)
   const [error, setError] = useState(null)
+  const [menuUser, setMenuUser] = useState(null)
+  const [menuConvId, setMenuConvId] = useState(null)
+  const [blockTarget, setBlockTarget] = useState(null)
   const searchTimeout = useRef(null)
+  const router = useRouter()
 
   const handleSearch = (e) => {
     const value = e.target.value
@@ -40,13 +49,78 @@ export default function SearchPage() {
     }, 400)
   }
 
+  const openMenu = async (user) => {
+    setMenuUser(user)
+    setMenuConvId(null)
+    const result = await getExistingConversation(user.id)
+    setMenuConvId(result.conversationId || null)
+  }
+
+  const closeMenu = () => {
+    setMenuUser(null)
+    setMenuConvId(null)
+  }
+
+  const handleOpenOrRequest = () => {
+    if (!menuUser) return
+    if (menuConvId) {
+      router.push(`/chat/${menuConvId}`)
+    } else {
+      router.push(`/u/${menuUser.username}?from=search`)
+    }
+    closeMenu()
+  }
+
+  const handleViewProfile = () => {
+    if (!menuUser) return
+    router.push(`/u/${menuUser.username}?from=search`)
+    closeMenu()
+  }
+
+  const handleShareProfile = async () => {
+    if (!menuUser) return
+    const url = `${window.location.origin}/u/${menuUser.username}`
+    try {
+      await navigator.clipboard.writeText(url)
+    } catch {
+      // Clipboard API unavailable — nothing else to fall back to here.
+    }
+    closeMenu()
+  }
+
+  const handleBlockClick = () => {
+    setBlockTarget(menuUser)
+    closeMenu()
+  }
+
+  const confirmBlock = async () => {
+    if (!blockTarget) return
+    await blockUser(blockTarget.id)
+    setResults(prev => prev.filter(u => u.id !== blockTarget.id))
+    setBlockTarget(null)
+  }
+
+  const menuRowStyle = {
+    display: 'block',
+    width: '100%',
+    textAlign: 'left',
+    padding: '14px 20px',
+    fontSize: '15px',
+    fontWeight: '600',
+    color: '#0a0a0a',
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+  }
+
   return (
     <div style={{
       minHeight: '100dvh',
       background: '#F5F5F5',
       fontFamily: "'Inter', -apple-system, sans-serif",
     }}>
-      {/* Top nav */}
+      {/* Top nav — search is a root tab, no back button */}
       <div style={{
         background: '#fff',
         borderBottom: '1.5px solid #0a0a0a',
@@ -56,22 +130,10 @@ export default function SearchPage() {
         zIndex: 10,
       }}>
         <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
           maxWidth: '600px',
           margin: '0 auto',
         }}>
-          <Link href="/chat" style={{
-            textDecoration: 'none',
-            color: '#0a0a0a',
-            fontSize: '14px',
-            fontWeight: '600',
-            flexShrink: 0,
-          }}>
-            ←
-          </Link>
-          <div style={{ flex: 1, position: 'relative' }}>
+          <div style={{ position: 'relative' }}>
             <input
               type="text"
               placeholder="Search by username..."
@@ -156,49 +218,98 @@ export default function SearchPage() {
               {results.length} {results.length === 1 ? 'result' : 'results'}
             </p>
             {results.map(user => (
-              <Link
-                key={user.id}
-                href={`/u/${user.username}?from=search`}
-                style={{ textDecoration: 'none' }}
-              >
-                <div style={{
-                  background: '#fff',
-                  border: '1.5px solid #0a0a0a',
-                  borderRadius: '12px',
-                  padding: '16px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '14px',
-                  transition: 'box-shadow 0.15s, transform 0.15s',
-                  cursor: 'pointer',
-                }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.boxShadow = '3px 3px 0 #0a0a0a'
-                    e.currentTarget.style.transform = 'translate(-1px, -1px)'
+              <div key={user.id} style={{ display: 'flex', alignItems: 'stretch', gap: '6px' }}>
+                <Link
+                  href={`/u/${user.username}?from=search`}
+                  style={{ textDecoration: 'none', flex: 1, minWidth: 0 }}
+                >
+                  <div style={{
+                    background: '#fff',
+                    border: '1.5px solid #0a0a0a',
+                    borderRadius: '12px',
+                    padding: '16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '14px',
+                    transition: 'box-shadow 0.15s, transform 0.15s',
+                    cursor: 'pointer',
+                    height: '100%',
+                    boxSizing: 'border-box',
                   }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.boxShadow = 'none'
-                    e.currentTarget.style.transform = 'translate(0, 0)'
+                    onMouseEnter={e => {
+                      e.currentTarget.style.boxShadow = '3px 3px 0 #0a0a0a'
+                      e.currentTarget.style.transform = 'translate(-1px, -1px)'
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.boxShadow = 'none'
+                      e.currentTarget.style.transform = 'translate(0, 0)'
+                    }}
+                  >
+                    <Avatar
+                      src={user.avatar_url}
+                      name={user.display_name}
+                      size={48}
+                    />
+                    <div style={{ minWidth: 0 }}>
+                      <p style={{ fontSize: '15px', fontWeight: '700', color: '#0a0a0a', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {user.display_name}
+                      </p>
+                      <p style={{ fontSize: '13px', color: '#A3A3A3' }}>@{user.username}</p>
+                    </div>
+                  </div>
+                </Link>
+                <button
+                  onClick={() => openMenu(user)}
+                  aria-label="More options"
+                  style={{
+                    width: '44px',
+                    flexShrink: 0,
+                    background: '#fff',
+                    border: '1.5px solid #0a0a0a',
+                    borderRadius: '12px',
+                    fontSize: '18px',
+                    color: '#0a0a0a',
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
                   }}
                 >
-                  <Avatar
-                    src={user.avatar_url}
-                    name={user.display_name}
-                    size={48}
-                  />
-                  <div>
-                    <p style={{ fontSize: '15px', fontWeight: '700', color: '#0a0a0a', marginBottom: '2px' }}>
-                      {user.display_name}
-                    </p>
-                    <p style={{ fontSize: '13px', color: '#A3A3A3' }}>@{user.username}</p>
-                  </div>
-                  <div style={{ marginLeft: 'auto', color: '#A3A3A3', fontSize: '16px' }}>→</div>
-                </div>
-              </Link>
+                  ⋯
+                </button>
+              </div>
             ))}
           </div>
         )}
       </div>
+
+      <BottomSheet isOpen={!!menuUser} onClose={closeMenu}>
+        <div style={{ fontFamily: "'Inter', -apple-system, sans-serif" }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '4px 20px 16px', borderBottom: '1px solid #E5E5E5' }}>
+            <Avatar src={menuUser?.avatar_url} name={menuUser?.display_name} size={40} />
+            <div style={{ minWidth: 0 }}>
+              <p style={{ fontSize: '15px', fontWeight: '800' }}>{menuUser?.display_name}</p>
+              <p style={{ fontSize: '12px', color: '#A3A3A3' }}>@{menuUser?.username}</p>
+            </div>
+          </div>
+          <div style={{ padding: '8px 0' }}>
+            <button style={menuRowStyle} onClick={handleOpenOrRequest}>
+              {menuConvId ? '💬 Open chat' : '✉️ Send message request'}
+            </button>
+            <button style={menuRowStyle} onClick={handleViewProfile}>👤 View profile</button>
+            <button style={menuRowStyle} onClick={handleShareProfile}>🔗 Share profile</button>
+            <button style={{ ...menuRowStyle, color: '#EF4444' }} onClick={handleBlockClick}>🚫 Block</button>
+          </div>
+        </div>
+      </BottomSheet>
+
+      <ConfirmSheet
+        isOpen={!!blockTarget}
+        onClose={() => setBlockTarget(null)}
+        title="Block this user?"
+        message={`${blockTarget?.display_name || 'This user'} won't be able to message you or see your profile.`}
+        confirmLabel="Block"
+        confirmStyle="danger"
+        onConfirm={confirmBlock}
+      />
     </div>
   )
 }
