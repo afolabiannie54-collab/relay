@@ -21,12 +21,28 @@ import ConfirmSheet from '@/components/shared/ConfirmSheet'
 export default function ConversationPage() {
   const { id } = useParams()
   const router = useRouter()
-  const [messages, setMessages] = useState([])
-  const [conversation, setConversation] = useState(null)
-  const [groupInfo, setGroupInfo] = useState(null)
-  const [profile, setProfile] = useState(null)
+  // Lazy-initialized straight from cache (not inside an effect) so the
+  // very first render already has whatever's cached — an effect only
+  // runs after that first paint has already happened, which is exactly
+  // what was still causing the header/message-bubble flash even after
+  // switching the effect's own cache reads to peek(): the state's
+  // initial value was hardcoded regardless of what peek() would have
+  // found. Same pattern already used by app/(main)/settings/page.js.
+  const [messages, setMessages] = useState(() => {
+    const cached = cache.peek(`messages:${id}`)
+    return Array.isArray(cached) ? cached : []
+  })
+  const [conversation, setConversation] = useState(() => cache.peek(`conversation:${id}`))
+  const [groupInfo, setGroupInfo] = useState(() => {
+    const cachedConv = cache.peek(`conversation:${id}`)
+    return cachedConv?.type === 'group' ? cache.peek(`group:${id}`) : null
+  })
+  // Also relied on for isOwn (message alignment/color) — starting this
+  // at null unconditionally was why a message's own bubble could
+  // briefly render as if it belonged to someone else.
+  const [profile, setProfile] = useState(() => cache.peek('profile'))
   const [content, setContent] = useState('')
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(() => !Array.isArray(cache.peek(`messages:${id}`)))
   const [sending, setSending] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState(null)
@@ -93,14 +109,15 @@ export default function ConversationPage() {
       // a separate TTL-respecting get() right below decides whether the
       // network round-trip can be skipped entirely or needs to run and
       // silently replace this with fresh data once it resolves.
-      const cachedProfile = cache.get('profile')
+      const peekedProfile = cache.peek('profile')
+      const freshProfileCache = cache.get('profile')
       const peekedConv = cache.peek(`conversation:${id}`)
       const freshConvCache = cache.get(`conversation:${id}`)
       const cachedGroupInfo = peekedConv?.type === 'group' ? cache.peek(`group:${id}`) : null
       const cachedMessagesRaw = cache.peek(`messages:${id}`)
       const cachedMessages = Array.isArray(cachedMessagesRaw) ? cachedMessagesRaw : null
 
-      if (cachedProfile) setProfile(cachedProfile)
+      if (peekedProfile) setProfile(peekedProfile)
       if (peekedConv) setConversation(peekedConv)
       if (cachedGroupInfo) setGroupInfo(cachedGroupInfo)
       if (cachedMessages) {
@@ -110,8 +127,8 @@ export default function ConversationPage() {
 
       const supabase = createClient()
 
-      const profilePromise = cachedProfile
-        ? Promise.resolve(cachedProfile)
+      const profilePromise = freshProfileCache
+        ? Promise.resolve(freshProfileCache)
         : (async () => {
             const { data: { user } } = await supabase.auth.getUser()
             if (!user) return null

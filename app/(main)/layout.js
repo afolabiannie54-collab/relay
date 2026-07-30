@@ -9,10 +9,16 @@ import { PresenceProvider } from '@/lib/presence-context'
 import { getUnreadChatsCount } from '@/actions/messages'
 import { createClient } from '@/lib/supabase/client'
 import { usePushNotifications } from '@/hooks/usePushNotifications'
+import { cache } from '@/lib/cache'
 
 export default function MainLayout({ children }) {
   const pathname = usePathname()
-  const [profile, setProfile] = useState(null)
+  // Lazy-initialized from cache so a cached profile is already in place
+  // on the very first render — this is the app shell, mounted before any
+  // conversation page, so priming this shared cache key here is what
+  // lets chat/[id]/page.js's own header/message-ownership rendering
+  // avoid its own first-paint flash on a warm session.
+  const [profile, setProfile] = useState(() => cache.peek('profile'))
   const [unreadChatsCount, setUnreadChatsCount] = useState(0)
 
   usePushNotifications(profile?.id)
@@ -20,7 +26,10 @@ export default function MainLayout({ children }) {
   useEffect(() => {
     async function load() {
       const result = await getOwnProfile()
-      if (result.data) setProfile(result.data)
+      if (result.data) {
+        setProfile(result.data)
+        cache.set('profile', result.data, 300000)
+      }
     }
     load()
   }, [])

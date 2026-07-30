@@ -789,49 +789,59 @@ export default function ChatList({ onSelectConversation }) {
           </div>
         )}
 
-        {bulkSelectMode && (
-          <div
-            className="bulk-action-bar"
-            style={{
-              position: 'sticky',
-              bottom: 0,
-              display: 'flex',
-              borderTop: '1.5px solid #0a0a0a',
-              background: '#fff',
-              zIndex: 5,
-            }}
-          >
-            <button
-              onClick={handleBulkMarkRead}
-              disabled={selectedConvIds.size === 0 || bulkActing}
-              style={bulkActionBtnStyle(selectedConvIds.size === 0 || bulkActing)}
-            >
-              ✓ Read
-            </button>
-            <button
-              onClick={handleBulkMute}
-              disabled={selectedConvIds.size === 0 || bulkActing}
-              style={bulkActionBtnStyle(selectedConvIds.size === 0 || bulkActing)}
-            >
-              🔕 Mute
-            </button>
-            <button
-              onClick={handleBulkHide}
-              disabled={selectedConvIds.size === 0 || bulkActing}
-              style={bulkActionBtnStyle(selectedConvIds.size === 0 || bulkActing)}
-            >
-              🙈 Hide
-            </button>
-            <button
-              onClick={() => setBulkConfirmAction('delete')}
-              disabled={selectedConvIds.size === 0 || bulkActing}
-              style={{ ...bulkActionBtnStyle(selectedConvIds.size === 0 || bulkActing), color: '#EF4444', borderRight: 'none' }}
-            >
-              🗑️ Delete
-            </button>
-          </div>
-        )}
       </div>
+
+      {/* A normal flex sibling (flexShrink:0) of the scrollable list
+          above, not part of its scroll content and not position:sticky
+          — sticky only holds an element in view once its container is
+          actually scrolled past that point, which never happens here
+          when the list is short (e.g. just 2 conversations), so it was
+          rendering inline right after the last tile with a large empty
+          gap below it instead of pinned to the bottom of the screen.
+          As a flex column sibling, it naturally sits at the true bottom
+          of this panel — which now correctly ends right above the app
+          shell's bottom nav bar since chat-list-panel's height was
+          fixed too (see chat/layout.js). */}
+      {bulkSelectMode && (
+        <div
+          className="bulk-action-bar"
+          style={{
+            flexShrink: 0,
+            display: 'flex',
+            borderTop: '1.5px solid #0a0a0a',
+            background: '#fff',
+          }}
+        >
+          <button
+            onClick={handleBulkMarkRead}
+            disabled={selectedConvIds.size === 0 || bulkActing}
+            style={bulkActionBtnStyle(selectedConvIds.size === 0 || bulkActing)}
+          >
+            ✓ Read
+          </button>
+          <button
+            onClick={handleBulkMute}
+            disabled={selectedConvIds.size === 0 || bulkActing}
+            style={bulkActionBtnStyle(selectedConvIds.size === 0 || bulkActing)}
+          >
+            🔕 Mute
+          </button>
+          <button
+            onClick={handleBulkHide}
+            disabled={selectedConvIds.size === 0 || bulkActing}
+            style={bulkActionBtnStyle(selectedConvIds.size === 0 || bulkActing)}
+          >
+            🙈 Hide
+          </button>
+          <button
+            onClick={() => setBulkConfirmAction('delete')}
+            disabled={selectedConvIds.size === 0 || bulkActing}
+            style={{ ...bulkActionBtnStyle(selectedConvIds.size === 0 || bulkActing), color: '#EF4444', borderRight: 'none' }}
+          >
+            🗑️ Delete
+          </button>
+        </div>
+      )}
 
       <NewConversationSheet isOpen={showNewConversation} onClose={() => setShowNewConversation(false)} />
 

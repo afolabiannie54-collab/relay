@@ -85,7 +85,7 @@ export default function ChatLayout({ children }) {
   }
 
   return (
-    <div className="chat-shell" style={{ display: 'flex', height: '100dvh', overflow: 'hidden', position: 'relative' }}>
+    <div className="chat-shell" style={{ display: 'flex', height: '100%', overflow: 'hidden', position: 'relative' }}>
       <div
         className={`chat-list-panel ${isListRoute ? '' : 'chat-panel-hidden'}`}
         style={{
@@ -93,7 +93,17 @@ export default function ChatLayout({ children }) {
           flexShrink: 0,
           borderRight: '1.5px solid #0a0a0a',
           background: '#fff',
-          height: '100dvh',
+          // 100% rather than a literal 100dvh: on mobile, the /chat list
+          // route still shows the app shell's bottom nav (a real sibling
+          // outside this panel, in app/(main)/layout.js) — a hardcoded
+          // 100dvh here ignores that and makes this panel taller than the
+          // space actually available above it, which is what made
+          // anything pinned to "the bottom" render far below the visible
+          // fold instead of just above the nav bar. 100% correctly
+          // inherits whatever height its actual parent already carves out
+          // (on desktop, where the bottom nav doesn't exist, this
+          // resolves to the same thing 100dvh would have).
+          height: '100%',
           overflow: 'hidden',
         }}
       >
