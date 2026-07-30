@@ -16,6 +16,7 @@ import MessageReactions from '@/components/chat/MessageReactions'
 import ConversationSettingsSheet from '@/components/chat/ConversationSettingsSheet'
 import MessageActionSheet from '@/components/chat/MessageActionSheet'
 import MessageActionBar from '@/components/chat/MessageActionBar'
+import ConfirmSheet from '@/components/shared/ConfirmSheet'
 
 export default function ConversationPage() {
   const { id } = useParams()
@@ -28,6 +29,7 @@ export default function ConversationPage() {
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
   const [editingId, setEditingId] = useState(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null)
   const [editContent, setEditContent] = useState('')
   const [replyTo, setReplyTo] = useState(null)
   const [typingUsers, setTypingUsers] = useState([])
@@ -358,9 +360,14 @@ export default function ConversationPage() {
     }
   }
 
-  const handleDelete = async (messageId) => {
-    if (!confirm('Delete this message for everyone?')) return
-    await deleteMessage(messageId)
+  const handleDelete = (messageId) => {
+    setConfirmDeleteId(messageId)
+  }
+
+  const confirmDeleteMessage = async () => {
+    if (!confirmDeleteId) return
+    await deleteMessage(confirmDeleteId)
+    setConfirmDeleteId(null)
   }
 
   const handleKeyDown = (e) => {
@@ -1757,6 +1764,16 @@ export default function ConversationPage() {
         onReact={(emoji) => handleQuickReact(actionSheetMsg.id, emoji)}
         onCopy={() => handleCopyMessage(actionSheetMsg)}
         onSelect={() => handleEnterSelectMode(actionSheetMsg)}
+      />
+
+      <ConfirmSheet
+        isOpen={!!confirmDeleteId}
+        onClose={() => setConfirmDeleteId(null)}
+        title="Delete message?"
+        message="This deletes the message for everyone in the conversation. This cannot be undone."
+        confirmLabel="Delete"
+        confirmStyle="danger"
+        onConfirm={confirmDeleteMessage}
       />
     </div>
   )
