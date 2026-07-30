@@ -132,6 +132,29 @@ export async function getMessageRequests() {
   return { data }
 }
 
+export async function getSentMessageRequests() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) return { error: 'Not authenticated' }
+
+  const { data, error } = await supabase
+    .from('message_requests')
+    .select(`
+      id,
+      status,
+      created_at,
+      receiver:users!message_requests_receiver_id_fkey(id, username, display_name, avatar_url),
+      message:messages!message_requests_message_id_fkey(content)
+    `)
+    .eq('sender_id', user.id)
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false })
+
+  if (error) return { error: error.message }
+  return { data }
+}
+
 export async function getConversations() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
