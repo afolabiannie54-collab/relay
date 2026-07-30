@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { sanitizeText } from '@/lib/utils/sanitize'
 
 export async function createGroup(formData) {
   const supabase = await createClient()
@@ -8,15 +9,15 @@ export async function createGroup(formData) {
 
   if (!user) return { error: 'Not authenticated' }
 
-  const name = formData.get('name')
-  const description = formData.get('description')
+  const name = sanitizeText(formData.get('name'), 50)
+  const description = sanitizeText(formData.get('description'), 200)
   const memberIds = formData.getAll('memberIds')
 
-  if (!name?.trim()) return { error: 'Group name is required' }
+  if (!name) return { error: 'Group name is required' }
 
   const { data, error } = await supabase.rpc('create_group', {
-    p_name: name.trim(),
-    p_description: description?.trim() || null,
+    p_name: name,
+    p_description: description || null,
     p_creator_id: user.id,
     p_member_ids: memberIds,
   })
@@ -80,10 +81,10 @@ export async function updateGroupInfo(conversationId, formData) {
     return { error: 'Only admins and owners can edit group info' }
   }
 
-  const name = formData.get('name')
-  const description = formData.get('description')
+  const name = sanitizeText(formData.get('name'), 50)
+  const description = sanitizeText(formData.get('description'), 200)
 
-  if (!name?.trim()) return { error: 'Group name is required' }
+  if (!name) return { error: 'Group name is required' }
 
   const { data: group } = await supabase
     .from('groups')
@@ -94,8 +95,8 @@ export async function updateGroupInfo(conversationId, formData) {
   const { error } = await supabase
     .from('groups')
     .update({
-      name: name.trim(),
-      description: description?.trim() || null,
+      name,
+      description: description || null,
       updated_at: new Date().toISOString(),
     })
     .eq('id', group.id)

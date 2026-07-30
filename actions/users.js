@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { sanitizeText } from '@/lib/utils/sanitize'
 
 export async function getOwnProfile() {
   const supabase = await createClient()
@@ -41,24 +42,24 @@ export async function updateProfile(formData) {
 
   if (!user) return { error: 'Not authenticated' }
 
-  const display_name = formData.get('display_name')
-  const bio = formData.get('bio')
-  const website = formData.get('website')
-  const twitter = formData.get('twitter')
-  const instagram = formData.get('instagram')
-  const linkedin = formData.get('linkedin')
+  const display_name = sanitizeText(formData.get('display_name'), 50)
+  const bio = sanitizeText(formData.get('bio'), 160)
+  const website = sanitizeText(formData.get('website'), 100)
+  const twitter = sanitizeText(formData.get('twitter'), 100)
+  const instagram = sanitizeText(formData.get('instagram'), 100)
+  const linkedin = sanitizeText(formData.get('linkedin'), 100)
 
-  if (!display_name?.trim()) return { error: 'Display name is required' }
+  if (!display_name) return { error: 'Display name is required' }
 
   const { error } = await supabase
     .from('users')
     .update({
-      display_name: display_name.trim(),
-      bio: bio?.trim() || null,
-      website: website?.trim() || null,
-      twitter: twitter?.trim() || null,
-      instagram: instagram?.trim() || null,
-      linkedin: linkedin?.trim() || null,
+      display_name,
+      bio: bio || null,
+      website: website || null,
+      twitter: twitter || null,
+      instagram: instagram || null,
+      linkedin: linkedin || null,
       updated_at: new Date().toISOString(),
     })
     .eq('id', user.id)

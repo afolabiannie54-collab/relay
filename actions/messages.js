@@ -2,6 +2,7 @@
 
 import { sendPushNotification } from '@/lib/utils/sendPushNotification'
 import { createClient } from '@/lib/supabase/server'
+import { sanitizeText } from '@/lib/utils/sanitize'
 
 export async function sendMessageRequest(receiverId, content) {
   const supabase = await createClient()
@@ -9,9 +10,12 @@ export async function sendMessageRequest(receiverId, content) {
 
   if (!user) return { error: 'Not authenticated' }
 
+  const cleanContent = sanitizeText(content, 2000)
+  if (!cleanContent) return { error: 'Message cannot be empty' }
+
   const { data, error } = await supabase.rpc('create_message_request', {
     p_receiver_id: receiverId,
-    p_content: content,
+    p_content: cleanContent,
   })
 
   if (error) return { error: error.message }
@@ -284,7 +288,9 @@ export async function sendMessage(conversationId, content, replyToId = null) {
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) return { error: 'Not authenticated' }
-  if (!content?.trim()) return { error: 'Message cannot be empty' }
+
+  content = sanitizeText(content, 2000)
+  if (!content) return { error: 'Message cannot be empty' }
 
   // Verify participant
   const { data: participant } = await supabase
@@ -393,7 +399,9 @@ export async function editMessage(messageId, content) {
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) return { error: 'Not authenticated' }
-  if (!content?.trim()) return { error: 'Message cannot be empty' }
+
+  content = sanitizeText(content, 2000)
+  if (!content) return { error: 'Message cannot be empty' }
 
   // Verify ownership and time limit
   const { data: message } = await supabase
@@ -414,7 +422,7 @@ export async function editMessage(messageId, content) {
   const { error } = await supabase
     .from('messages')
     .update({
-      content: content.trim(),
+      content,
       is_edited: true,
       edited_at: new Date().toISOString(),
     })
