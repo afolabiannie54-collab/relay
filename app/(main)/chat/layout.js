@@ -37,21 +37,24 @@ export default function ChatLayout({ children }) {
   // when switching directly from one conversation to another.
   const convId = pathname.split('/')[2] || 'empty'
 
-  // iOS-style swipe-from-anywhere-to-go-back on the detail panel. Only
-  // active on mobile and only while actually viewing a conversation (not
-  // the list itself) — /chat is a terminal parent in the navigation
+  // iOS-style swipe-from-the-left-edge-to-go-back on the detail panel.
+  // Only active on mobile and only while actually viewing a conversation
+  // (not the list itself) — /chat is a terminal parent in the navigation
   // hierarchy, there is nowhere to swipe back to from it. A mostly-
   // vertical drag (normal message-list scrolling) is rejected by the
   // deltaX-vs-deltaY comparison, so this doesn't fight with scrolling.
-  // Touches starting on a message bubble are ignored entirely — that's
-  // swipe-to-reply's territory (chat/[id]/page.js), not nav-back's, and
-  // the two gestures start identically (a rightward drag) so this has
-  // to be decided before either one starts tracking.
+  // Restricted to touches starting within 30px of the left edge,
+  // matching native iOS edge-swipe-back and keeping it out of
+  // swipe-to-reply's way for most bubbles. The message-bubble check
+  // stays as a second line of defense — a left-aligned bubble can still
+  // render close enough to the edge (depending on the messages
+  // container's own padding) to overlap that 30px zone.
   const handleTouchStart = (e) => {
     if (pathname === '/chat') return
-    if (e.target.closest?.('.message-bubble')) return
     const touch = e.touches[0]
     if (!touch) return
+    if (touch.clientX > 30) return
+    if (e.target.closest?.('.message-bubble')) return
     touchStartRef.current = { x: touch.clientX, y: touch.clientY }
   }
 

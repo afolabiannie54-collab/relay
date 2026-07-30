@@ -87,18 +87,21 @@ export default function ConversationPage() {
       lastMessageIdRef.current = null
 
       // Show whatever's cached immediately — zero loading state for data
-      // we've already seen. Fresh data still gets fetched below and swaps
-      // in silently as it arrives. Messages use peek() rather than get()
-      // since we always re-fetch them fresh below regardless of TTL — the
-      // TTL shouldn't also gate whether we get to show something instantly.
+      // we've already seen, and never an empty/unknown header if a cached
+      // copy exists at all. Uses peek() (ignores TTL) purely for this
+      // instant paint, since a slightly stale header beats a blank one;
+      // a separate TTL-respecting get() right below decides whether the
+      // network round-trip can be skipped entirely or needs to run and
+      // silently replace this with fresh data once it resolves.
       const cachedProfile = cache.get('profile')
-      const cachedConv = cache.get(`conversation:${id}`)
-      const cachedGroupInfo = cachedConv?.type === 'group' ? cache.get(`group:${id}`) : null
+      const peekedConv = cache.peek(`conversation:${id}`)
+      const freshConvCache = cache.get(`conversation:${id}`)
+      const cachedGroupInfo = peekedConv?.type === 'group' ? cache.peek(`group:${id}`) : null
       const cachedMessagesRaw = cache.peek(`messages:${id}`)
       const cachedMessages = Array.isArray(cachedMessagesRaw) ? cachedMessagesRaw : null
 
       if (cachedProfile) setProfile(cachedProfile)
-      if (cachedConv) setConversation(cachedConv)
+      if (peekedConv) setConversation(peekedConv)
       if (cachedGroupInfo) setGroupInfo(cachedGroupInfo)
       if (cachedMessages) {
         setMessages(cachedMessages)
@@ -121,8 +124,8 @@ export default function ConversationPage() {
             return data
           })()
 
-      const convPromise = cachedConv
-        ? Promise.resolve(cachedConv)
+      const convPromise = freshConvCache
+        ? Promise.resolve(freshConvCache)
         : (async () => {
             const result = await getConversation(id)
             if (result.data) cache.set(`conversation:${id}`, result.data, 60000)
