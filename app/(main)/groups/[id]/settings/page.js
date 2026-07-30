@@ -4,6 +4,8 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Avatar from '@/components/shared/Avatar'
+import BottomSheet from '@/components/shared/BottomSheet'
+import ConfirmSheet from '@/components/shared/ConfirmSheet'
 import {
   getGroupInfo,
   updateGroupInfo,
@@ -16,6 +18,10 @@ import {
   demoteAdmin,
 } from '@/actions/groups'
 import { searchUsers } from '@/actions/users'
+import { getMuteStatus, muteConversation, unmuteConversation } from '@/actions/conversations'
+
+const GROUP_NAME_MAX = 50
+const GROUP_DESCRIPTION_MAX = 200
 
 export default function GroupSettingsPage() {
   const { id } = useParams()
@@ -26,33 +32,47 @@ export default function GroupSettingsPage() {
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(null)
   const [formData, setFormData] = useState({ name: '', description: '' })
+  const [savedFormData, setSavedFormData] = useState({ name: '', description: '' })
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState([])
   const [searching, setSearching] = useState(false)
   const [acting, setActing] = useState(null)
+  const [showAddMember, setShowAddMember] = useState(false)
+  const [memberActionUser, setMemberActionUser] = useState(null)
+  const [confirmAction, setConfirmAction] = useState(null)
+  const [muteStatus, setMuteStatus] = useState({ muted: false, mutedUntil: null })
+  const [muting, setMuting] = useState(false)
   const fileInputRef = useRef(null)
 
   useEffect(() => {
     load()
+    async function loadMute() {
+      const result = await getMuteStatus(id)
+      setMuteStatus(result)
+    }
+    loadMute()
   }, [id])
 
   async function load() {
     const result = await getGroupInfo(id)
     if (result.data) {
       setGroup(result.data)
-      console.log('myRole:', result.data.myRole)
-      setFormData({ name: result.data.name, description: result.data.description || '' })
+      const next = { name: result.data.name, description: result.data.description || '' }
+      setFormData(next)
+      setSavedFormData(next)
     }
     setLoading(false)
   }
+
+  const isDirty = formData.name !== savedFormData.name || formData.description !== savedFormData.description
 
   const handleSave = async () => {
     setSaving(true)
     setError(null)
     setSuccess(null)
     const data = new FormData()
-    data.append('name', formData.name)
-    data.append('description', formData.description)
+    data.append('name', formData.name.trim().slice(0, GROUP_NAME_MAX))
+    data.append('description', formData.description.trim().slice(0, GROUP_DESCRIPTION_MAX))
     const result = await updateGroupInfo(id, data)
     if (result.error) setError(result.error)
     else { setSuccess('Group updated.'); load() }
@@ -73,7 +93,7 @@ export default function GroupSettingsPage() {
 
   const handleSearch = async (query) => {
     setSearchQuery(query)
-    if (query.length < 3) { setSearchResults([]); return }
+    if (query.trim().length < 3) { setSearchResults([]); return }
     setSearching(true)
     const result = await searchUsers(query)
     if (result.data) {
@@ -86,45 +106,54 @@ export default function GroupSettingsPage() {
   const handleAddMember = async (userId) => {
     setActing(userId)
     const result = await addMember(id, userId)
-    if (result.error) setError(result.error)
-    else { setSuccess('Member added.'); load(); setSearchQuery(''); setSearchResults([]) }
+    if (!result.error) { load(); setSearchQuery(''); setSearchResults([]); setShowAddMember(false) }
     setActing(null)
   }
 
-  const handleRemoveMember = async (userId) => {
-    if (!confirm('Remove this member?')) return
-    setActing(userId)
-    const result = await removeMember(id, userId)
-    if (result.error) setError(result.error)
-    else { load() }
+  const handleRemoveMember = async () => {
+    if (!memberActionUser) return
+    setActing(memberActionUser.user_id)
+    await removeMember(id, memberActionUser.user_id)
     setActing(null)
+    setMemberActionUser(null)
+    load()
   }
 
   const handlePromote = async (userId) => {
     setActing(userId)
-    const result = await promoteToAdmin(id, userId)
-    if (result.error) setError(result.error)
-    else load()
+    await promoteToAdmin(id, userId)
     setActing(null)
+    setMemberActionUser(null)
+    load()
   }
 
   const handleDemote = async (userId) => {
     setActing(userId)
-    const result = await demoteAdmin(id, userId)
-    if (result.error) setError(result.error)
-    else load()
+    await demoteAdmin(id, userId)
     setActing(null)
+    setMemberActionUser(null)
+    load()
+  }
+
+  const handleToggleMute = async () => {
+    setMuting(true)
+    if (muteStatus.muted) {
+      await unmuteConversation(id)
+      setMuteStatus({ muted: false, mutedUntil: null })
+    } else {
+      await muteConversation(id, null)
+      setMuteStatus({ muted: true, mutedUntil: null })
+    }
+    setMuting(false)
   }
 
   const handleLeave = async () => {
-    if (!confirm('Leave this group?')) return
     const result = await leaveGroup(id)
     if (result.error) setError(result.error)
     else router.push('/chat')
   }
 
   const handleDelete = async () => {
-    if (!confirm('Delete this group permanently? This cannot be undone.')) return
     const result = await deleteGroup(id)
     if (result.error) setError(result.error)
     else router.push('/chat')
@@ -132,37 +161,17 @@ export default function GroupSettingsPage() {
 
   const getRoleBadge = (role) => {
     if (role === 'owner') return (
-      <span style={{
-        padding: '2px 8px',
-        background: '#FFB800',
-        border: '1px solid #0a0a0a',
-        borderRadius: '100px',
-        fontSize: '10px',
-        fontWeight: '700',
-      }}>Owner</span>
+      <span style={{ padding: '2px 8px', background: '#FFB800', border: '1px solid #0a0a0a', borderRadius: '100px', fontSize: '10px', fontWeight: '700' }}>Owner</span>
     )
     if (role === 'admin') return (
-      <span style={{
-        padding: '2px 8px',
-        background: '#F5F5F5',
-        border: '1px solid #0a0a0a',
-        borderRadius: '100px',
-        fontSize: '10px',
-        fontWeight: '700',
-      }}>Admin</span>
+      <span style={{ padding: '2px 8px', background: '#F5F5F5', border: '1px solid #0a0a0a', borderRadius: '100px', fontSize: '10px', fontWeight: '700' }}>Admin</span>
     )
     return null
   }
 
   if (loading) {
     return (
-      <div style={{
-        height: '100%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontFamily: "'Inter', -apple-system, sans-serif",
-      }}>
+      <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Inter', -apple-system, sans-serif" }}>
         <p style={{ color: '#A3A3A3', fontSize: '14px' }}>Loading...</p>
       </div>
     )
@@ -170,14 +179,22 @@ export default function GroupSettingsPage() {
 
   const isAdminOrOwner = ['admin', 'owner'].includes(group?.myRole)
   const isOwner = group?.myRole === 'owner'
+  const rowStyle = {
+    display: 'block',
+    width: '100%',
+    textAlign: 'left',
+    padding: '14px 20px',
+    fontSize: '15px',
+    fontWeight: '600',
+    color: '#0a0a0a',
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+  }
 
   return (
-    <div style={{
-      height: '100%',
-      overflowY: 'auto',
-      fontFamily: "'Inter', -apple-system, sans-serif",
-      background: '#F5F5F5',
-    }}>
+    <div style={{ height: '100%', overflowY: 'auto', fontFamily: "'Inter', -apple-system, sans-serif", background: '#F5F5F5' }}>
       {/* Header */}
       <div style={{
         padding: '16px 20px',
@@ -196,103 +213,55 @@ export default function GroupSettingsPage() {
 
       <div style={{ maxWidth: '600px', margin: '0 auto', padding: '20px' }}>
         {error && (
-          <div style={{
-            background: '#FEF2F2',
-            border: '1.5px solid #EF4444',
-            borderRadius: '8px',
-            padding: '12px 14px',
-            marginBottom: '16px',
-            fontSize: '13px',
-            color: '#EF4444',
-          }}>
+          <div style={{ background: '#FEF2F2', border: '1.5px solid #EF4444', borderRadius: '8px', padding: '12px 14px', marginBottom: '16px', fontSize: '13px', color: '#EF4444' }}>
             {error}
           </div>
         )}
-
         {success && (
-          <div style={{
-            background: '#F0FDF4',
-            border: '1.5px solid #22C55E',
-            borderRadius: '8px',
-            padding: '12px 14px',
-            marginBottom: '16px',
-            fontSize: '13px',
-            color: '#22C55E',
-          }}>
+          <div style={{ background: '#F0FDF4', border: '1.5px solid #22C55E', borderRadius: '8px', padding: '12px 14px', marginBottom: '16px', fontSize: '13px', color: '#22C55E' }}>
             {success}
           </div>
         )}
 
-        {/* Group photo */}
-        <div style={{
-          background: '#fff',
-          border: '1.5px solid #0a0a0a',
-          borderRadius: '16px',
-          padding: '20px',
-          boxShadow: '4px 4px 0 #0a0a0a',
-          marginBottom: '16px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '16px',
-        }}>
-          <Avatar src={group?.avatar_url} name={group?.name} size={64} />
-          {isAdminOrOwner && (
-            <div>
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={acting === 'avatar'}
-                style={{
-                  padding: '8px 16px',
-                  background: '#0a0a0a',
-                  color: '#fff',
-                  border: '1.5px solid #0a0a0a',
-                  borderRadius: '8px',
-                  fontSize: '13px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
-                  boxShadow: '2px 2px 0 #FFB800',
-                  display: 'block',
-                  marginBottom: '6px',
-                }}
-              >
-                {acting === 'avatar' ? 'Uploading...' : 'Change photo'}
-              </button>
-              <p style={{ fontSize: '11px', color: '#A3A3A3' }}>Max 5MB</p>
-            </div>
-          )}
-          <input ref={fileInputRef} type="file" accept="image/*" onChange={handleAvatarChange} style={{ display: 'none' }} />
-        </div>
-
         {/* Group info */}
-        {isAdminOrOwner && (
-          <div style={{
-            background: '#fff',
-            border: '1.5px solid #0a0a0a',
-            borderRadius: '16px',
-            padding: '20px',
-            boxShadow: '4px 4px 0 #0a0a0a',
-            marginBottom: '16px',
-          }}>
-            <h2 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '16px' }}>Group info</h2>
+        <div style={{ background: '#fff', border: '1.5px solid #0a0a0a', borderRadius: '16px', padding: '20px', boxShadow: '4px 4px 0 #0a0a0a', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: isAdminOrOwner ? '20px' : 0 }}>
+            <div style={{ position: 'relative' }}>
+              <Avatar src={group?.avatar_url} name={group?.name} size={64} />
+              {isAdminOrOwner && (
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={acting === 'avatar'}
+                  aria-label="Change group photo"
+                  style={{
+                    position: 'absolute', bottom: 0, right: 0,
+                    width: '24px', height: '24px', borderRadius: '50%',
+                    background: '#0a0a0a', color: '#fff', border: '1.5px solid #fff',
+                    fontSize: '11px', cursor: 'pointer', display: 'flex',
+                    alignItems: 'center', justifyContent: 'center',
+                  }}
+                >
+                  📷
+                </button>
+              )}
+              <input ref={fileInputRef} type="file" accept="image/*" onChange={handleAvatarChange} style={{ display: 'none' }} />
+            </div>
+            <div>
+              <p style={{ fontSize: '16px', fontWeight: '800' }}>{group?.name}</p>
+              <p style={{ fontSize: '12px', color: '#A3A3A3' }}>{group?.members?.length || 0} members</p>
+            </div>
+          </div>
+
+          {isAdminOrOwner && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div>
                 <label style={{ fontSize: '13px', fontWeight: '600', display: 'block', marginBottom: '6px' }}>Name</label>
                 <input
                   type="text"
                   value={formData.name}
-                  onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    border: '1.5px solid #E5E5E5',
-                    borderRadius: '8px',
-                    fontSize: '16px',
-                    fontFamily: 'inherit',
-                    outline: 'none',
-                  }}
-                  onFocus={e => e.target.style.borderColor = '#0a0a0a'}
-                  onBlur={e => e.target.style.borderColor = '#E5E5E5'}
+                  onChange={e => setFormData(prev => ({ ...prev, name: e.target.value.slice(0, GROUP_NAME_MAX) }))}
+                  maxLength={GROUP_NAME_MAX}
+                  style={{ width: '100%', padding: '10px 12px', border: '1.5px solid #E5E5E5', borderRadius: '8px', fontSize: '16px', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
                 />
               </div>
               <div>
@@ -300,245 +269,153 @@ export default function GroupSettingsPage() {
                 <input
                   type="text"
                   value={formData.description}
-                  onChange={e => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                  onChange={e => setFormData(prev => ({ ...prev, description: e.target.value.slice(0, GROUP_DESCRIPTION_MAX) }))}
                   placeholder="Optional"
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    border: '1.5px solid #E5E5E5',
-                    borderRadius: '8px',
-                    fontSize: '16px',
-                    fontFamily: 'inherit',
-                    outline: 'none',
-                  }}
-                  onFocus={e => e.target.style.borderColor = '#0a0a0a'}
-                  onBlur={e => e.target.style.borderColor = '#E5E5E5'}
+                  maxLength={GROUP_DESCRIPTION_MAX}
+                  style={{ width: '100%', padding: '10px 12px', border: '1.5px solid #E5E5E5', borderRadius: '8px', fontSize: '16px', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
                 />
               </div>
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                style={{
-                  padding: '10px',
-                  background: '#0a0a0a',
-                  color: '#fff',
-                  border: '1.5px solid #0a0a0a',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontWeight: '700',
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
-                  boxShadow: '2px 2px 0 #FFB800',
-                }}
-              >
-                {saving ? 'Saving...' : 'Save changes'}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Members */}
-        <div style={{
-          background: '#fff',
-          border: '1.5px solid #0a0a0a',
-          borderRadius: '16px',
-          padding: '20px',
-          boxShadow: '4px 4px 0 #0a0a0a',
-          marginBottom: '16px',
-        }}>
-          <h2 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '16px' }}>
-            Members ({group?.members?.length || 0})
-          </h2>
-
-          {isAdminOrOwner && (
-            <div style={{ marginBottom: '16px' }}>
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={e => handleSearch(e.target.value)}
-                placeholder="Search to add members..."
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  border: '1.5px solid #E5E5E5',
-                  borderRadius: '8px',
-                  fontSize: '16px',
-                  fontFamily: 'inherit',
-                  outline: 'none',
-                  marginBottom: '8px',
-                }}
-                onFocus={e => e.target.style.borderColor = '#0a0a0a'}
-                onBlur={e => e.target.style.borderColor = '#E5E5E5'}
-              />
-              {searchQuery.length >= 3 && (
-                <div>
-                  {searching ? (
-                    <p style={{ fontSize: '13px', color: '#A3A3A3' }}>Searching...</p>
-                  ) : searchResults.map(u => (
-                    <div key={u.id} style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '10px',
-                      padding: '8px 0',
-                      borderBottom: '1px solid #F5F5F5',
-                    }}>
-                      <Avatar src={u.avatar_url} name={u.display_name} size={36} />
-                      <div style={{ flex: 1 }}>
-                        <p style={{ fontSize: '14px', fontWeight: '600' }}>{u.display_name}</p>
-                        <p style={{ fontSize: '12px', color: '#A3A3A3' }}>@{u.username}</p>
-                      </div>
-                      <button
-                        onClick={() => handleAddMember(u.id)}
-                        disabled={acting === u.id}
-                        style={{
-                          padding: '6px 12px',
-                          background: '#0a0a0a',
-                          color: '#fff',
-                          border: '1.5px solid #0a0a0a',
-                          borderRadius: '6px',
-                          fontSize: '12px',
-                          fontWeight: '600',
-                          cursor: 'pointer',
-                          fontFamily: 'inherit',
-                        }}
-                      >
-                        Add
-                      </button>
-                    </div>
-                  ))}
-                </div>
+              {isDirty && (
+                <button
+                  onClick={handleSave}
+                  disabled={saving || !formData.name.trim()}
+                  style={{ padding: '10px', background: '#0a0a0a', color: '#fff', border: '1.5px solid #0a0a0a', borderRadius: '8px', fontSize: '14px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit', boxShadow: '2px 2px 0 #FFB800' }}
+                >
+                  {saving ? 'Saving...' : 'Save changes'}
+                </button>
               )}
             </div>
           )}
+        </div>
+
+        {/* Members */}
+        <div style={{ background: '#fff', border: '1.5px solid #0a0a0a', borderRadius: '16px', padding: '20px', boxShadow: '4px 4px 0 #0a0a0a', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+            <h2 style={{ fontSize: '15px', fontWeight: '700' }}>{group?.members?.length || 0} members</h2>
+            {isAdminOrOwner && (
+              <button
+                onClick={() => setShowAddMember(true)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '700', color: '#0a0a0a', fontFamily: 'inherit' }}
+              >
+                + Add member
+              </button>
+            )}
+          </div>
 
           {group?.members?.map(member => (
-            <div key={member.user_id} style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              padding: '10px 0',
-              borderBottom: '1px solid #F5F5F5',
-            }}>
+            <div
+              key={member.user_id}
+              onClick={() => member.role !== 'owner' || isOwner ? setMemberActionUser(member) : null}
+              style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 0', borderBottom: '1px solid #F5F5F5', cursor: 'pointer' }}
+            >
               <Avatar src={member.avatar_url} name={member.display_name} size={40} />
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <p style={{ fontSize: '14px', fontWeight: '600' }}>{member.display_name}</p>
+                  <p style={{ fontSize: '14px', fontWeight: '600', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{member.display_name}</p>
                   {getRoleBadge(member.role)}
                 </div>
                 <p style={{ fontSize: '12px', color: '#A3A3A3' }}>@{member.username}</p>
               </div>
-              {isOwner && member.role !== 'owner' && (
-                <div style={{ display: 'flex', gap: '6px' }}>
-                  {member.role === 'member' && (
-                    <button
-                      onClick={() => handlePromote(member.user_id)}
-                      disabled={acting === member.user_id}
-                      style={{
-                        padding: '5px 10px',
-                        background: '#fff',
-                        color: '#0a0a0a',
-                        border: '1.5px solid #0a0a0a',
-                        borderRadius: '6px',
-                        fontSize: '11px',
-                        fontWeight: '600',
-                        cursor: 'pointer',
-                        fontFamily: 'inherit',
-                      }}
-                    >
-                      Make admin
-                    </button>
-                  )}
-                  {member.role === 'admin' && (
-                    <button
-                      onClick={() => handleDemote(member.user_id)}
-                      disabled={acting === member.user_id}
-                      style={{
-                        padding: '5px 10px',
-                        background: '#fff',
-                        color: '#525252',
-                        border: '1.5px solid #E5E5E5',
-                        borderRadius: '6px',
-                        fontSize: '11px',
-                        fontWeight: '600',
-                        cursor: 'pointer',
-                        fontFamily: 'inherit',
-                      }}
-                    >
-                      Demote
-                    </button>
-                  )}
-                  <button
-                    onClick={() => handleRemoveMember(member.user_id)}
-                    disabled={acting === member.user_id}
-                    style={{
-                      padding: '5px 10px',
-                      background: '#fff',
-                      color: '#EF4444',
-                      border: '1.5px solid #EF4444',
-                      borderRadius: '6px',
-                      fontSize: '11px',
-                      fontWeight: '600',
-                      cursor: 'pointer',
-                      fontFamily: 'inherit',
-                    }}
-                  >
-                    Remove
-                  </button>
-                </div>
-              )}
             </div>
           ))}
         </div>
 
-        {/* Danger zone */}
-        <div style={{
-          background: '#fff',
-          border: '1.5px solid #EF4444',
-          borderRadius: '16px',
-          padding: '20px',
-          marginBottom: '16px',
-        }}>
-          <h2 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '16px', color: '#EF4444' }}>Danger zone</h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <button
-              onClick={handleLeave}
-              style={{
-                padding: '10px',
-                background: '#fff',
-                color: '#EF4444',
-                border: '1.5px solid #EF4444',
-                borderRadius: '8px',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-                textAlign: 'left',
-              }}
-            >
-              Leave group
+        {/* Actions */}
+        <div style={{ background: '#fff', border: '1.5px solid #0a0a0a', borderRadius: '16px', overflow: 'hidden', boxShadow: '4px 4px 0 #0a0a0a', marginBottom: '16px' }}>
+          <button style={rowStyle} onClick={handleToggleMute} disabled={muting}>
+            {muteStatus.muted ? '🔔 Unmute group' : '🔕 Mute group'}
+          </button>
+          <button style={{ ...rowStyle, color: '#EF4444', borderTop: '1px solid #F5F5F5' }} onClick={() => setConfirmAction('leave')}>
+            🚪 Leave group
+          </button>
+          {isOwner && (
+            <button style={{ ...rowStyle, color: '#EF4444', borderTop: '1px solid #F5F5F5' }} onClick={() => setConfirmAction('delete')}>
+              🗑️ Delete group
             </button>
-            {isOwner && (
-              <button
-                onClick={handleDelete}
-                style={{
-                  padding: '10px',
-                  background: '#EF4444',
-                  color: '#fff',
-                  border: '1.5px solid #EF4444',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontWeight: '700',
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
-                  textAlign: 'left',
-                }}
-              >
-                Delete group
-              </button>
+          )}
+        </div>
+      </div>
+
+      {/* Add member sheet */}
+      <BottomSheet isOpen={showAddMember} onClose={() => setShowAddMember(false)} title="Add member">
+        <div style={{ padding: '12px 20px 20px', fontFamily: "'Inter', -apple-system, sans-serif" }}>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={e => handleSearch(e.target.value)}
+            placeholder="Search by username..."
+            style={{ width: '100%', padding: '12px 14px', border: '1.5px solid #E5E5E5', borderRadius: '10px', fontSize: '16px', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: '12px' }}
+          />
+          {searching ? (
+            <p style={{ fontSize: '13px', color: '#A3A3A3' }}>Searching...</p>
+          ) : searchResults.length === 0 && searchQuery.trim().length >= 3 ? (
+            <p style={{ fontSize: '13px', color: '#A3A3A3' }}>No users found</p>
+          ) : (
+            searchResults.map(u => (
+              <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 0', borderBottom: '1px solid #F5F5F5' }}>
+                <Avatar src={u.avatar_url} name={u.display_name} size={36} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: '14px', fontWeight: '600' }}>{u.display_name}</p>
+                  <p style={{ fontSize: '12px', color: '#A3A3A3' }}>@{u.username}</p>
+                </div>
+                <button
+                  onClick={() => handleAddMember(u.id)}
+                  disabled={acting === u.id}
+                  style={{ padding: '6px 14px', background: '#0a0a0a', color: '#fff', border: 'none', borderRadius: '100px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit' }}
+                >
+                  {acting === u.id ? 'Adding...' : 'Add'}
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+      </BottomSheet>
+
+      {/* Per-member action sheet */}
+      <BottomSheet isOpen={!!memberActionUser} onClose={() => setMemberActionUser(null)}>
+        <div style={{ fontFamily: "'Inter', -apple-system, sans-serif" }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '4px 20px 16px', borderBottom: '1px solid #E5E5E5' }}>
+            <Avatar src={memberActionUser?.avatar_url} name={memberActionUser?.display_name} size={40} />
+            <p style={{ fontSize: '15px', fontWeight: '800' }}>{memberActionUser?.display_name}</p>
+          </div>
+          <div style={{ padding: '8px 0' }}>
+            <Link
+              href={`/u/${memberActionUser?.username}?from=conversation-settings&convId=${id}`}
+              style={{ ...rowStyle, textDecoration: 'none', display: 'block' }}
+            >
+              View profile
+            </Link>
+            {isOwner && memberActionUser?.role === 'member' && (
+              <button style={rowStyle} onClick={() => handlePromote(memberActionUser.user_id)}>Promote to admin</button>
+            )}
+            {isOwner && memberActionUser?.role === 'admin' && (
+              <button style={rowStyle} onClick={() => handleDemote(memberActionUser.user_id)}>Demote to member</button>
+            )}
+            {isAdminOrOwner && memberActionUser?.role !== 'owner' && (
+              <button style={{ ...rowStyle, color: '#EF4444' }} onClick={handleRemoveMember}>Remove from group</button>
             )}
           </div>
         </div>
-      </div>
+      </BottomSheet>
+
+      <ConfirmSheet
+        isOpen={confirmAction === 'leave'}
+        onClose={() => setConfirmAction(null)}
+        title="Leave group?"
+        message="You'll no longer receive messages from this group. You can be re-added by another member."
+        confirmLabel="Leave group"
+        confirmStyle="danger"
+        onConfirm={handleLeave}
+      />
+      <ConfirmSheet
+        isOpen={confirmAction === 'delete'}
+        onClose={() => setConfirmAction(null)}
+        title="Delete group?"
+        message="This permanently deletes the group for everyone. This cannot be undone."
+        confirmLabel="Delete group"
+        confirmStyle="danger"
+        onConfirm={handleDelete}
+      />
     </div>
   )
 }
