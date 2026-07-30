@@ -17,6 +17,21 @@ import { cache } from '@/lib/cache'
 const LONG_PRESS_MS = 400
 const LONG_PRESS_MOVE_TOLERANCE = 10
 
+const listMenuRowStyle = {
+  display: 'block',
+  width: '100%',
+  textAlign: 'left',
+  padding: '10px 16px',
+  fontSize: '14px',
+  fontWeight: '600',
+  color: '#0a0a0a',
+  background: 'none',
+  border: 'none',
+  cursor: 'pointer',
+  fontFamily: 'inherit',
+  whiteSpace: 'nowrap',
+}
+
 export default function ChatList({ onSelectConversation }) {
   const router = useRouter()
   const [conversations, setConversations] = useState([])
@@ -264,6 +279,16 @@ export default function ChatList({ onSelectConversation }) {
     })
   }
 
+  const handleReadAll = async () => {
+    setShowListMenu(false)
+    const unreadIds = conversations
+      .filter(c => (c.unread_count || 0) > 0)
+      .map(c => c.conversation_id)
+    if (unreadIds.length === 0) return
+    await Promise.all(unreadIds.map(id => markConversationRead(id)))
+    await refreshConversations()
+  }
+
   const handleBulkMarkRead = async () => {
     setBulkActing(true)
     await Promise.all([...selectedConvIds].map(id => markConversationRead(id)))
@@ -441,22 +466,15 @@ export default function ChatList({ onSelectConversation }) {
                 }}>
                   <button
                     onClick={() => { setShowListMenu(false); handleEnterBulkSelect(null) }}
-                    style={{
-                      display: 'block',
-                      width: '100%',
-                      textAlign: 'left',
-                      padding: '10px 16px',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      color: '#0a0a0a',
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      fontFamily: 'inherit',
-                      whiteSpace: 'nowrap',
-                    }}
+                    style={listMenuRowStyle}
                   >
                     ☑️ Select chats
+                  </button>
+                  <button
+                    onClick={handleReadAll}
+                    style={listMenuRowStyle}
+                  >
+                    ✓ Read all
                   </button>
                 </div>
               </>
