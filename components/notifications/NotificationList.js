@@ -26,16 +26,19 @@ export default function NotificationList({ initialNotifications }) {
         case 'message':
         case 'group_message':
         case 'mention':
+        case 'reaction':
           router.push(`/chat/${notification.reference_id}`)
           break
         case 'message_request':
-          router.push('/requests')
+          // The only producer of this type is acceptMessageRequest(),
+          // which sets reference_id to the resulting conversation — a
+          // "someone wants to message you" notification is push-only
+          // today and never lands in this in-app feed, so this is
+          // always the "your request was accepted" case.
+          router.push(`/chat/${notification.reference_id}`)
           break
         case 'group_invite':
           router.push('/requests')
-          break
-        case 'reaction':
-          router.push(`/chat/${notification.reference_id}`)
           break
         default:
           break
