@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import BottomSheet from '@/components/shared/BottomSheet'
 
 // Replaces browser confirm() everywhere in the app. confirmStyle:
@@ -14,9 +15,23 @@ export default function ConfirmSheet({
   confirmStyle = 'default',
   onConfirm,
 }) {
-  const handleConfirm = () => {
-    onConfirm?.()
-    onClose?.()
+  const [confirming, setConfirming] = useState(false)
+
+  // onConfirm (e.g. deleteGroup, a ~10-round-trip server action) used to
+  // fire without being awaited, so this closed immediately while the real
+  // action was still in flight — whatever the caller does after it
+  // resolves (closing a parent sheet, navigating away) then landed a
+  // second or two later, after the user had already moved on, reading as
+  // an unexplained extra navigation. Awaiting it here means onClose only
+  // fires once the action has actually finished.
+  const handleConfirm = async () => {
+    setConfirming(true)
+    try {
+      await onConfirm?.()
+    } finally {
+      setConfirming(false)
+      onClose?.()
+    }
   }
 
   return (
@@ -35,6 +50,7 @@ export default function ConfirmSheet({
         <div style={{ display: 'flex', gap: '10px' }}>
           <button
             onClick={onClose}
+            disabled={confirming}
             style={{
               flex: 1,
               padding: '12px',
@@ -44,7 +60,8 @@ export default function ConfirmSheet({
               color: '#0a0a0a',
               fontSize: '14px',
               fontWeight: '700',
-              cursor: 'pointer',
+              cursor: confirming ? 'not-allowed' : 'pointer',
+              opacity: confirming ? 0.5 : 1,
               fontFamily: 'inherit',
               minHeight: '44px',
             }}
@@ -53,6 +70,7 @@ export default function ConfirmSheet({
           </button>
           <button
             onClick={handleConfirm}
+            disabled={confirming}
             style={{
               flex: 1,
               padding: '12px',
@@ -62,12 +80,13 @@ export default function ConfirmSheet({
               color: '#fff',
               fontSize: '14px',
               fontWeight: '700',
-              cursor: 'pointer',
+              cursor: confirming ? 'not-allowed' : 'pointer',
+              opacity: confirming ? 0.7 : 1,
               fontFamily: 'inherit',
               minHeight: '44px',
             }}
           >
-            {confirmLabel}
+            {confirming ? 'Please wait...' : confirmLabel}
           </button>
         </div>
       </div>

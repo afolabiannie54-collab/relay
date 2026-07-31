@@ -100,14 +100,16 @@ export default function ConversationSettingsSheet({
     vibrate()
     await hideConversation(conversationId)
     onClose?.()
-    router.push('/chat')
+    // replace, not push — a hidden/deleted/left conversation's URL
+    // shouldn't remain a valid back-navigation target in history.
+    router.replace('/chat')
   }
 
   const handleBlock = async () => {
     if (!otherParticipant) return
     await blockUser(otherParticipant.id)
     onClose?.()
-    router.push('/chat')
+    router.replace('/chat')
   }
 
   const handleShareProfile = async () => {
@@ -122,14 +124,14 @@ export default function ConversationSettingsSheet({
     await leaveGroup(conversationId)
     window.dispatchEvent(new Event('relay:conversations-changed'))
     onClose?.()
-    router.push('/chat')
+    router.replace('/chat')
   }
 
   const handleDeleteGroup = async () => {
     await deleteGroup(conversationId)
     window.dispatchEvent(new Event('relay:conversations-changed'))
     onClose?.()
-    router.push('/chat')
+    router.replace('/chat')
   }
 
   const handleMemberSearch = async (q) => {

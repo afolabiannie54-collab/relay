@@ -71,7 +71,9 @@ export default function ConversationContextMenu({ conversation, isMuted, positio
   const handleHide = async () => {
     await hideConversation(conversation.conversation_id)
     onChanged?.()
-    if (isCurrentlyOpen) router.push('/chat')
+    // replace, not push — a hidden/deleted/left conversation's URL
+    // shouldn't remain a valid back-navigation target in history.
+    if (isCurrentlyOpen) router.replace('/chat')
     onClose?.()
   }
 
@@ -89,14 +91,14 @@ export default function ConversationContextMenu({ conversation, isMuted, positio
     // actual server fetch, not a cache hit.
     cache.invalidate(`messages:${conversation.conversation_id}`)
     onChanged?.()
-    if (isCurrentlyOpen) router.push('/chat')
+    if (isCurrentlyOpen) router.replace('/chat')
     onClose?.()
   }
 
   const handleLeaveGroup = async () => {
     await leaveGroup(conversation.conversation_id)
     onChanged?.()
-    if (isCurrentlyOpen) router.push('/chat')
+    if (isCurrentlyOpen) router.replace('/chat')
     onClose?.()
   }
 

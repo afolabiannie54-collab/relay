@@ -84,7 +84,9 @@ export default function ConversationActionSheet({ conversation, isMuted, isOpen,
     vibrate()
     await hideConversation(conversation.conversation_id)
     onChanged?.()
-    if (isCurrentlyOpen) router.push('/chat')
+    // replace, not push — a hidden/deleted/left conversation's URL
+    // shouldn't remain a valid back-navigation target in history.
+    if (isCurrentlyOpen) router.replace('/chat')
     close()
   }
 
@@ -103,14 +105,14 @@ export default function ConversationActionSheet({ conversation, isMuted, isOpen,
     // actual server fetch, not a cache hit.
     cache.invalidate(`messages:${conversation.conversation_id}`)
     onChanged?.()
-    if (isCurrentlyOpen) router.push('/chat')
+    if (isCurrentlyOpen) router.replace('/chat')
     close()
   }
 
   const handleLeaveGroup = async () => {
     await leaveGroup(conversation.conversation_id)
     onChanged?.()
-    if (isCurrentlyOpen) router.push('/chat')
+    if (isCurrentlyOpen) router.replace('/chat')
     close()
   }
 
