@@ -371,7 +371,28 @@ export async function deleteGroup(conversationId) {
   // The four deletes that actually matter for "does anyone still see
   // this group" — explicit and in this order, not left to cascades.
   await serviceClient.from('messages').delete().eq('conversation_id', conversationId)
-  await serviceClient.from('conversation_participants').delete().eq('conversation_id', conversationId)
+
+  // conversation_participants is deleted per-row rather than as one bulk
+  // statement — a row-level trigger (on_participant_removed) fires per
+  // affected row either way, so this doesn't change how many
+  // notification rows get inserted; it only means each DELETE commits
+  // (and is visible to Realtime/logical replication) as its own
+  // transaction instead of all at once.
+  const { data: participants } = await serviceClient
+    .from('conversation_participants')
+    .select('user_id')
+    .eq('conversation_id', conversationId)
+
+  await Promise.all(
+    (participants || []).map(p =>
+      serviceClient
+        .from('conversation_participants')
+        .delete()
+        .eq('conversation_id', conversationId)
+        .eq('user_id', p.user_id)
+    )
+  )
+
   if (group?.id) await serviceClient.from('groups').delete().eq('id', group.id)
   await serviceClient.from('conversations').delete().eq('id', conversationId)
 

@@ -4,13 +4,26 @@ self.addEventListener('push', (event) => {
   const data = event.data.json()
 
   event.waitUntil(
-    self.registration.showNotification(data.title, {
-      body: data.body,
-      icon: data.icon || '/icons/logo-light.png',
-      badge: '/icons/logo-light.png',
-      data: { url: data.url || '/' },
-      vibrate: [200, 100, 200],
-    })
+    (async () => {
+      const url = data.url || '/'
+
+      // Suppress the notification if a focused tab is already looking at
+      // this exact conversation — sendPushNotification() runs server-side
+      // and has no way to know what the client has open, but the client
+      // itself does via clients.matchAll(). WindowClient.focused is a
+      // real, synchronous property here, no round-trip to the page needed.
+      const clientList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+      const isViewingIt = clientList.some(client => client.focused && client.url.includes(url))
+      if (isViewingIt) return
+
+      await self.registration.showNotification(data.title, {
+        body: data.body,
+        icon: data.icon || '/icons/logo-light.png',
+        badge: '/icons/logo-light.png',
+        data: { url },
+        vibrate: [200, 100, 200],
+      })
+    })()
   )
 })
 

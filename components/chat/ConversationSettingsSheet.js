@@ -8,7 +8,7 @@ import Avatar from '@/components/shared/Avatar'
 import CopyUsernameButton from '@/components/profile/CopyUsernameButton'
 import { hideConversation } from '@/actions/messages'
 import { getMuteStatus, muteConversation, unmuteConversation } from '@/actions/conversations'
-import { removeMember, promoteToAdmin, demoteAdmin, leaveGroup, deleteGroup, addMember } from '@/actions/groups'
+import { removeMember, promoteToAdmin, demoteAdmin, leaveGroup, deleteGroup, addMember, updateGroupInfo, uploadGroupAvatar } from '@/actions/groups'
 import { blockUser } from '@/actions/blocks'
 import { searchUsers } from '@/actions/users'
 import { cache } from '@/lib/cache'
@@ -19,6 +19,9 @@ const MUTE_OPTIONS = [
   { label: '1 week', hours: 24 * 7 },
   { label: 'Forever', hours: null },
 ]
+
+const GROUP_NAME_MAX = 50
+const GROUP_DESCRIPTION_MAX = 200
 
 function vibrate() {
   try { window.navigator.vibrate?.(10) } catch {}
@@ -56,6 +59,13 @@ export default function ConversationSettingsSheet({
   const [memberResults, setMemberResults] = useState([])
   const [searching, setSearching] = useState(false)
   const [acting, setActing] = useState(null)
+  const [showEditGroup, setShowEditGroup] = useState(false)
+  const [editName, setEditName] = useState('')
+  const [editDescription, setEditDescription] = useState('')
+  const [editAvatarFile, setEditAvatarFile] = useState(null)
+  const [editAvatarPreview, setEditAvatarPreview] = useState(null)
+  const [editSaving, setEditSaving] = useState(false)
+  const [editError, setEditError] = useState(null)
 
   useEffect(() => {
     if (!isOpen || !conversationId) return
@@ -68,6 +78,18 @@ export default function ConversationSettingsSheet({
     }
     loadMute()
   }, [isOpen, conversationId])
+
+  // Sub-sheets (add member, per-member actions, edit group) only close
+  // visually when their own state flips false — closing the parent
+  // sheet without backing out of one first left it reopening straight
+  // into that sub-screen next time. Resetting all of them here means
+  // the parent sheet always reopens on the main menu.
+  useEffect(() => {
+    if (isOpen) return
+    setShowAddMember(false)
+    setMemberActionUser(null)
+    setShowEditGroup(false)
+  }, [isOpen])
 
   const canManageGroup = ['owner', 'admin'].includes(myRole)
   const isOwner = myRole === 'owner'
@@ -176,6 +198,48 @@ export default function ConversationSettingsSheet({
     await demoteAdmin(conversationId, userId)
     setActing(null)
     setMemberActionUser(null)
+    onGroupChanged?.()
+  }
+
+  const openEditGroup = () => {
+    setEditName(groupInfo?.name || '')
+    setEditDescription(groupInfo?.description || '')
+    setEditAvatarFile(null)
+    setEditAvatarPreview(groupInfo?.avatar_url || null)
+    setEditError(null)
+    setShowEditGroup(true)
+  }
+
+  const handleEditAvatarChange = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setEditAvatarFile(file)
+    setEditAvatarPreview(URL.createObjectURL(file))
+  }
+
+  const handleSaveGroupEdit = async () => {
+    if (!editName.trim()) { setEditError('Group name is required'); return }
+    setEditSaving(true)
+    setEditError(null)
+
+    const data = new FormData()
+    data.append('name', editName.trim().slice(0, GROUP_NAME_MAX))
+    data.append('description', editDescription.trim().slice(0, GROUP_DESCRIPTION_MAX))
+    const result = await updateGroupInfo(conversationId, data)
+    if (result.error) {
+      setEditError(result.error)
+      setEditSaving(false)
+      return
+    }
+
+    if (editAvatarFile) {
+      const avatarData = new FormData()
+      avatarData.append('avatar', editAvatarFile)
+      await uploadGroupAvatar(conversationId, avatarData)
+    }
+
+    setEditSaving(false)
+    setShowEditGroup(false)
     onGroupChanged?.()
   }
 
@@ -313,7 +377,7 @@ export default function ConversationSettingsSheet({
               </div>
 
               {canManageGroup && (
-                <button style={rowStyle} onClick={() => { onClose?.(); router.push(`/groups/${conversationId}/settings`) }}>
+                <button style={rowStyle} onClick={openEditGroup}>
                   <span>✏️ Edit group</span>
                   <span style={{ color: '#A3A3A3' }}>→</span>
                 </button>
@@ -379,6 +443,84 @@ export default function ConversationSettingsSheet({
               </div>
             ))
           )}
+        </div>
+      </BottomSheet>
+
+      {/* Edit group — inline sub-sheet, not a navigation to
+          /groups/[id]/settings (that page still exists for deep-linking,
+          but this is now the primary entry point). */}
+      <BottomSheet isOpen={showEditGroup} onClose={() => setShowEditGroup(false)} title="Edit group">
+        <div style={{ padding: '4px 20px 20px', fontFamily: "'Inter', -apple-system, sans-serif" }}>
+          {editError && (
+            <div style={{ background: '#FEF2F2', border: '1.5px solid #EF4444', borderRadius: '8px', padding: '10px 14px', marginBottom: '14px', fontSize: '13px', color: '#EF4444' }}>
+              {editError}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
+            <label style={{ cursor: 'pointer', position: 'relative' }}>
+              <input type="file" accept="image/*" onChange={handleEditAvatarChange} style={{ display: 'none' }} />
+              <Avatar src={editAvatarPreview} name={editName} size={80} />
+              <div style={{
+                position: 'absolute', bottom: 0, right: 0,
+                width: '26px', height: '26px', borderRadius: '50%',
+                background: '#0a0a0a', color: '#fff', border: '1.5px solid #fff',
+                fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                📷
+              </div>
+            </label>
+          </div>
+
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ fontSize: '13px', fontWeight: '600', display: 'block', marginBottom: '6px' }}>Group name</label>
+            <input
+              type="text"
+              value={editName}
+              onChange={e => setEditName(e.target.value.slice(0, GROUP_NAME_MAX))}
+              maxLength={GROUP_NAME_MAX}
+              style={{ width: '100%', padding: '10px 12px', border: '1.5px solid #E5E5E5', borderRadius: '8px', fontSize: '16px', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
+            />
+            {editName.length >= GROUP_NAME_MAX - 10 && (
+              <p style={{ fontSize: '11px', color: editName.length >= GROUP_NAME_MAX ? '#EF4444' : '#A3A3A3', textAlign: 'right', marginTop: '4px' }}>
+                {editName.length}/{GROUP_NAME_MAX}
+              </p>
+            )}
+          </div>
+
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ fontSize: '13px', fontWeight: '600', display: 'block', marginBottom: '6px' }}>Description</label>
+            <input
+              type="text"
+              value={editDescription}
+              onChange={e => setEditDescription(e.target.value.slice(0, GROUP_DESCRIPTION_MAX))}
+              placeholder="Optional"
+              maxLength={GROUP_DESCRIPTION_MAX}
+              style={{ width: '100%', padding: '10px 12px', border: '1.5px solid #E5E5E5', borderRadius: '8px', fontSize: '16px', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
+            />
+            {editDescription.length >= GROUP_DESCRIPTION_MAX - 20 && (
+              <p style={{ fontSize: '11px', color: editDescription.length >= GROUP_DESCRIPTION_MAX ? '#EF4444' : '#A3A3A3', textAlign: 'right', marginTop: '4px' }}>
+                {editDescription.length}/{GROUP_DESCRIPTION_MAX}
+              </p>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button
+              onClick={() => setShowEditGroup(false)}
+              disabled={editSaving}
+              style={{ flex: 1, padding: '12px', background: '#fff', color: '#0a0a0a', border: '1.5px solid #0a0a0a', borderRadius: '8px', fontSize: '14px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit' }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSaveGroupEdit}
+              disabled={editSaving || !editName.trim()}
+              style={{ flex: 1, padding: '12px', background: editName.trim() ? '#0a0a0a' : '#E5E5E5', color: editName.trim() ? '#fff' : '#A3A3A3', border: '1.5px solid #0a0a0a', borderRadius: '8px', fontSize: '14px', fontWeight: '700', cursor: editName.trim() ? 'pointer' : 'not-allowed', fontFamily: 'inherit', boxShadow: editName.trim() ? '2px 2px 0 #FFB800' : 'none' }}
+            >
+              {editSaving ? 'Saving...' : 'Save'}
+            </button>
+          </div>
         </div>
       </BottomSheet>
 

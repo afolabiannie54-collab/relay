@@ -181,7 +181,7 @@ export default function ConversationPage() {
       setLoading(false)
 
       await markConversationRead(id)
-      window.dispatchEvent(new Event('relay:conversation-read'))
+      window.dispatchEvent(new CustomEvent('relay:conversation-read', { detail: { conversationId: id } }))
 
       const pinnedResult = await getPinnedMessages(id)
       if (pinnedResult.data) {
@@ -280,8 +280,14 @@ export default function ConversationPage() {
           return [...prev, newMsg]
         })
         cache.invalidate(`messages:${id}`)
+        // Mark read immediately since the user is actively viewing this
+        // conversation — dispatched with the conversationId so ChatList
+        // can zero out just this tile's badge optimistically instead of
+        // waiting on a full refetch, which is what caused a brief
+        // flash (unread count blipping to 1, then back to 0 once the
+        // refetch resolved).
         markConversationRead(id)
-        window.dispatchEvent(new Event('relay:conversation-read'))
+        window.dispatchEvent(new CustomEvent('relay:conversation-read', { detail: { conversationId: id } }))
       })
       .on('postgres_changes', {
         event: 'UPDATE',

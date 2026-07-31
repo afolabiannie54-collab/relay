@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation'
 import BottomSheet from '@/components/shared/BottomSheet'
 import ConfirmSheet from '@/components/shared/ConfirmSheet'
 import Avatar from '@/components/shared/Avatar'
-import { getConversations, getExistingConversation } from '@/actions/messages'
-import { createGroup, uploadGroupAvatar } from '@/actions/groups'
+import { getConversations, getExistingConversation, getConversation } from '@/actions/messages'
+import { createGroup, uploadGroupAvatar, getGroupInfo } from '@/actions/groups'
 import { searchUsers } from '@/actions/users'
 import { blockUser } from '@/actions/blocks'
 import { cache } from '@/lib/cache'
@@ -191,6 +191,19 @@ export default function NewConversationSheet({ isOpen, onClose, initialMode = 's
       avatarFormData.append('avatar', avatarFile)
       await uploadGroupAvatar(result.conversationId, avatarFormData)
     }
+
+    // Pre-populate chat/[id]/page.js's own cache keys with the exact
+    // shapes its getConversation()/getGroupInfo() calls already produce
+    // (rather than hand-building equivalent objects from local state,
+    // which risks a subtly wrong shape) — so when it mounts a moment
+    // later, cache.peek() finds real data immediately instead of
+    // rendering the header blank until its own fetch resolves.
+    const [convResult, groupResult] = await Promise.all([
+      getConversation(result.conversationId),
+      getGroupInfo(result.conversationId),
+    ])
+    if (convResult.data) cache.set(`conversation:${result.conversationId}`, convResult.data, 60000)
+    if (groupResult.data) cache.set(`group:${result.conversationId}`, groupResult.data, 60000)
 
     try { window.navigator.vibrate?.(10) } catch {}
 
