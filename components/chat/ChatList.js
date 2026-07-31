@@ -369,6 +369,11 @@ export default function ChatList({ onSelectConversation }) {
   const handleBulkDelete = async () => {
     setBulkActing(true)
     await Promise.all([...selectedConvIds].map(id => deleteConversationForUser(id)))
+    // A stale cached page of messages (from before the deletion cutoff)
+    // would otherwise serve the full unfiltered history on next open,
+    // since getMessages()'s deleted_at filter only ever runs on an
+    // actual server fetch, not a cache hit.
+    for (const id of selectedConvIds) cache.invalidate(`messages:${id}`)
     await refreshConversations()
     setBulkActing(false)
     setBulkConfirmAction(null)

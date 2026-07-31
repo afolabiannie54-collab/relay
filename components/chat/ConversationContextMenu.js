@@ -11,6 +11,7 @@ import { markConversationRead, markConversationUnread, hideConversation, unhideC
 import { leaveGroup, addMember } from '@/actions/groups'
 import { blockUser } from '@/actions/blocks'
 import { searchUsers } from '@/actions/users'
+import { cache } from '@/lib/cache'
 
 // Desktop right-click equivalent of ConversationActionSheet. `position`
 // is {x, y} in viewport coordinates (from the contextmenu event) or null
@@ -84,6 +85,11 @@ export default function ConversationContextMenu({ conversation, isMuted, positio
 
   const handleDelete = async () => {
     await deleteConversationForUser(conversation.conversation_id)
+    // A stale cached page of messages (from before the deletion cutoff)
+    // would otherwise serve the full unfiltered history on next open,
+    // since getMessages()'s deleted_at filter only ever runs on an
+    // actual server fetch, not a cache hit.
+    cache.invalidate(`messages:${conversation.conversation_id}`)
     onChanged?.()
     navigateAwayIfOpen()
     onClose?.()
