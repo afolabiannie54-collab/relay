@@ -352,6 +352,15 @@ export async function sendMessage(conversationId, content, replyToId = null) {
     .eq('conversation_id', conversationId)
     .eq('user_id', user.id)
 
+  // Needed so the generic participant push below can tell sendPushNotification
+  // whether to gate on message_notifications or group_notifications.
+  const { data: conversationRow } = await supabase
+    .from('conversations')
+    .select('type')
+    .eq('id', conversationId)
+    .single()
+  const pushType = conversationRow?.type === 'group' ? 'group_message' : 'direct_message'
+
   // Parse mentions, create notifications, and push mentioned users directly
   // (skip them in the generic participant push below to avoid double-notifying)
   const mentionedUserIds = new Set()
@@ -381,7 +390,8 @@ export async function sendMessage(conversationId, content, replyToId = null) {
           `${profile.display_name} mentioned you`,
           content.trim().slice(0, 100),
           `/chat/${conversationId}`,
-          conversationId
+          conversationId,
+          'mention'
         )
       }
     }
@@ -404,7 +414,8 @@ export async function sendMessage(conversationId, content, replyToId = null) {
         profile.display_name,
         preview,
         `/chat/${conversationId}`,
-        conversationId
+        conversationId,
+        pushType
       )
     }
   }
