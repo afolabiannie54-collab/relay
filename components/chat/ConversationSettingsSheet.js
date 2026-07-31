@@ -120,12 +120,14 @@ export default function ConversationSettingsSheet({
 
   const handleLeaveGroup = async () => {
     await leaveGroup(conversationId)
+    window.dispatchEvent(new Event('relay:conversations-changed'))
     onClose?.()
     router.push('/chat')
   }
 
   const handleDeleteGroup = async () => {
     await deleteGroup(conversationId)
+    window.dispatchEvent(new Event('relay:conversations-changed'))
     onClose?.()
     router.push('/chat')
   }

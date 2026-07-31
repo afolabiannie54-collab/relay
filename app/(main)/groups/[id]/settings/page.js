@@ -150,13 +150,19 @@ export default function GroupSettingsPage() {
   const handleLeave = async () => {
     const result = await leaveGroup(id)
     if (result.error) setError(result.error)
-    else router.push('/chat')
+    else {
+      window.dispatchEvent(new Event('relay:conversations-changed'))
+      router.push('/chat')
+    }
   }
 
   const handleDelete = async () => {
     const result = await deleteGroup(id)
     if (result.error) setError(result.error)
-    else router.push('/chat')
+    else {
+      window.dispatchEvent(new Event('relay:conversations-changed'))
+      router.push('/chat')
+    }
   }
 
   const getRoleBadge = (role) => {

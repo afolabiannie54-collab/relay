@@ -126,6 +126,19 @@ export default function ChatList({ onSelectConversation }) {
     // the browser actually remounts this component on back-navigation.
     window.addEventListener('relay:conversation-read', refreshConversations)
 
+    // Same idea, fired by whoever just deleted/left a group themselves
+    // (ConversationSettingsSheet, groups/[id]/settings/page.js). Deleting
+    // a group removes every participant row in one go, and Realtime's
+    // authorization check for delivering that DELETE event re-queries
+    // conversation_participants to confirm the subscriber was a member —
+    // which by then has already been emptied by the same deletion, so
+    // the event never reaches anyone, regardless of REPLICA IDENTITY.
+    // This same-tab event guarantees the person who took the action sees
+    // their own list update instantly without depending on Realtime at
+    // all; other participants still need Realtime (or a reload) to find
+    // out.
+    window.addEventListener('relay:conversations-changed', refreshConversations)
+
     const supabase = createClient()
     const channel = supabase
       .channel('chat-list-updates')
@@ -141,6 +154,7 @@ export default function ChatList({ onSelectConversation }) {
 
     return () => {
       window.removeEventListener('relay:conversation-read', refreshConversations)
+      window.removeEventListener('relay:conversations-changed', refreshConversations)
       supabase.removeChannel(channel)
     }
   }, [])
