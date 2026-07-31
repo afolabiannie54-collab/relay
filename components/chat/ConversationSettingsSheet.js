@@ -320,9 +320,15 @@ export default function ConversationSettingsSheet({
                   <span style={{ color: '#A3A3A3' }}>→</span>
                 </button>
               )}
-              <button style={{ ...rowStyle, color: '#EF4444' }} onClick={() => setConfirmAction('leave')}>
-                <span>🚪 Leave group</span>
-              </button>
+              {isOwner ? (
+                <div style={{ ...rowStyle, color: '#A3A3A3', cursor: 'default' }}>
+                  <span>🚪 Transfer ownership before leaving</span>
+                </div>
+              ) : (
+                <button style={{ ...rowStyle, color: '#EF4444' }} onClick={() => setConfirmAction('leave')}>
+                  <span>🚪 Leave group</span>
+                </button>
+              )}
               {isOwner && (
                 <button style={{ ...rowStyle, color: '#EF4444', borderBottom: 'none' }} onClick={() => setConfirmAction('deleteGroup')}>
                   <span>🗑️ Delete group</span>

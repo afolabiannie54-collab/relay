@@ -298,6 +298,17 @@ export async function leaveGroup(conversationId) {
 
   if (!user) return { error: 'Not authenticated' }
 
+  const { data: participant } = await supabase
+    .from('conversation_participants')
+    .select('role')
+    .eq('conversation_id', conversationId)
+    .eq('user_id', user.id)
+    .single()
+
+  if (participant?.role === 'owner') {
+    return { error: 'Transfer ownership to another member before leaving this group.' }
+  }
+
   const { data: profile } = await supabase
     .from('users')
     .select('display_name')

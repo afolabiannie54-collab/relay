@@ -341,9 +341,15 @@ export default function GroupSettingsPage() {
           <button style={rowStyle} onClick={handleToggleMute} disabled={muting}>
             {muteStatus.muted ? '🔔 Unmute group' : '🔕 Mute group'}
           </button>
-          <button style={{ ...rowStyle, color: '#EF4444', borderTop: '1px solid #F5F5F5' }} onClick={() => setConfirmAction('leave')}>
-            🚪 Leave group
-          </button>
+          {isOwner ? (
+            <div style={{ ...rowStyle, color: '#A3A3A3', borderTop: '1px solid #F5F5F5', cursor: 'default' }}>
+              🚪 Transfer ownership before leaving
+            </div>
+          ) : (
+            <button style={{ ...rowStyle, color: '#EF4444', borderTop: '1px solid #F5F5F5' }} onClick={() => setConfirmAction('leave')}>
+              🚪 Leave group
+            </button>
+          )}
           {isOwner && (
             <button style={{ ...rowStyle, color: '#EF4444', borderTop: '1px solid #F5F5F5' }} onClick={() => setConfirmAction('delete')}>
               🗑️ Delete group
