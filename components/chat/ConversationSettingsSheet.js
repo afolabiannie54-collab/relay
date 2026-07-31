@@ -69,6 +69,19 @@ export default function ConversationSettingsSheet({
     loadMute()
   }, [isOpen, conversationId])
 
+  // This component stays mounted across opens/closes for the same
+  // conversation (only the isOpen prop toggles), so without this,
+  // reopening it could flash straight into a stale confirmation dialog
+  // or an already-expanded mute picker left over from a previous open —
+  // e.g. pressing Escape while a stacked ConfirmSheet is open closes both
+  // sheets at once, leaving confirmAction set for whenever this reopens.
+  useEffect(() => {
+    if (isOpen) return
+    setConfirmAction(null)
+    setShowMutePicker(false)
+    setShowAddMember(false)
+  }, [isOpen])
+
   const canManageGroup = ['owner', 'admin'].includes(myRole)
   const isOwner = myRole === 'owner'
   const name = isGroup ? groupInfo?.name : otherParticipant?.display_name
