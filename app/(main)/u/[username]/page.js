@@ -152,7 +152,7 @@ export default async function ProfilePage({ params, searchParams }) {
             <CopyUsernameButton username={profile.username} />
           </div>
 
-          <OnlineStatus userId={profile.id} lastSeen={profile.last_seen} showLastSeen={profile.show_last_seen} />
+          <OnlineStatus userId={profile.id} lastSeen={profile.last_seen} showLastSeen={profile.show_last_seen} showOnlineStatus={profile.show_online_status} />
 
           {isOwnProfile && (
             <p style={{ fontSize: '11px', color: '#A3A3A3', marginTop: '4px' }}>

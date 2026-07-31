@@ -27,13 +27,19 @@ export async function getProfileByUsername(username) {
     .select(`
       id, username, display_name, avatar_url, bio, last_seen, created_at,
       website, twitter, instagram, linkedin,
-      privacy_settings(show_last_seen)
+      privacy_settings(show_last_seen, show_online_status)
     `)
     .eq('username', username)
     .single()
 
   if (error) return { error: 'User not found' }
-  return { data: { ...data, show_last_seen: data.privacy_settings?.show_last_seen ?? true } }
+  return {
+    data: {
+      ...data,
+      show_last_seen: data.privacy_settings?.show_last_seen ?? true,
+      show_online_status: data.privacy_settings?.show_online_status ?? true,
+    },
+  }
 }
 
 export async function updateProfile(formData) {

@@ -19,11 +19,15 @@ function formatLastSeen(lastSeen) {
 // Realtime presence needs PresenceProvider's context, which only exists
 // on the client — kept as its own small component so the profile page
 // itself can stay a server component for the initial data fetch.
-export default function OnlineStatus({ userId, lastSeen, showLastSeen }) {
+export default function OnlineStatus({ userId, lastSeen, showLastSeen, showOnlineStatus }) {
   const { onlineUsers } = useOnlineUsers()
   const isOnline = onlineUsers.includes(userId)
 
-  if (isOnline) {
+  // showOnlineStatus gates the live "Online" indicator itself, not just
+  // the last-seen fallback — previously this only respected showLastSeen,
+  // so turning off "Show online status" in Settings > Privacy had no
+  // effect on whether other people saw you online in real time.
+  if (isOnline && showOnlineStatus) {
     return (
       <p style={{ fontSize: '13px', color: '#22C55E', fontWeight: '600' }}>
         ● Online
