@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import BottomSheet from '@/components/shared/BottomSheet'
 import ConfirmSheet from '@/components/shared/ConfirmSheet'
 import Avatar from '@/components/shared/Avatar'
@@ -27,6 +27,7 @@ function vibrate() {
 // active list.
 export default function ConversationActionSheet({ conversation, isMuted, isOpen, onClose, onChanged, isHidden = false }) {
   const router = useRouter()
+  const pathname = usePathname()
   const [mode, setMode] = useState('menu')
   const [confirmAction, setConfirmAction] = useState(null)
   const [memberQuery, setMemberQuery] = useState('')
@@ -35,6 +36,13 @@ export default function ConversationActionSheet({ conversation, isMuted, isOpen,
   const [adding, setAdding] = useState(null)
 
   if (!conversation) return null
+
+  // Only leave the current screen if the conversation this row belongs to
+  // is the one actually open in the detail pane — otherwise (e.g. acting
+  // on a different row from the desktop two-panel list) this would yank
+  // the user out of an unrelated conversation they still have open.
+  const currentConversationId = pathname.startsWith('/chat/') ? pathname.split('/')[2] : null
+  const isCurrentlyOpen = conversation.conversation_id === currentConversationId
 
   const isGroup = conversation.type === 'group'
   const otherUser = conversation.other_participants?.[0]
@@ -76,7 +84,7 @@ export default function ConversationActionSheet({ conversation, isMuted, isOpen,
     vibrate()
     await hideConversation(conversation.conversation_id)
     onChanged?.()
-    router.push('/chat')
+    if (isCurrentlyOpen) router.push('/chat')
     close()
   }
 
@@ -95,14 +103,14 @@ export default function ConversationActionSheet({ conversation, isMuted, isOpen,
     // actual server fetch, not a cache hit.
     cache.invalidate(`messages:${conversation.conversation_id}`)
     onChanged?.()
-    router.push('/chat')
+    if (isCurrentlyOpen) router.push('/chat')
     close()
   }
 
   const handleLeaveGroup = async () => {
     await leaveGroup(conversation.conversation_id)
     onChanged?.()
-    router.push('/chat')
+    if (isCurrentlyOpen) router.push('/chat')
     close()
   }
 

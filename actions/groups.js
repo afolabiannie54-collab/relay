@@ -263,7 +263,19 @@ export async function removeMember(conversationId, userId) {
     .eq('id', userId)
     .single()
 
-  await supabase
+  // conversation_participants' only DELETE policy is "auth.uid() = user_id"
+  // — the admin's own session can't remove someone else's row via RLS, so
+  // this silently deleted zero rows while still reporting success (same
+  // failure mode deleteGroup() below already works around). The
+  // permission checks above already ran under the normal RLS-scoped
+  // client; only the delete itself needs the service role.
+  const { createClient: createServiceClient } = await import('@supabase/supabase-js')
+  const serviceClient = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  )
+
+  await serviceClient
     .from('conversation_participants')
     .delete()
     .eq('conversation_id', conversationId)
@@ -363,7 +375,14 @@ export async function deleteGroup(conversationId) {
   await serviceClient.from('group_invites').delete().eq('conversation_id', conversationId)
   await serviceClient.from('conversation_hidden').delete().eq('conversation_id', conversationId)
   await serviceClient.from('pinned_conversations').delete().eq('conversation_id', conversationId)
-  await serviceClient.from('notifications').delete().eq('reference_id', conversationId)
+  // Excludes 'group_removed' — notify_group_members_of_deletion() just
+  // inserted those above, and they're the only reliable way the other
+  // participants find out this group is gone (their own DELETE on
+  // conversation_participants can't be delivered via Realtime: the RLS
+  // check that authorizes it re-queries conversation_participants, which
+  // this same function has by now emptied). Deleting them here would
+  // erase that signal before it's had a chance to reach anyone.
+  await serviceClient.from('notifications').delete().eq('reference_id', conversationId).neq('type', 'group_removed')
 
   const { data: messages } = await serviceClient
     .from('messages')

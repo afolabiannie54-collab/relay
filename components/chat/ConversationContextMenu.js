@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { createPortal } from 'react-dom'
 import BottomSheet from '@/components/shared/BottomSheet'
 import ConfirmSheet from '@/components/shared/ConfirmSheet'
@@ -20,15 +20,13 @@ import { cache } from '@/lib/cache'
 // only).
 export default function ConversationContextMenu({ conversation, isMuted, position, onClose, onChanged, isHidden = false }) {
   const router = useRouter()
-  const [mounted, setMounted] = useState(false)
+  const pathname = usePathname()
   const [showAddMember, setShowAddMember] = useState(false)
   const [confirmAction, setConfirmAction] = useState(null)
   const [memberQuery, setMemberQuery] = useState('')
   const [memberResults, setMemberResults] = useState([])
   const [searching, setSearching] = useState(false)
   const [adding, setAdding] = useState(null)
-
-  useEffect(() => { setMounted(true) }, [])
 
   useEffect(() => {
     if (!position) return
@@ -37,7 +35,18 @@ export default function ConversationContextMenu({ conversation, isMuted, positio
     return () => document.removeEventListener('keydown', handleKey)
   }, [position, onClose])
 
-  if (!mounted || !position || !conversation) return null
+  // No separate "mounted" gate needed for the createPortal(document.body)
+  // call below — `position` is always null until a contextmenu event sets
+  // it client-side, so this already returns before ever touching `document`
+  // during SSR.
+  if (!position || !conversation) return null
+
+  // Only leave the current screen if the conversation this row belongs to
+  // is the one actually open in the detail pane — otherwise (right-clicking
+  // a different row in the desktop two-panel list) this would yank the
+  // user out of an unrelated conversation they still have open.
+  const currentConversationId = pathname.startsWith('/chat/') ? pathname.split('/')[2] : null
+  const isCurrentlyOpen = conversation.conversation_id === currentConversationId
 
   const isGroup = conversation.type === 'group'
   const otherUser = conversation.other_participants?.[0]
@@ -62,7 +71,7 @@ export default function ConversationContextMenu({ conversation, isMuted, positio
   const handleHide = async () => {
     await hideConversation(conversation.conversation_id)
     onChanged?.()
-    router.push('/chat')
+    if (isCurrentlyOpen) router.push('/chat')
     onClose?.()
   }
 
@@ -80,14 +89,14 @@ export default function ConversationContextMenu({ conversation, isMuted, positio
     // actual server fetch, not a cache hit.
     cache.invalidate(`messages:${conversation.conversation_id}`)
     onChanged?.()
-    router.push('/chat')
+    if (isCurrentlyOpen) router.push('/chat')
     onClose?.()
   }
 
   const handleLeaveGroup = async () => {
     await leaveGroup(conversation.conversation_id)
     onChanged?.()
-    router.push('/chat')
+    if (isCurrentlyOpen) router.push('/chat')
     onClose?.()
   }
 
