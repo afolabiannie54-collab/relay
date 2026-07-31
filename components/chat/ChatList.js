@@ -37,6 +37,7 @@ export default function ChatList({ onSelectConversation }) {
   const [conversations, setConversations] = useState([])
   const [userId, setUserId] = useState(null)
   const [mutedIds, setMutedIds] = useState([])
+  const [loading, setLoading] = useState(true)
   const [filterQuery, setFilterQuery] = useState('')
   const [actionSheetConv, setActionSheetConv] = useState(null)
   const [contextMenu, setContextMenu] = useState(null)
@@ -72,13 +73,14 @@ export default function ChatList({ onSelectConversation }) {
       // already fetched this session. Fresh data still loads underneath
       // and replaces it silently. Uses peek() rather than get() since we
       // always re-fetch fresh below regardless of TTL — the TTL shouldn't
-      // also gate whether we get to show something instantly. If there's
-      // no cache at all, conversations simply stays [] and the empty
-      // state renders — never a loading spinner blocking first paint.
+      // also gate whether we get to show something instantly.
       const cachedConvs = cache.peek('conversations')
       const cachedMuted = cache.get('muted-ids')
 
-      if (cachedConvs) setConversations(cachedConvs)
+      if (cachedConvs) {
+        setConversations(cachedConvs)
+        setLoading(false)
+      }
       if (cachedMuted) setMutedIds(cachedMuted)
 
       const supabase = createClient()
@@ -105,6 +107,7 @@ export default function ChatList({ onSelectConversation }) {
       setUnreadNotifCount(notifResult.count || 0)
       setRequestsCount(requestsResult.count || 0)
       setHiddenCount(hiddenResult.count || 0)
+      setLoading(false)
     }
     load()
   }, [])
@@ -121,23 +124,7 @@ export default function ChatList({ onSelectConversation }) {
     // Same-tab signal fired the instant a conversation is marked read —
     // guarantees this list reflects it immediately regardless of whether
     // the browser actually remounts this component on back-navigation.
-    // When the event carries a conversationId (dispatched by
-    // chat/[id]/page.js), zero out just that tile's badge locally
-    // instead of a full refetch — a refetch racing against ChatList's
-    // own unfiltered messages-INSERT listener (which can resolve first)
-    // was what caused the badge to flash from 0 to 1 and back. Any other
-    // caller that dispatches this event without a detail (none currently
-    // do) still gets the old full-refresh behavior.
-    const handleConversationRead = (e) => {
-      const convId = e.detail?.conversationId
-      if (!convId) { refreshConversations(); return }
-      setConversations(prev => {
-        const next = prev.map(c => c.conversation_id === convId ? { ...c, unread_count: 0 } : c)
-        cache.set('conversations', next, 10000)
-        return next
-      })
-    }
-    window.addEventListener('relay:conversation-read', handleConversationRead)
+    window.addEventListener('relay:conversation-read', refreshConversations)
 
     // Same idea, fired by whoever just deleted/left a group themselves
     // (ConversationSettingsSheet, groups/[id]/settings/page.js). Deleting
@@ -166,7 +153,7 @@ export default function ChatList({ onSelectConversation }) {
       .subscribe()
 
     return () => {
-      window.removeEventListener('relay:conversation-read', handleConversationRead)
+      window.removeEventListener('relay:conversation-read', refreshConversations)
       window.removeEventListener('relay:conversations-changed', refreshConversations)
       supabase.removeChannel(channel)
     }
@@ -431,6 +418,20 @@ export default function ChatList({ onSelectConversation }) {
       )
     })
   }, [conversations, filterQuery])
+
+  if (loading) {
+    return (
+      <div style={{
+        height: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontFamily: "'Inter', -apple-system, sans-serif",
+      }}>
+        <p style={{ color: '#A3A3A3', fontSize: '14px' }}>Loading...</p>
+      </div>
+    )
+  }
 
   return (
     <div style={{
