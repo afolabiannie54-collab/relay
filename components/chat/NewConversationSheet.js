@@ -14,15 +14,40 @@ import { cache } from '@/lib/cache'
 const GROUP_NAME_MAX = 50
 const GROUP_DESCRIPTION_MAX = 200
 
+// Thin wrapper — BottomSheet already unmounts its children whenever isOpen
+// is false, but this component itself never unmounts (the parent keeps it
+// mounted at all times, just toggling isOpen), so its own state used to
+// persist across opens. Resetting that state in a useEffect on isOpen
+// still let one frame of the PREVIOUS session's content (stale search
+// text, previously selected members, whatever screen was last open)
+// render before the effect fired — visible during BottomSheet's 250ms
+// open animation. Keying SheetBody by an incrementing "open generation"
+// instead forces React to fully discard the old instance and mount a
+// brand new one on every open, fresh state from its very first render,
+// no reset effect required.
+export default function NewConversationSheet({ isOpen, onClose, initialMode = 'search' }) {
+  const [openGen, setOpenGen] = useState(0)
+
+  useEffect(() => {
+    if (isOpen) setOpenGen(g => g + 1)
+  }, [isOpen])
+
+  return (
+    <BottomSheet isOpen={isOpen} onClose={onClose} maxHeight="90dvh">
+      <SheetBody key={openGen} onClose={onClose} initialMode={initialMode} />
+    </BottomSheet>
+  )
+}
+
 // A single tall sheet with three "screens" that live side by side and
 // slide horizontally via CSS transform — nothing ever unmounts between
 // them (unlike the chat panel transform-slide that caused real problems
 // earlier in this project), since these three panels are fixed, not
 // keyed by any changing id. screenIndex: 0 = search/discovery,
 // 1 = group step 1 (members), 2 = group step 2 (details).
-export default function NewConversationSheet({ isOpen, onClose, initialMode = 'search' }) {
+function SheetBody({ onClose, initialMode }) {
   const router = useRouter()
-  const [mode, setMode] = useState('search') // 'search' | 'group'
+  const [mode, setMode] = useState(initialMode === 'group' ? 'group' : 'search') // 'search' | 'group'
   const [groupStep, setGroupStep] = useState(1) // 1 | 2
   const [selectedMembers, setSelectedMembers] = useState([])
   const [recentContacts, setRecentContacts] = useState([])
@@ -48,24 +73,7 @@ export default function NewConversationSheet({ isOpen, onClose, initialMode = 's
   const [checkingConv, setCheckingConv] = useState(false)
   const [blockTarget, setBlockTarget] = useState(null)
 
-  // Reset to a clean slate every time the sheet opens, rather than
-  // leaving stale selections from a previous open. initialMode lets the
-  // search page's own "New Group" row open straight into group creation
-  // instead of the search/discovery screen.
   useEffect(() => {
-    if (!isOpen) return
-    setMode(initialMode === 'group' ? 'group' : 'search')
-    setGroupStep(1)
-    setSelectedMembers([])
-    setSearchQuery('')
-    setSearchResults([])
-    setGroupName('')
-    setGroupDescription('')
-    setAvatarFile(null)
-    setAvatarPreview(null)
-    setIsCreating(false)
-    setError(null)
-
     async function loadRecent() {
       const result = await getConversations()
       if (result.data) {
@@ -83,7 +91,7 @@ export default function NewConversationSheet({ isOpen, onClose, initialMode = 's
       }
     }
     loadRecent()
-  }, [isOpen, initialMode])
+  }, [])
 
   // searchUsers() itself still requires 3+ characters server-side (kept
   // as-is, per instructions not to change existing server actions) — but
@@ -269,7 +277,7 @@ export default function NewConversationSheet({ isOpen, onClose, initialMode = 's
   )
 
   return (
-    <BottomSheet isOpen={isOpen} onClose={onClose} maxHeight="90dvh">
+    <>
       <div style={{ height: '100%', display: 'flex', flexDirection: 'column', fontFamily: "'Inter', -apple-system, sans-serif" }}>
         {/* Header — chrome, swaps instantly; only the body below animates */}
         {mode === 'search' ? (
@@ -551,7 +559,7 @@ export default function NewConversationSheet({ isOpen, onClose, initialMode = 's
         confirmStyle="danger"
         onConfirm={confirmBlock}
       />
-    </BottomSheet>
+    </>
   )
 }
 
