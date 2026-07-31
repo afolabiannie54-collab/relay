@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter, usePathname } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import BottomSheet from '@/components/shared/BottomSheet'
 import ConfirmSheet from '@/components/shared/ConfirmSheet'
 import Avatar from '@/components/shared/Avatar'
@@ -27,7 +27,6 @@ function vibrate() {
 // active list.
 export default function ConversationActionSheet({ conversation, isMuted, isOpen, onClose, onChanged, isHidden = false }) {
   const router = useRouter()
-  const pathname = usePathname()
   const [mode, setMode] = useState('menu')
   const [confirmAction, setConfirmAction] = useState(null)
   const [memberQuery, setMemberQuery] = useState('')
@@ -49,16 +48,6 @@ export default function ConversationActionSheet({ conversation, isMuted, isOpen,
     setMemberQuery('')
     setMemberResults([])
     onClose?.()
-  }
-
-  // If the conversation being acted on is the one currently open in the
-  // right panel, an action that removes it from the list would otherwise
-  // leave stale conversation content showing there — navigate back to
-  // the empty state so both panels stay in sync.
-  const navigateAwayIfOpen = () => {
-    if (pathname === `/chat/${conversation.conversation_id}`) {
-      router.push('/chat')
-    }
   }
 
   const handleToggleMute = async () => {
@@ -87,7 +76,7 @@ export default function ConversationActionSheet({ conversation, isMuted, isOpen,
     vibrate()
     await hideConversation(conversation.conversation_id)
     onChanged?.()
-    navigateAwayIfOpen()
+    router.push('/chat')
     close()
   }
 
@@ -106,14 +95,14 @@ export default function ConversationActionSheet({ conversation, isMuted, isOpen,
     // actual server fetch, not a cache hit.
     cache.invalidate(`messages:${conversation.conversation_id}`)
     onChanged?.()
-    navigateAwayIfOpen()
+    router.push('/chat')
     close()
   }
 
   const handleLeaveGroup = async () => {
     await leaveGroup(conversation.conversation_id)
     onChanged?.()
-    navigateAwayIfOpen()
+    router.push('/chat')
     close()
   }
 
@@ -121,7 +110,6 @@ export default function ConversationActionSheet({ conversation, isMuted, isOpen,
     if (!otherUser) return
     await blockUser(otherUser.user_id)
     onChanged?.()
-    navigateAwayIfOpen()
     close()
   }
 
