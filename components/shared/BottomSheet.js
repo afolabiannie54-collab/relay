@@ -8,7 +8,7 @@ import { createPortal } from 'react-dom'
 // desktop. Portalled to document.body so it always renders above the
 // app shell regardless of which overflow:hidden ancestor it's opened
 // from (chat shell, main layout, etc.).
-export default function BottomSheet({ isOpen, onClose, children, title }) {
+export default function BottomSheet({ isOpen, onClose, children, title, maxHeight }) {
   const [mounted, setMounted] = useState(false)
   const [dragY, setDragY] = useState(0)
   const draggingRef = useRef(false)
@@ -67,6 +67,11 @@ export default function BottomSheet({ isOpen, onClose, children, title }) {
         style={{
           transform: dragY ? `translateY(${dragY}px)` : undefined,
           transition: dragY ? 'none' : undefined,
+          // Overrides the class's default max-height (85vh mobile / 80vh
+          // desktop) when a taller sheet is needed — inline style beats
+          // the un-!important'd class rule at any breakpoint. Omitted by
+          // default so every other caller keeps the original size.
+          ...(maxHeight ? { maxHeight } : {}),
         }}
       >
         <div

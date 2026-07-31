@@ -6,6 +6,7 @@ import Link from 'next/link'
 import Avatar from '@/components/shared/Avatar'
 import BottomSheet from '@/components/shared/BottomSheet'
 import ConfirmSheet from '@/components/shared/ConfirmSheet'
+import NewConversationSheet from '@/components/chat/NewConversationSheet'
 import { searchUsers } from '@/actions/users'
 import { getExistingConversation } from '@/actions/messages'
 import { blockUser } from '@/actions/blocks'
@@ -21,6 +22,7 @@ export default function SearchPage() {
   const [menuConvId, setMenuConvId] = useState(null)
   const [checkingConv, setCheckingConv] = useState(false)
   const [blockTarget, setBlockTarget] = useState(null)
+  const [showNewGroup, setShowNewGroup] = useState(false)
   const searchTimeout = useRef(null)
   const router = useRouter()
 
@@ -187,6 +189,32 @@ export default function SearchPage() {
       </div>
 
       <div style={{ maxWidth: '600px', margin: '0 auto', padding: '16px 24px' }}>
+        {/* New Group — always the first row above search results, only
+            in the default (not-yet-typed) state, same as
+            NewConversationSheet's own Mode 1 default view. */}
+        {!loading && !searched && (
+          <div
+            onClick={() => setShowNewGroup(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '14px',
+              padding: '16px',
+              marginBottom: '16px',
+              background: '#fff',
+              border: '1.5px solid #0a0a0a',
+              borderRadius: '12px',
+              cursor: 'pointer',
+              boxShadow: '3px 3px 0 #0a0a0a',
+            }}
+          >
+            <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#F5F5F5', border: '1.5px solid #0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', flexShrink: 0 }}>
+              👥
+            </div>
+            <p style={{ fontSize: '15px', fontWeight: '700', color: '#0a0a0a' }}>New Group</p>
+          </div>
+        )}
+
         {/* Loading */}
         {loading && (
           <div style={{ textAlign: 'center', padding: '40px', color: '#A3A3A3', fontSize: '14px' }}>
@@ -332,6 +360,12 @@ export default function SearchPage() {
         confirmLabel="Block"
         confirmStyle="danger"
         onConfirm={confirmBlock}
+      />
+
+      <NewConversationSheet
+        isOpen={showNewGroup}
+        onClose={() => setShowNewGroup(false)}
+        initialMode="group"
       />
     </div>
   )
