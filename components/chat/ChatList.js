@@ -195,6 +195,22 @@ export default function ChatList({ onSelectConversation }) {
           refreshConversations()
         }
       })
+      // The badge only ever incremented on INSERT — marking a
+      // notification read (NotificationList.js, single or "mark all")
+      // never decremented it, so it stayed stuck until this component
+      // remounted. notifications has REPLICA IDENTITY FULL, so
+      // payload.old carries the pre-update row and this can tell a
+      // genuine false->true read transition apart from any other update.
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'notifications',
+        filter: `user_id=eq.${userId}`,
+      }, (payload) => {
+        if (payload.new.read === true && payload.old.read === false) {
+          setUnreadNotifCount(c => Math.max(0, c - 1))
+        }
+      })
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
