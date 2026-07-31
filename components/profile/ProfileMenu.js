@@ -69,8 +69,12 @@ export default function ProfileMenu({ isOwnProfile, userId, username, displayNam
               <button style={{ ...rowStyle, color: '#EF4444' }} onClick={() => { setShowMenu(false); setConfirmBlock(true) }}>
                 🚫 Block user
               </button>
-              <button style={rowStyle} onClick={() => setShowMenu(false)}>
-                🚩 Report
+              <button
+                disabled
+                title="Coming soon"
+                style={{ ...rowStyle, color: '#D4D4D4', cursor: 'not-allowed' }}
+              >
+                🚩 Report (coming soon)
               </button>
             </>
           )}
