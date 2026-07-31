@@ -575,7 +575,7 @@ export default function EditProfileForm({ initialProfile }) {
         {/* View public profile link */}
         <div style={{ textAlign: 'center' }}>
           <Link
-            href={`/u/${profile?.username}`}
+            href={`/u/${profile?.username}?from=settings`}
             style={{
               fontSize: '13px',
               color: '#525252',

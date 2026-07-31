@@ -38,6 +38,8 @@ export default async function ProfilePage({ params, searchParams }) {
     backHref = `/chat/${sp.convId}`
   } else if (sp?.from === 'conversation-settings' && sp?.convId) {
     backHref = `/chat/${sp.convId}/settings`
+  } else if (sp?.from === 'settings') {
+    backHref = '/settings/profile'
   }
 
   if (result.error) {
