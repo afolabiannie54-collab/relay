@@ -151,7 +151,23 @@ export default function ChatList({ onSelectConversation }) {
     // Same-tab signal fired the instant a conversation is marked read —
     // guarantees this list reflects it immediately regardless of whether
     // the browser actually remounts this component on back-navigation.
-    window.addEventListener('relay:conversation-read', refreshConversations)
+    // Zeroes out just the matching tile locally instead of a full
+    // refetch — a refetch here would race the messages-INSERT listener's
+    // own full refetch below (both can fire within the same moment when
+    // you open a conversation with a message already in flight), which
+    // was flashing the badge from 0 to 1 and back. Falls back to a full
+    // refresh if the event has no conversationId, so any future caller
+    // that dispatches a plain Event still gets the old behavior.
+    const handleConversationRead = (e) => {
+      const convId = e.detail?.conversationId
+      if (!convId) { refreshConversations(); return }
+      setConversations(prev => {
+        const next = prev.map(c => c.conversation_id === convId ? { ...c, unread_count: 0 } : c)
+        cache.set('conversations', next, 10000)
+        return next
+      })
+    }
+    window.addEventListener('relay:conversation-read', handleConversationRead)
 
     // Same idea, fired by whoever just deleted/left a group themselves
     // (ConversationSettingsSheet, groups/[id]/settings/page.js). Deleting
@@ -269,7 +285,7 @@ export default function ChatList({ onSelectConversation }) {
       .subscribe()
 
     return () => {
-      window.removeEventListener('relay:conversation-read', refreshConversations)
+      window.removeEventListener('relay:conversation-read', handleConversationRead)
       window.removeEventListener('relay:conversations-changed', refreshConversations)
       supabase.removeChannel(channel)
     }
