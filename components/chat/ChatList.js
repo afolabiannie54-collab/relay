@@ -121,6 +121,21 @@ export default function ChatList({ onSelectConversation }) {
   }
 
   useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        cache.invalidate('conversations')
+        refreshConversations()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+    window.addEventListener('focus', handleVisibility)
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility)
+      window.removeEventListener('focus', handleVisibility)
+    }
+  }, [])
+
+  useEffect(() => {
     // Same-tab signal fired the instant a conversation is marked read —
     // guarantees this list reflects it immediately regardless of whether
     // the browser actually remounts this component on back-navigation.
