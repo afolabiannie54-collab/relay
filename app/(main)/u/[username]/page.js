@@ -7,6 +7,12 @@ import CopyUsernameButton from '@/components/profile/CopyUsernameButton'
 import ProfileMenu from '@/components/profile/ProfileMenu'
 import OnlineStatus from '@/components/profile/OnlineStatus'
 
+// Without this, a viewer could see a stale show_online_status/
+// show_last_seen value if the underlying fetch got cached — e.g.
+// visiting the same profile shortly after its owner toggled a privacy
+// setting. Forces this route to always render with fresh data.
+export const revalidate = 0
+
 function socialHref(platform, value) {
   if (!value) return null
   const trimmed = value.trim()
