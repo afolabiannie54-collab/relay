@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
 import { createPortal } from 'react-dom'
 import BottomSheet from '@/components/shared/BottomSheet'
 import ConfirmSheet from '@/components/shared/ConfirmSheet'
@@ -17,6 +18,8 @@ import { searchUsers } from '@/actions/users'
 // menu for /chat/hidden: Unhide, Delete conversation, Block user (DM
 // only).
 export default function ConversationContextMenu({ conversation, isMuted, position, onClose, onChanged, isHidden = false }) {
+  const router = useRouter()
+  const pathname = usePathname()
   const [mounted, setMounted] = useState(false)
   const [showAddMember, setShowAddMember] = useState(false)
   const [confirmAction, setConfirmAction] = useState(null)
@@ -56,9 +59,20 @@ export default function ConversationContextMenu({ conversation, isMuted, positio
     onClose?.()
   }
 
+  // If the conversation being acted on is the one currently open in the
+  // right panel, an action that removes it from the list would otherwise
+  // leave stale conversation content showing there — navigate back to
+  // the empty state so both panels stay in sync.
+  const navigateAwayIfOpen = () => {
+    if (pathname === `/chat/${conversation.conversation_id}`) {
+      router.push('/chat')
+    }
+  }
+
   const handleHide = async () => {
     await hideConversation(conversation.conversation_id)
     onChanged?.()
+    navigateAwayIfOpen()
     onClose?.()
   }
 
@@ -71,12 +85,14 @@ export default function ConversationContextMenu({ conversation, isMuted, positio
   const handleDelete = async () => {
     await deleteConversationForUser(conversation.conversation_id)
     onChanged?.()
+    navigateAwayIfOpen()
     onClose?.()
   }
 
   const handleLeaveGroup = async () => {
     await leaveGroup(conversation.conversation_id)
     onChanged?.()
+    navigateAwayIfOpen()
     onClose?.()
   }
 
@@ -84,6 +100,7 @@ export default function ConversationContextMenu({ conversation, isMuted, positio
     if (!otherUser) return
     await blockUser(otherUser.user_id)
     onChanged?.()
+    navigateAwayIfOpen()
     onClose?.()
   }
 

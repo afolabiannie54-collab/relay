@@ -47,9 +47,17 @@ export default function MainLayout({ children }) {
     // conversation_participants (this layout persists across /chat <->
     // /chat/[id] navigations, so it never remounts to pick up fresh data).
     window.addEventListener('relay:conversation-read', loadChatsUnread)
+    // Mirrors ChatList.js's own same-tab signal — fired by whoever just
+    // deleted/left a group themselves, so this badge stays in sync with
+    // the chat list even when Realtime's conversation_participants DELETE
+    // event never reaches them (see ChatList.js for why).
+    window.addEventListener('relay:conversations-changed', loadChatsUnread)
 
     if (!profile?.id) {
-      return () => window.removeEventListener('relay:conversation-read', loadChatsUnread)
+      return () => {
+        window.removeEventListener('relay:conversation-read', loadChatsUnread)
+        window.removeEventListener('relay:conversations-changed', loadChatsUnread)
+      }
     }
 
     const supabase = createClient()
@@ -71,10 +79,46 @@ export default function MainLayout({ children }) {
       }, () => {
         loadChatsUnread()
       })
+      // Mirrors ChatList.js's own listeners — being added to or removed
+      // from a conversation (new group, added to an existing group, the
+      // owner deleting a group) changes how many conversations have
+      // unread messages, so this badge needs to react to the same two
+      // events ChatList already refreshes the list on, not just new
+      // messages and read-state changes.
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'conversation_participants',
+        filter: `user_id=eq.${profile.id}`,
+      }, () => {
+        loadChatsUnread()
+      })
+      .on('postgres_changes', {
+        event: 'DELETE',
+        schema: 'public',
+        table: 'conversation_participants',
+        filter: `user_id=eq.${profile.id}`,
+      }, () => {
+        loadChatsUnread()
+      })
+      // Other participants' conversation_participants DELETE event above
+      // often never arrives at all — Realtime's authorization check for
+      // delivering it re-queries a table the same deletion just emptied.
+      // A DB trigger inserts this notification as a reliable fallback
+      // (see ChatList.js's identical listener).
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'notifications',
+        filter: `user_id=eq.${profile.id}`,
+      }, (payload) => {
+        if (payload.new.type === 'group_removed') loadChatsUnread()
+      })
       .subscribe()
 
     return () => {
       window.removeEventListener('relay:conversation-read', loadChatsUnread)
+      window.removeEventListener('relay:conversations-changed', loadChatsUnread)
       supabase.removeChannel(channel)
     }
   }, [profile?.id])

@@ -312,6 +312,12 @@ export default function ConversationSettingsSheet({
                 ))}
               </div>
 
+              {canManageGroup && (
+                <button style={rowStyle} onClick={() => { onClose?.(); router.push(`/groups/${conversationId}/settings`) }}>
+                  <span>✏️ Edit group</span>
+                  <span style={{ color: '#A3A3A3' }}>→</span>
+                </button>
+              )}
               <button style={{ ...rowStyle, color: '#EF4444' }} onClick={() => setConfirmAction('leave')}>
                 <span>🚪 Leave group</span>
               </button>
