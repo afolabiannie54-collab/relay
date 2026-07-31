@@ -8,7 +8,7 @@ import Avatar from '@/components/shared/Avatar'
 import CopyUsernameButton from '@/components/profile/CopyUsernameButton'
 import { hideConversation } from '@/actions/messages'
 import { getMuteStatus, muteConversation, unmuteConversation } from '@/actions/conversations'
-import { removeMember, promoteToAdmin, demoteAdmin, leaveGroup, deleteGroup, addMember } from '@/actions/groups'
+import { removeMember, promoteToAdmin, demoteAdmin, leaveGroup, deleteGroup, addMember, transferOwnership } from '@/actions/groups'
 import { blockUser } from '@/actions/blocks'
 import { searchUsers } from '@/actions/users'
 import { cache } from '@/lib/cache'
@@ -56,6 +56,18 @@ export default function ConversationSettingsSheet({
   const [memberResults, setMemberResults] = useState([])
   const [searching, setSearching] = useState(false)
   const [acting, setActing] = useState(null)
+  // Locally reflects role changes the instant an action succeeds, ahead
+  // of onGroupChanged's server refetch — keyed by user_id, only ever
+  // holds entries this sheet itself just changed.
+  const [roleOverrides, setRoleOverrides] = useState({})
+  // myRole is a prop from the parent's own conversation.role state, which
+  // onGroupChanged (a groupInfo-only refetch) never touches — without
+  // this, transferring ownership away would leave the ex-owner seeing
+  // owner-only actions (Delete group, Make owner) for the rest of this
+  // mount, since nothing else would tell this sheet their own role
+  // changed until the whole conversation page next remounts.
+  const [selfRoleOverride, setSelfRoleOverride] = useState(null)
+  const [successMessage, setSuccessMessage] = useState(null)
 
   useEffect(() => {
     if (!isOpen || !conversationId) return
@@ -75,16 +87,23 @@ export default function ConversationSettingsSheet({
   // or an already-expanded mute picker left over from a previous open —
   // e.g. pressing Escape while a stacked ConfirmSheet is open closes both
   // sheets at once, leaving confirmAction set for whenever this reopens.
+  // selfRoleOverride is deliberately NOT reset here — it needs to survive
+  // closes/reopens within the same mount since myRole itself won't
+  // correct until the page remounts (see comment above).
   useEffect(() => {
     if (isOpen) return
     setConfirmAction(null)
     setShowMutePicker(false)
     setShowAddMember(false)
+    setSuccessMessage(null)
   }, [isOpen])
 
-  const canManageGroup = ['owner', 'admin'].includes(myRole)
-  const isOwner = myRole === 'owner'
+  const effectiveRole = selfRoleOverride ?? myRole
+  const canManageGroup = ['owner', 'admin'].includes(effectiveRole)
+  const isOwner = effectiveRole === 'owner'
   const name = isGroup ? groupInfo?.name : otherParticipant?.display_name
+
+  const getMemberRole = (member) => roleOverrides[member.user_id] ?? member.role
 
   const handleMute = async (hours) => {
     setMuting(true)
@@ -194,6 +213,34 @@ export default function ConversationSettingsSheet({
     onGroupChanged?.()
   }
 
+  const handleTransferOwnership = async () => {
+    if (!memberActionUser) return
+    const targetId = memberActionUser.user_id
+    const targetName = memberActionUser.display_name
+    // The only member with role 'owner' right now is whoever is looking
+    // at this option at all (it's only rendered for the current owner),
+    // so this is how the sheet finds "my own" member row without needing
+    // a separate current-user-id prop threaded in just for this.
+    const currentOwner = groupInfo?.members?.find(m => getMemberRole(m) === 'owner')
+
+    setActing(targetId)
+    const result = await transferOwnership(conversationId, targetId)
+    setActing(null)
+    setMemberActionUser(null)
+
+    if (result.error) return
+
+    setRoleOverrides(prev => {
+      const next = { ...prev, [targetId]: 'owner' }
+      if (currentOwner) next[currentOwner.user_id] = 'admin'
+      return next
+    })
+    setSelfRoleOverride('admin')
+    setSuccessMessage(`${targetName} is now the group owner`)
+    setTimeout(() => setSuccessMessage(null), 2500)
+    onGroupChanged?.()
+  }
+
   const rowStyle = {
     display: 'flex',
     alignItems: 'center',
@@ -222,6 +269,11 @@ export default function ConversationSettingsSheet({
     <>
       <BottomSheet isOpen={isOpen} onClose={onClose} title={isGroup ? 'Group info' : 'Conversation info'}>
         <div style={{ fontFamily: "'Inter', -apple-system, sans-serif" }}>
+          {successMessage && (
+            <div style={{ padding: '10px 20px', background: '#F0FDF4', borderBottom: '1px solid #E5E5E5', fontSize: '13px', color: '#22C55E', fontWeight: '600', textAlign: 'center' }}>
+              {successMessage}
+            </div>
+          )}
           {/* Identity card */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '24px 20px', borderBottom: '1px solid #E5E5E5' }}>
             <Avatar src={isGroup ? groupInfo?.avatar_url : otherParticipant?.avatar_url} name={name} size={72} />
@@ -309,22 +361,25 @@ export default function ConversationSettingsSheet({
                 </div>
               </div>
               <div style={{ maxHeight: '240px', overflowY: 'auto', borderBottom: '1px solid #F5F5F5' }}>
-                {groupInfo?.members?.map(member => (
-                  <div
-                    key={member.user_id}
-                    onClick={() => setMemberActionUser(member)}
-                    style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 20px', cursor: 'pointer' }}
-                  >
-                    <Avatar src={member.avatar_url} name={member.display_name} size={36} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <p style={{ fontSize: '14px', fontWeight: '600', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{member.display_name}</p>
-                        {getRoleBadge(member.role)}
+                {groupInfo?.members?.map(member => {
+                  const role = getMemberRole(member)
+                  return (
+                    <div
+                      key={member.user_id}
+                      onClick={() => setMemberActionUser({ ...member, role })}
+                      style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 20px', cursor: 'pointer' }}
+                    >
+                      <Avatar src={member.avatar_url} name={member.display_name} size={36} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <p style={{ fontSize: '14px', fontWeight: '600', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{member.display_name}</p>
+                          {getRoleBadge(role)}
+                        </div>
+                        <p style={{ fontSize: '12px', color: '#A3A3A3' }}>@{member.username}</p>
                       </div>
-                      <p style={{ fontSize: '12px', color: '#A3A3A3' }}>@{member.username}</p>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
 
               {canManageGroup && (
@@ -425,6 +480,11 @@ export default function ConversationSettingsSheet({
             {isOwner && memberActionUser?.role === 'admin' && (
               <button style={rowStyle} onClick={() => handleDemote(memberActionUser.user_id)}>
                 <span>Demote to member</span>
+              </button>
+            )}
+            {isOwner && memberActionUser?.role !== 'owner' && (
+              <button style={rowStyle} onClick={handleTransferOwnership}>
+                <span>👑 Make owner</span>
               </button>
             )}
             {canManageGroup && memberActionUser?.role !== 'owner' && (

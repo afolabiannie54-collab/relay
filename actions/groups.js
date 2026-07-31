@@ -483,6 +483,70 @@ export async function demoteAdmin(conversationId, userId) {
   return { success: true }
 }
 
+export async function transferOwnership(conversationId, newOwnerId) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) return { error: 'Not authenticated' }
+  if (newOwnerId === user.id) return { error: 'You are already the owner' }
+
+  const { data: participant } = await supabase
+    .from('conversation_participants')
+    .select('role')
+    .eq('conversation_id', conversationId)
+    .eq('user_id', user.id)
+    .single()
+
+  if (!participant || participant.role !== 'owner') {
+    return { error: 'Only the owner can transfer ownership' }
+  }
+
+  const { data: newOwnerParticipant } = await supabase
+    .from('conversation_participants')
+    .select('role')
+    .eq('conversation_id', conversationId)
+    .eq('user_id', newOwnerId)
+    .single()
+
+  if (!newOwnerParticipant) return { error: 'User is not in the group' }
+
+  const { data: newOwnerName } = await supabase
+    .from('users')
+    .select('display_name')
+    .eq('id', newOwnerId)
+    .single()
+
+  // Updating another user's role — the service-role client bypasses RLS
+  // for this, same pattern as removeMember()/deleteGroup() above.
+  const { createClient: createServiceClient } = await import('@supabase/supabase-js')
+  const serviceClient = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  )
+
+  await serviceClient
+    .from('conversation_participants')
+    .update({ role: 'owner' })
+    .eq('conversation_id', conversationId)
+    .eq('user_id', newOwnerId)
+
+  await serviceClient
+    .from('conversation_participants')
+    .update({ role: 'admin' })
+    .eq('conversation_id', conversationId)
+    .eq('user_id', user.id)
+
+  await supabase.from('messages').insert({
+    conversation_id: conversationId,
+    sender_id: null,
+    sender_name_snapshot: 'System',
+    content: `${newOwnerName.display_name} is now the group owner`,
+    type: 'system',
+  })
+
+  return { success: true }
+}
+
 export async function getGroupInvites() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
