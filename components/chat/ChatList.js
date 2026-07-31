@@ -191,6 +191,21 @@ export default function ChatList({ onSelectConversation }) {
         const result = await getHiddenConversationCount()
         setHiddenCount(result.count || 0)
       })
+      // Fires whenever the current user is added as a participant to any
+      // conversation — new group creation, being added to an existing
+      // group, or an accepted message request. Without this, the list
+      // only picked up a brand new conversation on the next message
+      // INSERT (the other realtime listener above), which never fires
+      // for a group that's just been created with no messages yet.
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'conversation_participants',
+        filter: `user_id=eq.${userId}`,
+      }, () => {
+        cache.invalidate('conversations')
+        refreshConversations()
+      })
       .subscribe()
 
     return () => {
