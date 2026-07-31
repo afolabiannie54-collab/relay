@@ -891,13 +891,20 @@ export default function ConversationPage() {
               const showAvatar = !isOwn && (i === 0 || msgs[i - 1]?.sender_id !== msg.sender_id)
 
               if (isSystem) {
-                const escapedName = profile?.display_name?.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') || ''
-                const systemText = escapedName ? msg.content
-                  ?.replace(new RegExp(`^${escapedName} `), 'You ')
-                  ?.replace(new RegExp(` ${escapedName} is `), ' you are ')
-                  ?.replace(new RegExp(` ${escapedName}$`), ' you')
-                  ?.replace(new RegExp(` ${escapedName} `), ' you ')
-                  ?.replace('You is ', 'You are ')
+                // display_name isn't unique (only username is), so a
+                // substring match anywhere in the text could misattribute
+                // another member's action to the viewer if they happen to
+                // share a display name. Only ever substitutes at the very
+                // start of the message — every system message template
+                // names its subject (actor or target) first — which is
+                // both narrower and unambiguous: it's a same-string
+                // comparison against the viewer's own name, not a pattern
+                // that could coincidentally match someone else's.
+                const displayName = profile?.display_name
+                const systemText = displayName && msg.content?.startsWith(`${displayName} `)
+                  ? `You${msg.content.slice(displayName.length)}`
+                    .replace('You is ', 'You are ')
+                    .replace('You was ', 'You were ')
                   : msg.content
 
                 return (
