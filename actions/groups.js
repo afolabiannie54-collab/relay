@@ -335,6 +335,15 @@ export async function deleteGroup(conversationId) {
     .eq('conversation_id', conversationId)
     .single()
 
+  // Notify every other participant before anything is deleted — a
+  // security definer function, so it inserts notifications for them
+  // regardless of the caller's own RLS scope. ChatList.js's realtime
+  // subscription already listens for these and refreshes the list.
+  await supabase.rpc('notify_group_members_of_deletion', {
+    p_conversation_id: conversationId,
+    p_deleting_user_id: user.id,
+  })
+
   // conversation_participants (and notifications addressed to other
   // users) are normally only deletable by their own row's user via RLS
   // — the owner's session can't remove another member's participant
