@@ -737,7 +737,7 @@ export default function ConversationPage() {
         </button>
         {conversation?.type === 'group' ? (
           <button
-            onClick={() => setShowSettingsSheet(true)}
+            onClick={() => router.push(`/groups/${id}/settings`)}
             style={{ background: 'none', border: 'none', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '10px', flex: 1, cursor: 'pointer', padding: 0, textAlign: 'left', fontFamily: 'inherit' }}
           >
             <Avatar src={groupInfo?.avatar_url} name={groupInfo?.name} size={38} />
@@ -752,7 +752,7 @@ export default function ConversationPage() {
           </button>
         ) : otherParticipant ? (
           <button
-            onClick={() => setShowSettingsSheet(true)}
+            onClick={() => router.push(`/u/${otherParticipant.username}?from=conversation&convId=${id}`)}
             style={{ background: 'none', border: 'none', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '10px', flex: 1, cursor: 'pointer', padding: 0, textAlign: 'left', fontFamily: 'inherit' }}
           >
             <Avatar src={otherParticipant.avatar_url} name={otherParticipant.display_name} size={38} />
