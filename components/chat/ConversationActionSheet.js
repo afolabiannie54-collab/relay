@@ -281,7 +281,7 @@ export default function ConversationActionSheet({ conversation, isMuted, isOpen,
         isOpen={confirmAction === 'delete'}
         onClose={() => setConfirmAction(null)}
         title="Delete conversation?"
-        message="This removes the conversation from your list permanently. The other person's copy is not affected."
+        message="This clears the conversation from your list and removes your message history. If they message you again, it will reappear as a fresh conversation."
         confirmLabel="Delete"
         confirmStyle="danger"
         onConfirm={handleDelete}

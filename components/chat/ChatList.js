@@ -964,7 +964,7 @@ export default function ChatList({ onSelectConversation }) {
         isOpen={bulkConfirmAction === 'delete'}
         onClose={() => setBulkConfirmAction(null)}
         title={`Delete ${selectedConvIds.size} conversation${selectedConvIds.size === 1 ? '' : 's'}?`}
-        message="This removes them from your list permanently. The other participants' copies are not affected."
+        message="This clears them from your list and removes your message history for each. If they message you again, they'll reappear as fresh conversations."
         confirmLabel="Delete"
         confirmStyle="danger"
         onConfirm={handleBulkDelete}
