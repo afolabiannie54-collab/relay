@@ -206,6 +206,19 @@ export default function ChatList({ onSelectConversation }) {
         cache.invalidate('conversations')
         refreshConversations()
       })
+      // Mirrors the INSERT listener above for the opposite case — the
+      // current user's own participant row being removed (e.g. the
+      // owner deleting a group they were in). Without this, a deleted
+      // group stayed in the owner's own list until a manual refresh.
+      .on('postgres_changes', {
+        event: 'DELETE',
+        schema: 'public',
+        table: 'conversation_participants',
+        filter: `user_id=eq.${userId}`,
+      }, () => {
+        cache.invalidate('conversations')
+        refreshConversations()
+      })
       .subscribe()
 
     return () => {

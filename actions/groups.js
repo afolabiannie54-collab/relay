@@ -315,6 +315,9 @@ export async function deleteGroup(conversationId) {
 
   if (!user) return { error: 'Not authenticated' }
 
+  // Ownership is verified with the normal, RLS-scoped client — only
+  // once that's confirmed do we escalate to the service-role client
+  // below, and only for the deletion itself.
   const { data: participant } = await supabase
     .from('conversation_participants')
     .select('role')
@@ -332,28 +335,45 @@ export async function deleteGroup(conversationId) {
     .eq('conversation_id', conversationId)
     .single()
 
-  await supabase.from('pinned_messages').delete().eq('conversation_id', conversationId)
-  await supabase.from('group_invites').delete().eq('conversation_id', conversationId)
-  await supabase.from('conversation_hidden').delete().eq('conversation_id', conversationId)
-  await supabase.from('pinned_conversations').delete().eq('conversation_id', conversationId)
-  await supabase.from('notifications').delete().eq('reference_id', conversationId)
+  // conversation_participants (and notifications addressed to other
+  // users) are normally only deletable by their own row's user via RLS
+  // — the owner's session can't remove another member's participant
+  // row. Supabase doesn't error when a delete's RLS policy silently
+  // narrows it to zero affected rows, so the previous version of this
+  // function appeared to succeed while actually leaving every other
+  // participant's row in place, and the group kept showing up for them.
+  // The service-role client bypasses RLS so the delete actually reaches
+  // every row it's supposed to.
+  const { createClient: createServiceClient } = await import('@supabase/supabase-js')
+  const serviceClient = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  )
 
-  const { data: messages } = await supabase
+  await serviceClient.from('pinned_messages').delete().eq('conversation_id', conversationId)
+  await serviceClient.from('group_invites').delete().eq('conversation_id', conversationId)
+  await serviceClient.from('conversation_hidden').delete().eq('conversation_id', conversationId)
+  await serviceClient.from('pinned_conversations').delete().eq('conversation_id', conversationId)
+  await serviceClient.from('notifications').delete().eq('reference_id', conversationId)
+
+  const { data: messages } = await serviceClient
     .from('messages')
     .select('id')
     .eq('conversation_id', conversationId)
 
   if (messages?.length) {
     const messageIds = messages.map(m => m.id)
-    await supabase.from('message_reads').delete().in('message_id', messageIds)
-    await supabase.from('message_reactions').delete().in('message_id', messageIds)
-    await supabase.from('media').delete().in('message_id', messageIds)
+    await serviceClient.from('message_reads').delete().in('message_id', messageIds)
+    await serviceClient.from('message_reactions').delete().in('message_id', messageIds)
+    await serviceClient.from('media').delete().in('message_id', messageIds)
   }
 
-  await supabase.from('messages').delete().eq('conversation_id', conversationId)
-  await supabase.from('conversation_participants').delete().eq('conversation_id', conversationId)
-  await supabase.from('groups').delete().eq('id', group.id)
-  await supabase.from('conversations').delete().eq('id', conversationId)
+  // The four deletes that actually matter for "does anyone still see
+  // this group" — explicit and in this order, not left to cascades.
+  await serviceClient.from('messages').delete().eq('conversation_id', conversationId)
+  await serviceClient.from('conversation_participants').delete().eq('conversation_id', conversationId)
+  if (group?.id) await serviceClient.from('groups').delete().eq('id', group.id)
+  await serviceClient.from('conversations').delete().eq('id', conversationId)
 
   return { success: true }
 }
