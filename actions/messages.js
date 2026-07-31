@@ -239,33 +239,51 @@ export async function getConversation(conversationId) {
 
 export async function getMessages(conversationId, page = 0) {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) return { error: 'Not authenticated' }
 
   const limit = 50
   const offset = page * limit
 
-  const [{ data: { user } }, { data, error }] = await Promise.all([
-    supabase.auth.getUser(),
-    supabase
-      .from('messages')
-      .select(`
-        id,
-        content,
-        type,
-        sender_id,
-        sender_name_snapshot,
-        reply_to_id,
-        is_edited,
-        edited_at,
-        created_at,
-        media(url, filename, size, mime_type),
-        reply:reply_to_id(id, content, sender_name_snapshot, type)
-      `)
-      .eq('conversation_id', conversationId)
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1),
-  ])
+  // If this user deleted the conversation, only messages sent after that
+  // point are visible to them — older history stays hidden even though
+  // the conversation itself may have reappeared in their list because a
+  // new message arrived (get_user_conversations re-includes it once a
+  // message newer than deleted_at exists). Other participants are
+  // unaffected since this check is scoped to the current user.
+  const { data: deletedRow } = await supabase
+    .from('conversation_deleted')
+    .select('deleted_at')
+    .eq('conversation_id', conversationId)
+    .eq('user_id', user.id)
+    .maybeSingle()
 
-  if (!user) return { error: 'Not authenticated' }
+  let query = supabase
+    .from('messages')
+    .select(`
+      id,
+      content,
+      type,
+      sender_id,
+      sender_name_snapshot,
+      reply_to_id,
+      is_edited,
+      edited_at,
+      created_at,
+      media(url, filename, size, mime_type),
+      reply:reply_to_id(id, content, sender_name_snapshot, type)
+    `)
+    .eq('conversation_id', conversationId)
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1)
+
+  if (deletedRow?.deleted_at) {
+    query = query.gt('created_at', deletedRow.deleted_at)
+  }
+
+  const { data, error } = await query
+
   if (error) return { error: error.message }
 
   const messages = data.reverse().map(({ media, reply, ...msg }) => {

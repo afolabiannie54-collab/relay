@@ -175,8 +175,17 @@ export default function ChatList({ onSelectConversation }) {
         schema: 'public',
         table: 'notifications',
         filter: `user_id=eq.${userId}`,
-      }, () => {
+      }, (payload) => {
         setUnreadNotifCount(c => c + 1)
+        // A DB trigger inserts this when a group the user was in gets
+        // deleted, so their list updates instantly without depending on
+        // conversation_participants DELETE Realtime — which never fires
+        // for other participants since the RLS check that authorizes
+        // delivery re-queries a table the same deletion already emptied.
+        if (payload.new.type === 'group_removed') {
+          cache.invalidate('conversations')
+          refreshConversations()
+        }
       })
       .on('postgres_changes', {
         event: '*',
