@@ -135,7 +135,19 @@ export default function ChatList({ onSelectConversation }) {
     }
   }, [])
 
+  // Single consolidated realtime channel for everything this list needs —
+  // previously split across two separate supabase.channel() calls, each
+  // its own effect, each opening its own socket. That's why
+  // realtime.subscription showed duplicate entries per table even after
+  // createClient() became a singleton: two genuinely separate channels
+  // really were being subscribed for the same user. One channel with
+  // every .on() listener means one subscription per table per user.
+  // Gated on userId since most of these filters need it — the messages
+  // listener doesn't strictly require it, but folding it in here costs
+  // only the brief delay before userId resolves on initial load.
   useEffect(() => {
+    if (!userId) return
+
     // Same-tab signal fired the instant a conversation is marked read —
     // guarantees this list reflects it immediately regardless of whether
     // the browser actually remounts this component on back-navigation.
@@ -155,8 +167,9 @@ export default function ChatList({ onSelectConversation }) {
     window.addEventListener('relay:conversations-changed', refreshConversations)
 
     const supabase = createClient()
+
     const channel = supabase
-      .channel('chat-list-updates')
+      .channel('chat-list-all')
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
@@ -165,26 +178,6 @@ export default function ChatList({ onSelectConversation }) {
         cache.invalidate('conversations')
         refreshConversations()
       })
-      .subscribe()
-
-    return () => {
-      window.removeEventListener('relay:conversation-read', refreshConversations)
-      window.removeEventListener('relay:conversations-changed', refreshConversations)
-      supabase.removeChannel(channel)
-    }
-  }, [])
-
-  // Realtime: bell badge (new notification rows for me) and the message
-  // requests row (pending message requests / group invites addressed to
-  // me) — both moved here from the app shell now that Requests is no
-  // longer a bottom-nav tab.
-  useEffect(() => {
-    if (!userId) return
-
-    const supabase = createClient()
-
-    const channel = supabase
-      .channel('chat-list-badges')
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
@@ -260,6 +253,8 @@ export default function ChatList({ onSelectConversation }) {
       .subscribe()
 
     return () => {
+      window.removeEventListener('relay:conversation-read', refreshConversations)
+      window.removeEventListener('relay:conversations-changed', refreshConversations)
       supabase.removeChannel(channel)
     }
   }, [userId])
