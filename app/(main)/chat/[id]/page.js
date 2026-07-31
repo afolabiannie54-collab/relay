@@ -351,6 +351,7 @@ export default function ConversationPage() {
 
     setSending(true)
     const text = content.trim()
+    const pendingReply = replyTo
     setContent('')
     setReplyTo(null)
 
@@ -361,9 +362,13 @@ export default function ConversationPage() {
       payload: { userId: profile?.id, displayName: profile?.display_name, isTyping: false },
     })
 
-    const result = await sendMessage(id, text, replyTo?.id || null)
+    const result = await sendMessage(id, text, pendingReply?.id || null)
     if (result.error) {
       setContent(text)
+      // Restore the reply target too, not just the draft text — otherwise
+      // a retry after a failed send silently posts as a plain message
+      // instead of the reply the user actually composed.
+      setReplyTo(pendingReply)
     } else {
       try { window.navigator.vibrate?.(10) } catch {}
     }
