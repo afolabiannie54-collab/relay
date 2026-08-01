@@ -279,10 +279,10 @@ a, button, input, textarea, select {
   transition: background 0.1s ease;
 }
 .relay-menu-row:hover {
-  background: var(--accent-light);
+  background: var(--surface-hover);
 }
 .relay-menu-row:active {
-  background: var(--accent-wash-strong);
+  background: var(--surface-active);
 }
 
 /* Shared text input treatment — soft border by default, accent ring on
@@ -306,8 +306,12 @@ a, button, input, textarea, select {
   box-shadow: 0 0 0 3px var(--accent-light);
 }
 
-/* Icon-square buttons in headers/toolbars — one definition for the
-   "44px, rounded, bordered" tap target instead of re-typing it per icon. */
+/* Icon-square buttons in headers/toolbars. Bold-bordered neutral by
+   default — pervasive accent tint here was the exact mistake corrected in
+   the nav pass: it read as diffuse wallpaper rather than a real accent
+   moment. Borders now carry the definition; accent is opt-in via
+   --accent for the rare button that should stand out (e.g. a primary
+   "new X" action), not the default for every icon button on a screen. */
 .relay-icon-btn {
   display: flex;
   align-items: center;
@@ -315,26 +319,24 @@ a, button, input, textarea, select {
   width: 40px;
   height: 40px;
   border-radius: var(--radius-sm);
-  border: 1px solid transparent;
-  background: var(--accent-light);
-  color: var(--accent-text);
+  border: 2px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
   cursor: pointer;
   transition: background 0.12s ease, transform 0.08s ease;
 }
 .relay-icon-btn:hover {
-  background: var(--accent-wash-strong);
+  background: var(--surface-hover);
 }
 .relay-icon-btn:active {
   transform: scale(0.94);
 }
-/* Escape hatch for icon buttons that need to stay neutral (dismiss/close
-   actions shouldn't read as a branded interaction the way an actual menu
-   trigger or notification bell should). */
-.relay-icon-btn--neutral {
-  background: var(--surface);
-  border-color: var(--border);
-  color: var(--text);
+.relay-icon-btn--accent {
+  background: var(--accent);
+  border-color: var(--border-strong);
+  color: var(--foreground);
+  box-shadow: var(--shadow-hard-sm);
 }
-.relay-icon-btn--neutral:hover {
-  background: var(--surface-hover);
+.relay-icon-btn--accent:hover {
+  background: var(--accent-hover);
 }

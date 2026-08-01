@@ -1,37 +1,47 @@
-// First entry in the app's hand-drawn illustration set — thin single-weight
-// line art with one accent-colored detail, in the spirit of Notion's empty
-// states. Line color follows --text-tertiary so it recedes in both themes;
-// the accent dot is the only spot of color, kept deliberately small.
-export default function EmptyChatsIllustration({ size = 132 }) {
+// Notion-style illustration formula: a couple of simple geometric shapes,
+// thick uniform-width strokes, one flat accent-color fill, a flat
+// "grounding" shadow. A person was missing from the first pass of this —
+// added back here as a plain circle head + simple rounded body, not the
+// delicate multi-point figure from the original attempt.
+export default function EmptyChatsIllustration({ size = 168 }) {
   return (
     <svg
       width={size}
       height={size}
-      viewBox="0 0 240 220"
+      viewBox="0 0 220 190"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
     >
-      <g stroke="var(--text-tertiary)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
-        {/* seated figure */}
-        <circle cx="92" cy="78" r="26" />
-        <path d="M78 58 Q88 46 104 54" />
-        <path d="M62 168 Q58 112 92 110 Q126 110 122 168 Q122 186 92 190 Q62 186 62 168 Z" />
-        <path d="M114 118 Q148 108 158 82" />
-        <circle cx="159" cy="78" r="4.5" fill="var(--text-tertiary)" />
-        <path d="M68 176 Q92 200 116 176" />
-        <path d="M74 184 Q92 202 110 184" />
+      {/* flat grounding shadow */}
+      <ellipse cx="112" cy="178" rx="88" ry="8" fill="var(--border-light)" />
 
-        {/* speech bubble with typing dots */}
-        <rect x="146" y="30" width="76" height="50" rx="16" fill="var(--surface)" />
-        <path d="M168 80 L160 96 L184 80 Z" fill="var(--surface)" />
-        <circle cx="167" cy="55" r="3.2" fill="var(--text-tertiary)" stroke="none" />
-        <circle cx="184" cy="55" r="3.2" fill="var(--text-tertiary)" stroke="none" />
-        <circle cx="201" cy="55" r="3.2" fill="var(--text-tertiary)" stroke="none" />
+      {/* person — head, simple rounded body, one arm reaching toward the bubble */}
+      <g stroke="var(--text)" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M60 96 Q84 90 96 74" fill="none" />
+        <path d="M18 150 Q14 86 42 86 Q70 86 66 150 Z" fill="var(--surface)" />
+        <circle cx="42" cy="58" r="22" fill="var(--surface)" />
       </g>
+      <circle cx="36" cy="56" r="2.4" fill="var(--text)" />
+      <circle cx="48" cy="56" r="2.4" fill="var(--text)" />
 
-      {/* accent sparkle */}
-      <circle cx="215" cy="20" r="5" fill="var(--accent)" />
-      <path d="M28 60 L28 72 M22 66 L34 66" stroke="var(--accent)" strokeWidth="3" strokeLinecap="round" />
+      {/* chat bubble with typing dots */}
+      <path
+        d="M92 40 Q92 14 116 14 L176 14 Q200 14 200 40 L200 72 Q200 94 176 94 L134 94 L112 114 L116 94 Q92 92 92 72 Z"
+        fill="var(--surface)"
+        stroke="var(--text)"
+        strokeWidth="8"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+      <circle cx="122" cy="54" r="7" fill="var(--text)" />
+      <circle cx="148" cy="54" r="7" fill="var(--text)" />
+      <circle cx="174" cy="54" r="7" fill="var(--text)" />
+
+      {/* single accent-color pop */}
+      <path
+        d="M196 4 Q199 16 212 22 Q199 28 196 40 Q193 28 180 22 Q193 16 196 4 Z"
+        fill="var(--accent)"
+      />
     </svg>
   )
 }

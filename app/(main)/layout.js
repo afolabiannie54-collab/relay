@@ -216,7 +216,7 @@ export default function MainLayout({ children }) {
             onClick={toggleSidebar}
             aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            className="relay-icon-btn relay-icon-btn--neutral"
+            className="relay-icon-btn"
             style={{ width: '34px', height: '34px', border: 'none' }}
           >
             {sidebarCollapsed

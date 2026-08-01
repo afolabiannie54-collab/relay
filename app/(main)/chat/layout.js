@@ -91,8 +91,8 @@ export default function ChatLayout({ children }) {
         style={{
           width: '360px',
           flexShrink: 0,
-          borderRight: '1.5px solid #0a0a0a',
-          background: '#fff',
+          borderRight: '2px solid var(--border-strong)',
+          background: 'var(--surface)',
           // 100% rather than a literal 100dvh: on mobile, the /chat list
           // route still shows the app shell's bottom nav (a real sibling
           // outside this panel, in app/(main)/layout.js) — a hardcoded
@@ -117,7 +117,7 @@ export default function ChatLayout({ children }) {
           minWidth: 0,
           height: '100dvh',
           overflow: 'hidden',
-          background: '#fff',
+          background: 'var(--surface)',
         }}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
