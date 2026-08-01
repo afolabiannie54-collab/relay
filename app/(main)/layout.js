@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { MessageCircle, Search, Settings, Zap } from 'lucide-react'
 import Avatar from '@/components/shared/Avatar'
 import { getOwnProfile } from '@/actions/users'
 import { PresenceProvider } from '@/lib/presence-context'
@@ -135,9 +136,9 @@ export default function MainLayout({ children }) {
   }, [])
 
   const navItems = [
-    { href: '/chat', label: 'Chats', icon: '💬', badge: unreadChatsCount },
-    { href: '/search', label: 'Search', icon: '🔍' },
-    { href: '/settings', label: 'Settings', icon: '⚙️' },
+    { href: '/chat', label: 'Chats', icon: MessageCircle, badge: unreadChatsCount },
+    { href: '/search', label: 'Search', icon: Search },
+    { href: '/settings', label: 'Settings', icon: Settings },
   ]
 
   const isActive = (href) => {
@@ -158,14 +159,14 @@ export default function MainLayout({ children }) {
       height: '100dvh',
       overflow: 'hidden',
       fontFamily: "'Inter', -apple-system, sans-serif",
-      background: '#F5F5F5',
+      background: 'var(--bg-subtle)',
     }}>
       {/* Desktop sidebar */}
       <div style={{
         width: '260px',
         flexShrink: 0,
-        background: '#fff',
-        borderRight: '1.5px solid #0a0a0a',
+        background: 'var(--surface)',
+        borderRight: '1px solid var(--border)',
         display: 'flex',
         flexDirection: 'column',
         height: '100dvh',
@@ -175,7 +176,7 @@ export default function MainLayout({ children }) {
         {/* Logo */}
         <div style={{
           padding: '20px',
-          borderBottom: '1.5px solid #E5E5E5',
+          borderBottom: '1px solid var(--border-light)',
           display: 'flex',
           alignItems: 'center',
           gap: '10px',
@@ -183,84 +184,96 @@ export default function MainLayout({ children }) {
           <div style={{
             width: '32px',
             height: '32px',
-            background: '#FFB800',
-            borderRadius: '8px',
-            border: '1.5px solid #0a0a0a',
+            background: 'var(--accent)',
+            borderRadius: '9px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: '16px',
-          }}>⚡</div>
-          <span style={{ fontSize: '18px', fontWeight: '800', color: '#0a0a0a' }}>Relay</span>
+            boxShadow: 'var(--shadow-sm)',
+          }}>
+            <Zap size={17} strokeWidth={2.5} fill="var(--foreground)" color="var(--foreground)" />
+          </div>
+          <span style={{ fontSize: '18px', fontWeight: '800', color: 'var(--text)', letterSpacing: '-0.02em' }}>Relay</span>
         </div>
 
         {/* Nav items */}
         <nav style={{ flex: 1, padding: '12px 8px', overflowY: 'auto' }}>
-          {navItems.map(item => (
-            <Link key={item.href} href={item.href} style={{ textDecoration: 'none' }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                padding: '10px 12px',
-                borderRadius: '8px',
-                marginBottom: '2px',
-                background: isActive(item.href) ? '#F5F5F5' : 'transparent',
-                border: isActive(item.href) ? '1.5px solid #0a0a0a' : '1.5px solid transparent',
-                cursor: 'pointer',
-                transition: 'background 0.15s',
-              }}>
-                <span style={{ fontSize: '18px' }}>{item.icon}</span>
-                <span style={{
-                  fontSize: '14px',
-                  fontWeight: isActive(item.href) ? '700' : '500',
-                  color: '#0a0a0a',
-                  flex: 1,
-                }}>
-                  {item.label}
-                </span>
-                {item.badge > 0 && (
-                  <div style={{
-                    minWidth: '18px',
-                    height: '18px',
-                    background: '#FFB800',
-                    border: '1.5px solid #0a0a0a',
-                    borderRadius: '100px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '10px',
-                    fontWeight: '800',
-                    padding: '0 4px',
+          {navItems.map(item => {
+            const active = isActive(item.href)
+            const Icon = item.icon
+            return (
+              <Link key={item.href} href={item.href} style={{ textDecoration: 'none' }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  padding: '10px 12px',
+                  borderRadius: 'var(--radius-sm)',
+                  marginBottom: '2px',
+                  background: active ? 'var(--accent-light)' : 'transparent',
+                  cursor: 'pointer',
+                  transition: 'background 0.15s',
+                }}
+                  onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'var(--accent-light)' }}
+                  onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}
+                >
+                  <Icon size={18} strokeWidth={active ? 2.5 : 2.25} color={active ? 'var(--accent-text)' : 'var(--text-secondary)'} />
+                  <span style={{
+                    fontSize: '14px',
+                    fontWeight: active ? '700' : '500',
+                    color: active ? 'var(--text)' : 'var(--text-secondary)',
+                    flex: 1,
                   }}>
-                    {item.badge > 99 ? '99+' : item.badge}
-                  </div>
-                )}
-              </div>
-            </Link>
-          ))}
+                    {item.label}
+                  </span>
+                  {item.badge > 0 && (
+                    <div style={{
+                      minWidth: '18px',
+                      height: '18px',
+                      background: 'var(--accent)',
+                      borderRadius: 'var(--radius-pill)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '10px',
+                      fontWeight: '800',
+                      color: 'var(--foreground)',
+                      padding: '0 4px',
+                    }}>
+                      {item.badge > 99 ? '99+' : item.badge}
+                    </div>
+                  )}
+                </div>
+              </Link>
+            )
+          })}
         </nav>
 
         {/* Profile at bottom — sign out lives in Settings > Security now */}
         <div style={{
           padding: '16px',
-          borderTop: '1.5px solid #E5E5E5',
+          borderTop: '1px solid var(--border-light)',
         }}>
           <Link href="/settings/profile" style={{ textDecoration: 'none' }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              padding: '8px',
-              borderRadius: '8px',
-              cursor: 'pointer',
-            }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                padding: '8px',
+                borderRadius: 'var(--radius-sm)',
+                cursor: 'pointer',
+                transition: 'background 0.12s ease',
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-light)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+            >
               <Avatar src={profile?.avatar_url} name={profile?.display_name} size={36} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{
                   fontSize: '13px',
                   fontWeight: '700',
-                  color: '#0a0a0a',
+                  color: 'var(--text)',
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
@@ -269,7 +282,7 @@ export default function MainLayout({ children }) {
                 </p>
                 <p style={{
                   fontSize: '11px',
-                  color: '#A3A3A3',
+                  color: 'var(--text-tertiary)',
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
@@ -303,57 +316,72 @@ export default function MainLayout({ children }) {
           className={(isConversationPage || bulkSelectActive) ? 'mobile-nav hide-mobile-nav' : 'mobile-nav'}
           style={{
             display: 'none',
-            borderTop: '1.5px solid #0a0a0a',
-            background: '#fff',
-            padding: '8px 0',
+            borderTop: '1px solid var(--border)',
+            background: 'var(--surface)',
+            padding: '6px 0',
           }}
         >
-          {navItems.map(item => (
-            <Link key={item.href} href={item.href} style={{ textDecoration: 'none', flex: 1 }}>
-              <div style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '4px',
-                padding: '6px',
-                minHeight: '44px',
-                minWidth: '44px',
-                position: 'relative',
-              }}>
-                <div style={{ position: 'relative' }}>
-                  <span style={{ fontSize: '20px' }}>{item.icon}</span>
-                  {item.badge > 0 && (
-                    <div style={{
-                      position: 'absolute',
-                      top: '-4px',
-                      right: '-6px',
-                      minWidth: '14px',
-                      height: '14px',
-                      background: '#FFB800',
-                      border: '1px solid #0a0a0a',
-                      borderRadius: '100px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '8px',
-                      fontWeight: '800',
-                      padding: '0 3px',
-                    }}>
-                      {item.badge > 99 ? '99+' : item.badge}
-                    </div>
-                  )}
-                </div>
-                <span style={{
-                  fontSize: '10px',
-                  fontWeight: isActive(item.href) ? '700' : '500',
-                  color: isActive(item.href) ? '#0a0a0a' : '#A3A3A3',
+          {navItems.map(item => {
+            const active = isActive(item.href)
+            const Icon = item.icon
+            return (
+              <Link key={item.href} href={item.href} style={{ textDecoration: 'none', flex: 1 }}>
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '3px',
+                  padding: '6px',
+                  minHeight: '44px',
+                  minWidth: '44px',
+                  position: 'relative',
                 }}>
-                  {item.label}
-                </span>
-              </div>
-            </Link>
-          ))}
+                  <div style={{
+                    position: 'relative',
+                    width: '34px',
+                    height: '26px',
+                    borderRadius: 'var(--radius-sm)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: active ? 'var(--accent-light)' : 'transparent',
+                    transition: 'background 0.15s',
+                  }}>
+                    <Icon size={19} strokeWidth={active ? 2.5 : 2.25} color={active ? 'var(--accent-text)' : 'var(--text-tertiary)'} />
+                    {item.badge > 0 && (
+                      <div style={{
+                        position: 'absolute',
+                        top: '-3px',
+                        right: '-2px',
+                        minWidth: '15px',
+                        height: '15px',
+                        background: 'var(--accent)',
+                        border: '2px solid var(--surface)',
+                        borderRadius: 'var(--radius-pill)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '8px',
+                        fontWeight: '800',
+                        color: 'var(--foreground)',
+                        padding: '0 3px',
+                      }}>
+                        {item.badge > 99 ? '99+' : item.badge}
+                      </div>
+                    )}
+                  </div>
+                  <span style={{
+                    fontSize: '10px',
+                    fontWeight: active ? '700' : '500',
+                    color: active ? 'var(--text)' : 'var(--text-tertiary)',
+                  }}>
+                    {item.label}
+                  </span>
+                </div>
+              </Link>
+            )
+          })}
         </div>
       </div>
 

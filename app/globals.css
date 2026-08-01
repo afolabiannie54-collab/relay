@@ -17,6 +17,7 @@
   --accent: #FFB800;
   --accent-hover: #E6A600;
   --accent-light: #FFF8E1;
+  --accent-wash-strong: #FFEDB8;
   --accent-text: #8A5A00;
 
   --success: #22C55E;
@@ -74,6 +75,7 @@
     --accent: #FFC933;
     --accent-hover: #FFD65C;
     --accent-light: rgba(255, 201, 51, 0.14);
+    --accent-wash-strong: rgba(255, 201, 51, 0.26);
     --accent-text: #FFC933;
 
     --error-light: rgba(239, 68, 68, 0.14);
@@ -217,10 +219,10 @@ a, button, input, textarea, select {
   transition: background 0.1s ease;
 }
 .relay-menu-row:hover {
-  background: var(--surface-hover);
+  background: var(--accent-light);
 }
 .relay-menu-row:active {
-  background: var(--surface-active);
+  background: var(--accent-wash-strong);
 }
 
 /* Shared text input treatment — soft border by default, accent ring on
@@ -253,15 +255,26 @@ a, button, input, textarea, select {
   width: 40px;
   height: 40px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text);
+  border: 1px solid transparent;
+  background: var(--accent-light);
+  color: var(--accent-text);
   cursor: pointer;
-  transition: background 0.12s ease, border-color 0.12s ease, transform 0.08s ease;
+  transition: background 0.12s ease, transform 0.08s ease;
 }
 .relay-icon-btn:hover {
-  background: var(--surface-hover);
+  background: var(--accent-wash-strong);
 }
 .relay-icon-btn:active {
   transform: scale(0.94);
+}
+/* Escape hatch for icon buttons that need to stay neutral (dismiss/close
+   actions shouldn't read as a branded interaction the way an actual menu
+   trigger or notification bell should). */
+.relay-icon-btn--neutral {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--text);
+}
+.relay-icon-btn--neutral:hover {
+  background: var(--surface-hover);
 }

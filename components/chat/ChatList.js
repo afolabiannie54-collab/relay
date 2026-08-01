@@ -777,7 +777,7 @@ export default function ChatList({ onSelectConversation }) {
                     transition: 'background 0.1s',
                   }}
                     onMouseEnter={e => {
-                      if (!isSelected) e.currentTarget.style.background = 'var(--surface-hover)'
+                      if (!isSelected) e.currentTarget.style.background = 'var(--accent-light)'
                       prefetchConversation(conv.conversation_id)
                     }}
                     onMouseLeave={e => { e.currentTarget.style.background = isSelected ? 'var(--accent-light)' : 'var(--surface)' }}
@@ -898,19 +898,19 @@ export default function ChatList({ onSelectConversation }) {
               background: 'var(--surface)',
               transition: 'background 0.12s ease',
             }}
-            onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-hover)'}
+            onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-light)'}
             onMouseLeave={e => e.currentTarget.style.background = 'var(--surface)'}
           >
             <div style={{
               width: '42px',
               height: '42px',
               borderRadius: '50%',
-              background: 'var(--gray-100)',
+              background: 'var(--accent-light)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               flexShrink: 0,
-              color: 'var(--text-secondary)',
+              color: 'var(--accent-text)',
             }}>
               <EyeOff size={17} strokeWidth={2.25} />
             </div>
