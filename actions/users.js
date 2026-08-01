@@ -285,7 +285,23 @@ export async function updatePrivacySettings(formData) {
   // before has none yet. update() against a nonexistent row silently
   // affects zero rows (no error), so every toggle on this page could
   // report "Saved" while never actually persisting anything.
-  const { error } = await supabase
+  //
+  // privacy_settings has no INSERT policy for a user's own row (only
+  // covers SELECT/UPDATE, presumably written assuming a row always
+  // already exists via a signup trigger that doesn't actually exist in
+  // this schema) — confirmed directly: switching to upsert surfaced
+  // "new row violates row-level security policy for table
+  // privacy_settings" for a user with no existing row. user.id above is
+  // already verified via the real session, so only the write itself
+  // needs to bypass RLS here — same pattern as deleteGroup/removeMember/
+  // transferOwnership elsewhere in this app.
+  const { createClient: createServiceClient } = await import('@supabase/supabase-js')
+  const serviceClient = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  )
+
+  const { error } = await serviceClient
     .from('privacy_settings')
     .upsert({ user_id: user.id, ...updates }, { onConflict: 'user_id' })
 
