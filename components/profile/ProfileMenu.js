@@ -22,6 +22,10 @@ export default function ProfileMenu({ isOwnProfile, userId, username, displayNam
 
   const handleBlock = async () => {
     await blockUser(userId)
+    // Same signal every other block handler in the app fires — without
+    // it, ChatList wouldn't know to drop a now-hidden existing DM from
+    // its list until some later, unrelated trigger refreshed it.
+    window.dispatchEvent(new Event('relay:conversations-changed'))
     router.push(backHref)
   }
 

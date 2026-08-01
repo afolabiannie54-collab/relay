@@ -11,7 +11,13 @@ export default function BlockedUserRow({ user, isLast }) {
   const handleUnblock = async () => {
     setUnblocking(true)
     const result = await unblockUser(user.id)
-    if (!result.error) setUnblocked(true)
+    if (!result.error) {
+      setUnblocked(true)
+      // unblockUser() just restored a hidden conversation, if there was
+      // one — this is the same signal every block/unblock handler in the
+      // app fires so ChatList picks it back up without a manual refresh.
+      window.dispatchEvent(new Event('relay:conversations-changed'))
+    }
     setUnblocking(false)
   }
 

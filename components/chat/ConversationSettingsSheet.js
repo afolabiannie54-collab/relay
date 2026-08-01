@@ -154,6 +154,12 @@ export default function ConversationSettingsSheet({
   const handleBlock = async () => {
     if (!otherParticipant) return
     await blockUser(otherParticipant.id)
+    // Same signal ConversationActionSheet/ConversationContextMenu's own
+    // block handlers already fire — without it, ChatList (which stays
+    // mounted across this navigation) wouldn't know to drop the now-
+    // hidden conversation from its list until some later, unrelated
+    // trigger refreshed it.
+    window.dispatchEvent(new Event('relay:conversations-changed'))
     onClose?.()
     router.replace('/chat')
   }

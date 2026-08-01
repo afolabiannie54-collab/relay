@@ -60,6 +60,36 @@ export async function unblockUser(blockedUserId) {
     .eq('blocked_id', blockedUserId)
 
   if (error) return { error: error.message }
+
+  // Messaging/search/profile/group-add all re-check the blocks table live
+  // on every attempt, so those are automatically restored the instant the
+  // row above is gone — no separate step needed. conversation_hidden is
+  // the one exception: blockUser() wrote it as a one-time side effect, not
+  // something derived live, so it has to be explicitly undone here or the
+  // conversation stays stranded in Hidden chats forever after unblocking.
+  const { data: participants } = await supabase
+    .from('conversation_participants')
+    .select('conversation_id, conversations!inner(type)')
+    .eq('user_id', user.id)
+    .eq('conversations.type', 'dm')
+
+  if (participants?.length) {
+    const conversationIds = participants.map(p => p.conversation_id)
+    const { data: shared } = await supabase
+      .from('conversation_participants')
+      .select('conversation_id')
+      .eq('user_id', blockedUserId)
+      .in('conversation_id', conversationIds)
+
+    if (shared?.length) {
+      await supabase
+        .from('conversation_hidden')
+        .delete()
+        .eq('user_id', user.id)
+        .in('conversation_id', shared.map(s => s.conversation_id))
+    }
+  }
+
   return { success: true }
 }
 
