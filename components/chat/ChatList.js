@@ -190,9 +190,29 @@ export default function ChatList({ onSelectConversation }) {
         event: 'INSERT',
         schema: 'public',
         table: 'messages',
-      }, () => {
+      }, async (payload) => {
+        // A blanket refreshConversations() here would overwrite EVERY
+        // row with whatever this fetch returns. If that fetch was
+        // already in flight when a *different* conversation's read got
+        // marked (e.g. you open conversation A right as conversation B
+        // gets a new message elsewhere), its stale response could land
+        // afterward and clobber A's just-cleared badge back to unread —
+        // it would only self-correct on the next unrelated trigger,
+        // which read as "the badge takes forever to clear." Only ever
+        // writing the one row this INSERT is actually about avoids that
+        // race regardless of fetch ordering.
+        const convId = payload.new.conversation_id
         cache.invalidate('conversations')
-        refreshConversations()
+        const result = await getConversations()
+        const updated = result.data?.find(c => c.conversation_id === convId)
+        if (!updated) return
+        setConversations(prev => {
+          const next = prev.some(c => c.conversation_id === convId)
+            ? prev.map(c => c.conversation_id === convId ? updated : c)
+            : [updated, ...prev]
+          cache.set('conversations', next, 10000)
+          return next
+        })
       })
       .on('postgres_changes', {
         event: 'INSERT',

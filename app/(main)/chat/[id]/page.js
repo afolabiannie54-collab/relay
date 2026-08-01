@@ -294,6 +294,22 @@ export default function ConversationPage() {
         ))
         cache.invalidate(`messages:${id}`)
       })
+      // Member/role changes (add, remove, promote, demote, transfer
+      // ownership) for THIS open conversation. Unlike the group-deletion
+      // case, these are inserts/updates on rows that still exist
+      // afterward, so there's no "RLS re-queries an already-emptied
+      // table" problem blocking delivery — this should reach other
+      // participants live. Without it, only the person who took the
+      // action saw groupInfo (member list, role badges) update; everyone
+      // else needed a manual reload.
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'conversation_participants',
+        filter: `conversation_id=eq.${id}`,
+      }, () => {
+        reloadGroupInfo()
+      })
       .on('broadcast', { event: 'typing' }, (payload) => {
         if (payload.payload.userId === profile?.id) return
         setTypingUsers(prev => {
@@ -768,9 +784,14 @@ export default function ConversationPage() {
               <p style={{ fontSize: '12px', color: '#A3A3A3' }}>
                 {onlineUsers.includes(otherParticipant?.id) && otherParticipant?.show_online_status
                   ? <span style={{ color: '#22C55E' }}>● Online</span>
-                  : otherParticipant?.show_last_seen && otherParticipant?.last_seen
-                    ? `Last seen ${formatLastSeen(otherParticipant.last_seen)}`
-                    : `@${otherParticipant?.username}`
+                  : otherParticipant?.show_last_seen
+                    // @username only as a placeholder when last-seen is
+                    // permitted but there's simply no data yet — never
+                    // shown as a fallback once show_last_seen is off;
+                    // the whole line just isn't there then, same as
+                    // ConversationSettingsSheet.
+                    ? (otherParticipant?.last_seen ? `Last seen ${formatLastSeen(otherParticipant.last_seen)}` : `@${otherParticipant?.username}`)
+                    : null
                 }
               </p>
             </div>
