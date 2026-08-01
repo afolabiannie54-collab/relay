@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Avatar from '@/components/shared/Avatar'
 import { getMessages, sendMessage, getConversation, markConversationRead, editMessage, deleteMessage, uploadMedia, getReactions, toggleReaction, getPinnedMessages, togglePin, searchMessages } from '@/actions/messages'
@@ -95,6 +95,25 @@ export default function ConversationPage() {
   // dependency array, since resubscribing the channel on every new
   // message would be wasteful).
   const messagesRef = useRef(messages)
+
+  // A backgrounded/minimized tab shouldn't silently mark messages as
+  // read just because they arrived while it happened to be open — only
+  // actually marks read (and tells the chat list to clear the tile
+  // badge) while the tab is genuinely visible. The visibilitychange
+  // listener below catches up once it's foregrounded again, whether
+  // that's from a message that arrived while backgrounded or just
+  // reopening a tab that was left on this conversation.
+  const markReadIfVisible = useCallback(() => {
+    if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
+    markConversationRead(id)
+    window.dispatchEvent(new CustomEvent('relay:conversation-read', { detail: { conversationId: id } }))
+  }, [id])
+
+  useEffect(() => {
+    const handleVisibility = () => { if (document.visibilityState === 'visible') markReadIfVisible() }
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => document.removeEventListener('visibilitychange', handleVisibility)
+  }, [markReadIfVisible])
 
   useReadReceipts(id, profile?.id, messages)
 
@@ -192,8 +211,7 @@ export default function ConversationPage() {
       }
       setLoading(false)
 
-      await markConversationRead(id)
-      window.dispatchEvent(new CustomEvent('relay:conversation-read', { detail: { conversationId: id } }))
+      markReadIfVisible()
 
       const pinnedResult = await getPinnedMessages(id)
       if (pinnedResult.data) {
@@ -292,8 +310,7 @@ export default function ConversationPage() {
           return [...prev, newMsg]
         })
         cache.invalidate(`messages:${id}`)
-        markConversationRead(id)
-        window.dispatchEvent(new CustomEvent('relay:conversation-read', { detail: { conversationId: id } }))
+        markReadIfVisible()
       })
       .on('postgres_changes', {
         event: 'UPDATE',
