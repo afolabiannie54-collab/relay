@@ -216,7 +216,17 @@ export async function searchUsers(query) {
   const { data, error } = await queryBuilder
 
   if (error) return { error: error.message }
-  return { data }
+
+  // discoverable was being fetched but never actually enforced — every
+  // match was returned regardless of this setting. A user with no
+  // privacy_settings row at all (never visited Settings > Privacy) is
+  // treated as discoverable by default, same fallback used everywhere
+  // else in this file; only an explicit false excludes them.
+  const filtered = (data || [])
+    .filter(u => u.privacy_settings?.discoverable !== false)
+    .map(({ privacy_settings, ...rest }) => rest)
+
+  return { data: filtered }
 }
 
 export async function getPrivacySettings() {
@@ -229,10 +239,26 @@ export async function getPrivacySettings() {
     .from('privacy_settings')
     .select('*')
     .eq('user_id', user.id)
-    .single()
+    .maybeSingle()
 
   if (error) return { error: error.message }
-  return { data }
+
+  // No row yet (never visited these settings) shouldn't error the page
+  // out — same defaults used as fallbacks everywhere else this table's
+  // columns are read.
+  return {
+    data: data || {
+      who_can_message: 'everyone',
+      show_online_status: true,
+      show_last_seen: true,
+      discoverable: true,
+      push_notifications_enabled: true,
+      message_notifications: true,
+      group_notifications: true,
+      mention_notifications: true,
+      reaction_notifications: true,
+    },
+  }
 }
 
 export async function updatePrivacySettings(formData) {
@@ -254,10 +280,14 @@ export async function updatePrivacySettings(formData) {
     updated_at: new Date().toISOString(),
   }
 
+  // upsert, not update — nothing in this codebase ever inserts a
+  // privacy_settings row, so a user who's never saved these settings
+  // before has none yet. update() against a nonexistent row silently
+  // affects zero rows (no error), so every toggle on this page could
+  // report "Saved" while never actually persisting anything.
   const { error } = await supabase
     .from('privacy_settings')
-    .update(updates)
-    .eq('user_id', user.id)
+    .upsert({ user_id: user.id, ...updates }, { onConflict: 'user_id' })
 
   if (error) return { error: error.message }
   return { success: true }
