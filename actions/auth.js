@@ -107,6 +107,14 @@ export async function signInWithGoogle() {
     provider: 'google',
     options: {
       redirectTo: process.env.NEXT_PUBLIC_APP_URL + '/api/auth/callback',
+      // Without this, Google silently re-authenticates with whichever
+      // account the browser already has an active session for instead
+      // of showing the account chooser — fine for a returning user, but
+      // means there's no way to deliberately pick a different Google
+      // account without first signing out of Google itself.
+      queryParams: {
+        prompt: 'select_account',
+      },
     },
   })
 

@@ -572,6 +572,29 @@ export default function EditProfileForm({ initialProfile }) {
           )}
         </div>
 
+        {/* Email — read-only. Changing it needs its own verification flow
+            (Supabase requires confirming the new address before it takes
+            effect) which isn't built yet; this at least surfaces which
+            account is actually linked, which wasn't visible anywhere
+            before — easy to lose track of for a Google sign-in in
+            particular, where the email is never manually typed. */}
+        <div style={{
+          background: '#fff',
+          border: '1.5px solid #0a0a0a',
+          borderRadius: '16px',
+          padding: '24px',
+          boxShadow: '4px 4px 0 #0a0a0a',
+          marginBottom: '20px',
+        }}>
+          <h2 style={{ fontSize: '16px', fontWeight: '700', marginBottom: '4px' }}>Email</h2>
+          <p style={{ fontSize: '13px', color: '#0a0a0a', marginBottom: '4px' }}>
+            {profile?.email}
+          </p>
+          <p style={{ fontSize: '12px', color: '#A3A3A3' }}>
+            Contact support to change the email on your account.
+          </p>
+        </div>
+
         {/* View public profile link */}
         <div style={{ textAlign: 'center' }}>
           <Link
