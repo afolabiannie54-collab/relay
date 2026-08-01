@@ -770,17 +770,26 @@ export default function ChatList({ onSelectConversation }) {
                     display: 'flex',
                     alignItems: 'center',
                     gap: '12px',
-                    padding: '13px 20px',
+                    padding: '13px 20px 13px 17px',
+                    borderLeft: isSelected ? '3px solid var(--accent)' : '3px solid transparent',
                     borderBottom: '1px solid var(--border-light)',
                     cursor: 'pointer',
-                    background: isSelected ? 'var(--accent-light)' : 'var(--surface)',
-                    transition: 'background 0.1s',
+                    background: isSelected ? 'var(--surface-active)' : 'var(--surface)',
+                    transition: 'background 0.1s, border-color 0.1s',
                   }}
                     onMouseEnter={e => {
-                      if (!isSelected) e.currentTarget.style.background = 'var(--accent-light)'
+                      if (!isSelected) {
+                        e.currentTarget.style.background = 'var(--surface-hover)'
+                        e.currentTarget.style.borderLeftColor = 'var(--accent)'
+                      }
                       prefetchConversation(conv.conversation_id)
                     }}
-                    onMouseLeave={e => { e.currentTarget.style.background = isSelected ? 'var(--accent-light)' : 'var(--surface)' }}
+                    onMouseLeave={e => {
+                      if (!isSelected) {
+                        e.currentTarget.style.background = 'var(--surface)'
+                        e.currentTarget.style.borderLeftColor = 'transparent'
+                      }
+                    }}
                     onTouchStart={(e) => { prefetchConversation(conv.conversation_id); handleRowTouchStart(conv)(e) }}
                     onTouchMove={handleRowTouchMove}
                     onTouchEnd={handleRowTouchEnd}
@@ -795,8 +804,8 @@ export default function ChatList({ onSelectConversation }) {
                         height: '20px',
                         borderRadius: '50%',
                         border: isSelected ? 'none' : '1.5px solid var(--border-strong)',
-                        background: isSelected ? 'var(--text)' : 'transparent',
-                        color: 'var(--background)',
+                        background: isSelected ? 'var(--accent)' : 'transparent',
+                        color: 'var(--foreground)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -898,7 +907,7 @@ export default function ChatList({ onSelectConversation }) {
               background: 'var(--surface)',
               transition: 'background 0.12s ease',
             }}
-            onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-light)'}
+            onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-hover)'}
             onMouseLeave={e => e.currentTarget.style.background = 'var(--surface)'}
           >
             <div style={{

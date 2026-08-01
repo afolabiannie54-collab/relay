@@ -1,4 +1,5 @@
 import { Inter } from 'next/font/google'
+import { themeInitScript } from '@/lib/theme'
 import './globals.css'
 
 const inter = Inter({
@@ -30,6 +31,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <link rel="apple-touch-icon" href="/icons/logo-light.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />

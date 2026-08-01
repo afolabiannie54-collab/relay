@@ -58,9 +58,16 @@
 
 /* Near-black, not the gray-wash a lot of dark modes lean on — dark surfaces
    step up in lightness from the page background so elevation still reads
-   without shadows, which barely show on a dark canvas. */
+   without shadows, which barely show on a dark canvas.
+
+   Applied two ways: automatically when the OS prefers dark AND the user
+   hasn't made an explicit in-app choice (:not([data-theme])), or forced via
+   [data-theme="dark"] set by the Settings toggle (see lib/theme.js) — which
+   also lets a user explicitly force light while their OS is dark. Both
+   blocks must stay in sync; there's no CSS-native way to share the
+   declaration list across a media query and a plain selector. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme]) {
     --background: #0A0A0A;
     --bg-subtle: #0A0A0A;
     --surface: #161615;
@@ -74,8 +81,14 @@
 
     --accent: #FFC933;
     --accent-hover: #FFD65C;
-    --accent-light: rgba(255, 201, 51, 0.14);
-    --accent-wash-strong: rgba(255, 201, 51, 0.26);
+    /* Flat colors, not translucent overlays — an alpha-blended yellow over
+       a near-black surface reads as a muddy brown and drags down the
+       perceived contrast of text sitting on it. These are hand-picked warm
+       dark tones instead, reserved for compact/contained surfaces (icon
+       buttons, badges, menu-row hover) — full-width list rows use a crisp
+       left accent bar instead, see ChatList.js / (main)/layout.js. */
+    --accent-light: #2A2211;
+    --accent-wash-strong: #3D3117;
     --accent-text: #FFC933;
 
     --error-light: rgba(239, 68, 68, 0.14);
@@ -94,6 +107,41 @@
     --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.5);
     --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.45);
   }
+}
+
+:root[data-theme="dark"] {
+  --background: #0A0A0A;
+  --bg-subtle: #0A0A0A;
+  --surface: #161615;
+  --surface-hover: #1F1F1D;
+  --surface-active: #262624;
+
+  --foreground: #F2F1EE;
+  --text: #F2F1EE;
+  --text-secondary: #A3A199;
+  --text-tertiary: #77756F;
+
+  --accent: #FFC933;
+  --accent-hover: #FFD65C;
+  --accent-light: #2A2211;
+  --accent-wash-strong: #3D3117;
+  --accent-text: #FFC933;
+
+  --error-light: rgba(239, 68, 68, 0.14);
+
+  --gray-100: #1F1F1D;
+  --gray-200: #2A2A28;
+  --gray-400: #77756F;
+  --gray-600: #A3A199;
+
+  --border: #2A2A28;
+  --border-light: #212120;
+  --border-strong: #3A3A37;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.5);
+  --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.45);
 }
 
 * {
