@@ -95,6 +95,27 @@ export async function isBlocked(otherUserId) {
   return { blocked: !!data }
 }
 
+// Full set of user ids the caller has any block relationship with, either
+// direction — for filtering a list (e.g. recent contacts) in one query
+// instead of checking each entry individually. searchUsers() computes
+// this same set inline rather than calling this, since it was already
+// working before this function existed; kept separate to avoid touching
+// code that already works.
+export async function getBlockedUserIds() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) return { data: [] }
+
+  const { data } = await supabase
+    .from('blocks')
+    .select('blocker_id, blocked_id')
+    .or(`blocker_id.eq.${user.id},blocked_id.eq.${user.id}`)
+
+  const ids = data?.map(b => b.blocker_id === user.id ? b.blocked_id : b.blocker_id) || []
+  return { data: ids }
+}
+
 export async function deleteAccount() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

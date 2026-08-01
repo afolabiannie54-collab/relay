@@ -8,7 +8,7 @@ import Avatar from '@/components/shared/Avatar'
 import { getConversations, getExistingConversation } from '@/actions/messages'
 import { createGroup, uploadGroupAvatar } from '@/actions/groups'
 import { searchUsers } from '@/actions/users'
-import { blockUser } from '@/actions/blocks'
+import { blockUser, getBlockedUserIds } from '@/actions/blocks'
 import { cache } from '@/lib/cache'
 
 const GROUP_NAME_MAX = 50
@@ -75,8 +75,12 @@ function SheetBody({ onClose, initialMode }) {
 
   useEffect(() => {
     async function loadRecent() {
-      const result = await getConversations()
+      const [result, blockedResult] = await Promise.all([
+        getConversations(),
+        getBlockedUserIds(),
+      ])
       if (result.data) {
+        const blockedIds = new Set(blockedResult.data || [])
         const contacts = result.data
           .filter(c => c.type === 'dm')
           .map(c => c.other_participants?.[0])
@@ -87,6 +91,11 @@ function SheetBody({ onClose, initialMode }) {
             username: p.username,
             avatar_url: p.avatar_url,
           }))
+          // The DM itself stays visible in the main chat list (existing
+          // conversations aren't hidden from the blocked side), but a
+          // blocked contact shouldn't be offered here as someone to
+          // start fresh with or add to a new group.
+          .filter(c => !blockedIds.has(c.id))
         setRecentContacts(contacts)
       }
     }

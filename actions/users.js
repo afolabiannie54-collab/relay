@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { sanitizeText } from '@/lib/utils/sanitize'
+import { isBlocked } from '@/actions/blocks'
 
 export async function getOwnProfile() {
   const supabase = await createClient()
@@ -21,6 +22,7 @@ export async function getOwnProfile() {
 
 export async function getProfileByUsername(username) {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
 
   const { data, error } = await supabase
     .from('users')
@@ -33,6 +35,15 @@ export async function getProfileByUsername(username) {
     .single()
 
   if (error) return { error: 'User not found' }
+
+  // Same "User not found" a nonexistent username gets — a blocked
+  // profile should be indistinguishable from one that doesn't exist,
+  // not a distinct "you're blocked" message that would reveal the block.
+  if (user && user.id !== data.id) {
+    const { blocked } = await isBlocked(data.id)
+    if (blocked) return { error: 'User not found' }
+  }
+
   return {
     data: {
       ...data,
