@@ -217,71 +217,106 @@ export default function MainLayout({ children }) {
             aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             className="relay-icon-btn relay-icon-btn--neutral"
-            style={{ width: '28px', height: '28px', border: 'none' }}
+            style={{ width: '34px', height: '34px', border: 'none' }}
           >
             {sidebarCollapsed
-              ? <PanelLeftOpen size={16} {...iconProps} />
-              : <PanelLeftClose size={16} {...iconProps} />}
+              ? <PanelLeftOpen size={20} {...iconProps} />
+              : <PanelLeftClose size={20} {...iconProps} />}
           </button>
         </div>
 
-        {/* Nav items */}
-        <nav style={{ flex: 1, padding: '14px 10px', overflowY: 'auto', overflowX: 'hidden' }}>
+        {/* Nav items — only three of them, so top-aligned left a lot of
+            dead space above the profile card; centering the group in the
+            available height reads as deliberate instead of sparse. */}
+        <nav style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          padding: '14px 10px',
+          overflowY: 'auto',
+          overflowX: 'hidden',
+        }}>
           {navItems.map(item => {
             const active = isActive(item.href)
             const Icon = item.icon
             return (
               <Link key={item.href} href={item.href} style={{ textDecoration: 'none' }} title={sidebarCollapsed ? item.label : undefined}>
-                <div style={{
-                  position: 'relative',
+                <div className="relay-nav-item" style={{
                   display: 'flex',
+                  flexDirection: sidebarCollapsed ? 'column' : 'row',
                   alignItems: 'center',
                   justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
-                  gap: '12px',
-                  padding: sidebarCollapsed ? '11px' : '11px 14px',
-                  borderRadius: 'var(--radius-sm)',
-                  marginBottom: '6px',
-                  background: active ? 'var(--surface-active)' : 'var(--surface)',
-                  border: active ? '2px solid var(--border-strong)' : '2px solid transparent',
+                  gap: sidebarCollapsed ? '5px' : '12px',
+                  padding: sidebarCollapsed ? '12px 0' : '16px 6px',
+                  borderBottom: '1px solid var(--border-light)',
                   cursor: 'pointer',
-                  transition: 'border-color 0.12s ease, background 0.12s ease',
                 }}
-                  onMouseEnter={e => { if (!active) e.currentTarget.style.borderColor = 'var(--border)' }}
-                  onMouseLeave={e => { if (!active) e.currentTarget.style.borderColor = 'transparent' }}
                 >
-                  <Icon size={21} {...iconProps} color={active ? 'var(--text)' : 'var(--text-secondary)'} style={{ flexShrink: 0 }} />
+                  {/* Not collapsed: the dot sits before the label, like a
+                      bullet marking "you're here" in a list. Collapsed: no
+                      room to the side, so it drops below the icon instead —
+                      either way it's the only thing that changes with
+                      state; icon/text color stay constant rather than
+                      dimming inactive items, which read as muddy. The
+                      bottom rule on each row is what grounds these as a
+                      list rather than labels floating in open space, without
+                      reintroducing the boxed-button look. */}
                   {!sidebarCollapsed && (
-                    <span style={{
-                      fontSize: '14.5px',
-                      fontWeight: active ? '800' : '500',
-                      color: active ? 'var(--text)' : 'var(--text-secondary)',
+                    <span aria-hidden="true" style={{
+                      width: '7px',
+                      height: '7px',
+                      borderRadius: '50%',
+                      flexShrink: 0,
+                      background: active ? 'var(--accent)' : 'transparent',
+                      border: active ? '1.5px solid var(--border-strong)' : '1.5px solid transparent',
+                    }} />
+                  )}
+                  <div className="relay-nav-icon" style={{ position: 'relative', display: 'inline-flex' }}>
+                    <Icon size={22} {...iconProps} color="var(--text)" style={{ flexShrink: 0 }} />
+                    {item.badge > 0 && (
+                      <div style={{
+                        position: 'absolute',
+                        top: '-7px',
+                        right: '-9px',
+                        minWidth: '17px',
+                        height: '17px',
+                        background: 'var(--accent)',
+                        border: '1.5px solid var(--border-strong)',
+                        borderRadius: 'var(--radius-pill)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '9.5px',
+                        fontWeight: '800',
+                        color: 'var(--foreground)',
+                        padding: '0 3px',
+                      }}>
+                        {item.badge > 99 ? '99+' : item.badge}
+                      </div>
+                    )}
+                  </div>
+                  {!sidebarCollapsed && (
+                    <span className="relay-nav-label" style={{
+                      fontSize: '12.5px',
+                      fontWeight: '700',
+                      color: 'var(--text)',
+                      letterSpacing: '0.05em',
+                      textTransform: 'uppercase',
                       flex: 1,
                       whiteSpace: 'nowrap',
                     }}>
                       {item.label}
                     </span>
                   )}
-                  {item.badge > 0 && (
-                    <div style={{
-                      position: sidebarCollapsed ? 'absolute' : 'static',
-                      top: sidebarCollapsed ? '2px' : undefined,
-                      right: sidebarCollapsed ? '2px' : undefined,
-                      minWidth: '19px',
-                      height: '19px',
-                      background: 'var(--accent)',
-                      border: '2px solid var(--border-strong)',
-                      borderRadius: 'var(--radius-pill)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '10px',
-                      fontWeight: '800',
-                      color: 'var(--foreground)',
-                      padding: '0 4px',
-                      flexShrink: 0,
-                    }}>
-                      {item.badge > 99 ? '99+' : item.badge}
-                    </div>
+                  {sidebarCollapsed && (
+                    <span aria-hidden="true" style={{
+                      width: '7px',
+                      height: '7px',
+                      borderRadius: '50%',
+                      background: active ? 'var(--accent)' : 'transparent',
+                      border: active ? '1.5px solid var(--border-strong)' : '1.5px solid transparent',
+                    }} />
                   )}
                 </div>
               </Link>
@@ -370,7 +405,7 @@ export default function MainLayout({ children }) {
             const Icon = item.icon
             return (
               <Link key={item.href} href={item.href} style={{ textDecoration: 'none', flex: 1 }}>
-                <div style={{
+                <div className="relay-nav-item" style={{
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
@@ -378,28 +413,23 @@ export default function MainLayout({ children }) {
                   gap: '4px',
                   padding: '8px 4px',
                   minHeight: '48px',
-                  borderRadius: 'var(--radius-sm)',
-                  background: active ? 'var(--surface-active)' : 'transparent',
-                  border: active ? '2px solid var(--border-strong)' : '2px solid transparent',
-                  position: 'relative',
-                  transition: 'border-color 0.12s ease, background 0.12s ease',
                 }}>
-                  <div style={{ position: 'relative' }}>
-                    <Icon size={22} {...iconProps} color={active ? 'var(--text)' : 'var(--text-tertiary)'} />
+                  <div className="relay-nav-icon" style={{ position: 'relative' }}>
+                    <Icon size={23} {...iconProps} color="var(--text)" />
                     {item.badge > 0 && (
                       <div style={{
                         position: 'absolute',
-                        top: '-6px',
-                        right: '-8px',
-                        minWidth: '16px',
-                        height: '16px',
+                        top: '-7px',
+                        right: '-9px',
+                        minWidth: '17px',
+                        height: '17px',
                         background: 'var(--accent)',
-                        border: '2px solid var(--border-strong)',
+                        border: '1.5px solid var(--border-strong)',
                         borderRadius: 'var(--radius-pill)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        fontSize: '8.5px',
+                        fontSize: '9px',
                         fontWeight: '800',
                         color: 'var(--foreground)',
                         padding: '0 3px',
@@ -408,13 +438,23 @@ export default function MainLayout({ children }) {
                       </div>
                     )}
                   </div>
-                  <span style={{
-                    fontSize: '10.5px',
-                    fontWeight: active ? '800' : '500',
-                    color: active ? 'var(--text)' : 'var(--text-tertiary)',
+                  <span className="relay-nav-label" style={{
+                    fontSize: '9.5px',
+                    fontWeight: '700',
+                    color: 'var(--text)',
+                    letterSpacing: '0.04em',
+                    textTransform: 'uppercase',
                   }}>
                     {item.label}
                   </span>
+                  <span aria-hidden="true" style={{
+                    width: '6px',
+                    height: '6px',
+                    borderRadius: '50%',
+                    background: active ? 'var(--accent)' : 'transparent',
+                    border: active ? '1.5px solid var(--border-strong)' : '1.5px solid transparent',
+                    marginTop: '-1px',
+                  }} />
                 </div>
               </Link>
             )
@@ -427,6 +467,22 @@ export default function MainLayout({ children }) {
           .desktop-sidebar { display: none !important; }
           .mobile-nav { display: flex !important; }
           .mobile-nav.hide-mobile-nav { display: none !important; }
+        }
+
+        /* Hover feedback for nav items now that there's no button-box to
+           darken — an underline on the label (like marking a line in a
+           notebook) plus a small icon lift instead. */
+        .relay-nav-item:hover .relay-nav-label {
+          text-decoration: underline;
+          text-decoration-color: var(--accent);
+          text-decoration-thickness: 2px;
+          text-underline-offset: 3px;
+        }
+        .relay-nav-item:hover .relay-nav-icon svg {
+          transform: translateY(-1px);
+        }
+        .relay-nav-icon svg {
+          transition: transform 0.12s ease;
         }
       `}</style>
     </div>
