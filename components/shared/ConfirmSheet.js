@@ -40,8 +40,8 @@ export default function ConfirmSheet({
         {message && (
           <p style={{
             fontSize: '14px',
-            color: '#525252',
-            lineHeight: '1.5',
+            color: 'var(--text-secondary)',
+            lineHeight: '1.55',
             marginBottom: '20px',
           }}>
             {message}
@@ -54,16 +54,17 @@ export default function ConfirmSheet({
             style={{
               flex: 1,
               padding: '12px',
-              borderRadius: '10px',
-              border: '1.5px solid #0a0a0a',
-              background: '#fff',
-              color: '#0a0a0a',
+              borderRadius: 'var(--radius-sm)',
+              border: '1px solid var(--border)',
+              background: 'var(--surface)',
+              color: 'var(--text)',
               fontSize: '14px',
-              fontWeight: '700',
+              fontWeight: '600',
               cursor: confirming ? 'not-allowed' : 'pointer',
               opacity: confirming ? 0.5 : 1,
               fontFamily: 'inherit',
               minHeight: '44px',
+              transition: 'background 0.12s ease',
             }}
           >
             Cancel
@@ -74,19 +75,20 @@ export default function ConfirmSheet({
             style={{
               flex: 1,
               padding: '12px',
-              borderRadius: '10px',
-              border: '1.5px solid #0a0a0a',
-              background: confirmStyle === 'danger' ? '#EF4444' : '#0a0a0a',
-              color: '#fff',
+              borderRadius: 'var(--radius-sm)',
+              border: 'none',
+              background: confirmStyle === 'danger' ? 'var(--error)' : 'var(--text)',
+              color: confirmStyle === 'danger' ? '#fff' : 'var(--background)',
               fontSize: '14px',
               fontWeight: '700',
               cursor: confirming ? 'not-allowed' : 'pointer',
               opacity: confirming ? 0.7 : 1,
               fontFamily: 'inherit',
               minHeight: '44px',
+              boxShadow: 'var(--shadow-sm)',
             }}
           >
-            {confirming ? 'Please wait...' : confirmLabel}
+            {confirming ? 'Please wait…' : confirmLabel}
           </button>
         </div>
       </div>

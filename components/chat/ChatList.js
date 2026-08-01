@@ -2,7 +2,12 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import {
+  MoreHorizontal, Bell, Plus, Search, Inbox, EyeOff, X,
+  CheckSquare, Check, BellOff, Trash2, Image as ImageIcon, Music, Paperclip,
+} from 'lucide-react'
 import Avatar from '@/components/shared/Avatar'
+import EmptyChatsIllustration from '@/components/shared/illustrations/EmptyChatsIllustration'
 import ChatLink from '@/components/chat/ChatLink'
 import NewConversationSheet from '@/components/chat/NewConversationSheet'
 import ConversationActionSheet from '@/components/chat/ConversationActionSheet'
@@ -16,21 +21,6 @@ import { cache } from '@/lib/cache'
 
 const LONG_PRESS_MS = 400
 const LONG_PRESS_MOVE_TOLERANCE = 10
-
-const listMenuRowStyle = {
-  display: 'block',
-  width: '100%',
-  textAlign: 'left',
-  padding: '10px 16px',
-  fontSize: '14px',
-  fontWeight: '600',
-  color: '#0a0a0a',
-  background: 'none',
-  border: 'none',
-  cursor: 'pointer',
-  fontFamily: 'inherit',
-  whiteSpace: 'nowrap',
-}
 
 export default function ChatList({ onSelectConversation }) {
   const router = useRouter()
@@ -458,9 +448,9 @@ export default function ChatList({ onSelectConversation }) {
     if (!msg) return 'No messages yet'
     if (msg.type === 'deleted') return 'This message was deleted'
     if (msg.type === 'system') return msg.content
-    if (msg.type === 'image') return '📷 Image'
-    if (msg.type === 'audio') return '🎵 Audio'
-    if (msg.type === 'file') return '📎 File'
+    if (msg.type === 'image') return { icon: ImageIcon, text: 'Photo' }
+    if (msg.type === 'audio') return { icon: Music, text: 'Voice message' }
+    if (msg.type === 'file') return { icon: Paperclip, text: 'File' }
     return msg.content || ''
   }
 
@@ -490,7 +480,7 @@ export default function ChatList({ onSelectConversation }) {
         justifyContent: 'center',
         fontFamily: "'Inter', -apple-system, sans-serif",
       }}>
-        <p style={{ color: '#A3A3A3', fontSize: '14px' }}>Loading...</p>
+        <p style={{ color: 'var(--text-tertiary)', fontSize: '14px' }}>Loading…</p>
       </div>
     )
   }
@@ -504,65 +494,44 @@ export default function ChatList({ onSelectConversation }) {
     }}>
       {/* Header */}
       {bulkSelectMode ? (
-        <div style={{
-          padding: '16px 20px',
-          borderBottom: '1.5px solid #E5E5E5',
-          background: '#fff',
+        <div className="relay-fade-in" style={{
+          padding: '14px 16px',
+          borderBottom: '1px solid var(--border)',
+          background: 'var(--surface)',
           display: 'flex',
           alignItems: 'center',
-          gap: '12px',
+          gap: '10px',
         }}>
           <button
             onClick={handleExitBulkSelect}
             aria-label="Exit select mode"
-            style={{
-              background: 'none',
-              border: 'none',
-              fontSize: '18px',
-              cursor: 'pointer',
-              padding: '4px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              minWidth: '44px',
-              minHeight: '44px',
-            }}
+            className="relay-icon-btn"
+            style={{ border: 'none', background: 'none' }}
           >
-            ✕
+            <X size={20} strokeWidth={2.25} />
           </button>
-          <p style={{ fontSize: '16px', fontWeight: '800', color: '#0a0a0a' }}>
+          <p style={{ fontSize: '15px', fontWeight: '700', color: 'var(--text)', letterSpacing: '-0.01em' }}>
             {selectedConvIds.size} selected
           </p>
         </div>
       ) : (
       <div style={{
-        padding: '12px 20px 16px',
-        borderBottom: '1.5px solid #E5E5E5',
-        background: '#fff',
+        padding: '14px 20px 16px',
+        borderBottom: '1px solid var(--border)',
+        background: 'var(--surface)',
       }}>
         {/* Icon toolbar — its own row, not sharing space with the title,
             so neither is cramped (matches WhatsApp's layout: a menu
             button on one side and the action icons on the other, on a
             row above the title). */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
           <div style={{ position: 'relative' }}>
             <button
               onClick={() => setShowListMenu(v => !v)}
               aria-label="Chat list options"
-              style={{
-                width: '44px',
-                height: '44px',
-                border: '1.5px solid #0a0a0a',
-                borderRadius: '8px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '18px',
-                background: '#fff',
-                cursor: 'pointer',
-              }}
+              className="relay-icon-btn"
             >
-              ⋯
+              <MoreHorizontal size={19} strokeWidth={2.25} />
             </button>
             {showListMenu && (
               <>
@@ -570,29 +539,32 @@ export default function ChatList({ onSelectConversation }) {
                   onClick={() => setShowListMenu(false)}
                   style={{ position: 'fixed', inset: 0, zIndex: 10 }}
                 />
-                <div style={{
+                <div className="relay-popover" style={{
                   position: 'absolute',
-                  top: '50px',
+                  top: '48px',
                   left: 0,
-                  minWidth: '170px',
-                  background: '#fff',
-                  border: '1.5px solid #0a0a0a',
-                  borderRadius: '10px',
-                  boxShadow: '4px 4px 0 #0a0a0a',
+                  minWidth: '178px',
+                  background: 'var(--surface)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '12px',
+                  boxShadow: 'var(--shadow-popover)',
                   zIndex: 11,
-                  padding: '6px 0',
+                  padding: '6px',
+                  transformOrigin: 'top left',
                 }}>
                   <button
                     onClick={() => { setShowListMenu(false); handleEnterBulkSelect(null) }}
-                    style={listMenuRowStyle}
+                    className="relay-menu-row"
+                    style={{ color: 'var(--text)' }}
                   >
-                    ☑️ Select chats
+                    <CheckSquare size={15} strokeWidth={2.25} /> Select chats
                   </button>
                   <button
                     onClick={handleReadAll}
-                    style={listMenuRowStyle}
+                    className="relay-menu-row"
+                    style={{ color: 'var(--text)' }}
                   >
-                    ✓ Read all
+                    <Check size={15} strokeWidth={2.25} /> Read all
                   </button>
                 </div>
               </>
@@ -602,37 +574,27 @@ export default function ChatList({ onSelectConversation }) {
             <button
               onClick={() => router.push('/notifications')}
               aria-label="Notifications"
-              style={{
-                position: 'relative',
-                width: '44px',
-                height: '44px',
-                border: '1.5px solid #0a0a0a',
-                borderRadius: '8px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '16px',
-                background: '#fff',
-                cursor: 'pointer',
-              }}
+              className="relay-icon-btn"
+              style={{ position: 'relative' }}
             >
-              🔔
+              <Bell size={18} strokeWidth={2.25} />
               {unreadNotifCount > 0 && (
                 <div style={{
                   position: 'absolute',
-                  top: '-4px',
-                  right: '-4px',
-                  minWidth: '16px',
-                  height: '16px',
-                  padding: '0 3px',
-                  background: '#FFB800',
-                  border: '1.5px solid #0a0a0a',
+                  top: '-5px',
+                  right: '-5px',
+                  minWidth: '17px',
+                  height: '17px',
+                  padding: '0 4px',
+                  background: 'var(--accent)',
+                  border: '2px solid var(--surface)',
                   borderRadius: '100px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   fontSize: '9px',
                   fontWeight: '800',
+                  color: 'var(--foreground)',
                 }}>
                   {unreadNotifCount > 99 ? '99+' : unreadNotifCount}
                 </div>
@@ -641,51 +603,44 @@ export default function ChatList({ onSelectConversation }) {
             <button
               onClick={() => setShowNewConversation(true)}
               aria-label="New conversation"
-              style={{
-                width: '44px',
-                height: '44px',
-                border: '1.5px solid #0a0a0a',
-                borderRadius: '8px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '20px',
-                fontWeight: '700',
-                background: '#fff',
-                cursor: 'pointer',
-              }}
+              className="relay-icon-btn"
+              style={{ background: 'var(--text)', color: 'var(--background)', border: 'none' }}
             >
-              +
+              <Plus size={20} strokeWidth={2.5} />
             </button>
           </div>
         </div>
 
         {/* Title — its own row underneath, full width, no longer sharing
             the line with the icons. */}
-        <h1 style={{ fontSize: '26px', fontWeight: '800', color: '#0a0a0a' }}>Messages</h1>
+        <h1 style={{ fontSize: '28px', fontWeight: '800', color: 'var(--text)', letterSpacing: '-0.02em' }}>Messages</h1>
       </div>
       )}
 
       {/* Filter bar */}
       {!bulkSelectMode && (
-        <div style={{ padding: '10px 20px', borderBottom: '1px solid #F5F5F5', background: '#fff' }}>
-          <input
-            type="text"
-            value={filterQuery}
-            onChange={e => setFilterQuery(e.target.value)}
-            placeholder="Search conversations..."
-            style={{
-              width: '100%',
-              padding: '8px 12px',
-              border: '1px solid #E5E5E5',
-              borderRadius: '100px',
-              fontSize: '13px',
-              fontFamily: 'inherit',
-              outline: 'none',
-              background: '#F5F5F5',
-              boxSizing: 'border-box',
-            }}
-          />
+        <div style={{ padding: '10px 20px', borderBottom: '1px solid var(--border-light)', background: 'var(--surface)' }}>
+          <div style={{ position: 'relative' }}>
+            <Search
+              size={15}
+              strokeWidth={2.25}
+              style={{ position: 'absolute', left: '13px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)', pointerEvents: 'none' }}
+            />
+            <input
+              type="text"
+              value={filterQuery}
+              onChange={e => setFilterQuery(e.target.value)}
+              placeholder="Search conversations…"
+              className="relay-input"
+              style={{
+                width: '100%',
+                padding: '9px 12px 9px 36px',
+                borderRadius: 'var(--radius-pill)',
+                fontSize: '13.5px',
+                boxSizing: 'border-box',
+              }}
+            />
+          </div>
         </div>
       )}
 
@@ -706,40 +661,42 @@ export default function ChatList({ onSelectConversation }) {
               alignItems: 'center',
               gap: '12px',
               padding: '14px 20px',
-              borderBottom: '1.5px solid #0a0a0a',
+              borderBottom: '1px solid var(--border)',
               cursor: 'pointer',
-              background: '#FFF8E1',
+              background: 'var(--accent-light)',
+              transition: 'background 0.12s ease',
             }}
+            onMouseEnter={e => e.currentTarget.style.filter = 'brightness(0.97)'}
+            onMouseLeave={e => e.currentTarget.style.filter = 'none'}
           >
             <div style={{
-              width: '44px',
-              height: '44px',
+              width: '42px',
+              height: '42px',
               borderRadius: '50%',
-              background: '#FFB800',
-              border: '1.5px solid #0a0a0a',
+              background: 'var(--accent)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '18px',
               flexShrink: 0,
+              color: 'var(--foreground)',
             }}>
-              📨
+              <Inbox size={18} strokeWidth={2.25} />
             </div>
-            <p style={{ flex: 1, fontSize: '14px', fontWeight: '700', color: '#0a0a0a' }}>
+            <p style={{ flex: 1, fontSize: '14px', fontWeight: '700', color: 'var(--text)' }}>
               Message Requests
             </p>
             <div style={{
               minWidth: '22px',
               height: '22px',
               padding: '0 6px',
-              background: '#0a0a0a',
+              background: 'var(--text)',
               borderRadius: '100px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               fontSize: '12px',
               fontWeight: '800',
-              color: '#fff',
+              color: 'var(--background)',
             }}>
               {requestsCount > 99 ? '99+' : requestsCount}
             </div>
@@ -756,32 +713,38 @@ export default function ChatList({ onSelectConversation }) {
             padding: '40px',
             textAlign: 'center',
           }}>
-            <div style={{ fontSize: '48px', marginBottom: '16px' }}>💬</div>
-            <h2 style={{ fontSize: '18px', fontWeight: '800', marginBottom: '8px' }}>No conversations yet</h2>
-            <p style={{ fontSize: '14px', color: '#A3A3A3', marginBottom: '24px' }}>
+            <div style={{ marginBottom: '8px' }}>
+              <EmptyChatsIllustration />
+            </div>
+            <h2 style={{ fontSize: '18px', fontWeight: '800', color: 'var(--text)', marginBottom: '6px', letterSpacing: '-0.01em' }}>No conversations yet</h2>
+            <p style={{ fontSize: '14px', color: 'var(--text-tertiary)', marginBottom: '24px', maxWidth: '260px' }}>
               Search for people and start a conversation.
             </p>
             <button
               onClick={() => setShowNewConversation(true)}
               style={{
-                padding: '10px 20px',
-                background: '#0a0a0a',
-                color: '#fff',
-                borderRadius: '8px',
+                padding: '11px 22px',
+                background: 'var(--text)',
+                color: 'var(--background)',
+                borderRadius: 'var(--radius-sm)',
                 border: 'none',
                 fontSize: '14px',
-                fontWeight: '600',
-                boxShadow: '3px 3px 0 #FFB800',
+                fontWeight: '700',
+                boxShadow: 'var(--shadow-md)',
                 cursor: 'pointer',
                 fontFamily: 'inherit',
+                transition: 'transform 0.1s ease',
               }}
+              onMouseDown={e => e.currentTarget.style.transform = 'scale(0.97)'}
+              onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
+              onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
             >
               Find people
             </button>
           </div>
         ) : filteredConversations.length === 0 ? (
           <div style={{ padding: '40px 20px', textAlign: 'center' }}>
-            <p style={{ fontSize: '14px', color: '#A3A3A3' }}>No conversations match "{filterQuery}"</p>
+            <p style={{ fontSize: '14px', color: 'var(--text-tertiary)' }}>No conversations match "{filterQuery}"</p>
           </div>
         ) : (
           filteredConversations.map(conv => {
@@ -792,6 +755,8 @@ export default function ChatList({ onSelectConversation }) {
             const avatarUrl = isGroup ? conv.group_info?.avatar_url : otherUser?.avatar_url
             const isMuted = mutedIds.includes(conv.conversation_id)
             const isSelected = selectedConvIds.has(conv.conversation_id)
+            const preview = getLastMessagePreview(lastMessage)
+            const PreviewIcon = preview?.icon
 
             return (
               <ChatLink
@@ -805,17 +770,17 @@ export default function ChatList({ onSelectConversation }) {
                     display: 'flex',
                     alignItems: 'center',
                     gap: '12px',
-                    padding: '14px 20px',
-                    borderBottom: '1px solid #F5F5F5',
+                    padding: '13px 20px',
+                    borderBottom: '1px solid var(--border-light)',
                     cursor: 'pointer',
-                    background: isSelected ? '#FFF8E1' : '#fff',
+                    background: isSelected ? 'var(--accent-light)' : 'var(--surface)',
                     transition: 'background 0.1s',
                   }}
                     onMouseEnter={e => {
-                      if (!isSelected) e.currentTarget.style.background = '#F9F9F9'
+                      if (!isSelected) e.currentTarget.style.background = 'var(--surface-hover)'
                       prefetchConversation(conv.conversation_id)
                     }}
-                    onMouseLeave={e => { e.currentTarget.style.background = isSelected ? '#FFF8E1' : '#fff' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = isSelected ? 'var(--accent-light)' : 'var(--surface)' }}
                     onTouchStart={(e) => { prefetchConversation(conv.conversation_id); handleRowTouchStart(conv)(e) }}
                     onTouchMove={handleRowTouchMove}
                     onTouchEnd={handleRowTouchEnd}
@@ -824,22 +789,21 @@ export default function ChatList({ onSelectConversation }) {
                   {bulkSelectMode && (
                     <div
                       aria-hidden="true"
+                      className="relay-fade-in"
                       style={{
-                        width: '22px',
-                        height: '22px',
+                        width: '20px',
+                        height: '20px',
                         borderRadius: '50%',
-                        border: '1.5px solid #0a0a0a',
-                        background: isSelected ? '#0a0a0a' : '#fff',
-                        color: '#fff',
+                        border: isSelected ? 'none' : '1.5px solid var(--border-strong)',
+                        background: isSelected ? 'var(--text)' : 'transparent',
+                        color: 'var(--background)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        fontSize: '12px',
-                        fontWeight: '800',
                         flexShrink: 0,
                       }}
                     >
-                      {isSelected ? '✓' : ''}
+                      {isSelected && <Check size={13} strokeWidth={3} />}
                     </div>
                   )}
                   <Avatar
@@ -852,7 +816,7 @@ export default function ChatList({ onSelectConversation }) {
                       <p style={{
                         fontSize: '15px',
                         fontWeight: '700',
-                        color: '#0a0a0a',
+                        color: 'var(--text)',
                         whiteSpace: 'nowrap',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
@@ -867,38 +831,44 @@ export default function ChatList({ onSelectConversation }) {
                         }}>
                           {displayName || 'Unknown'}
                         </span>
-                        {isMuted && <span style={{ fontSize: '12px', flexShrink: 0 }}>🔕</span>}
+                        {isMuted && <BellOff size={12} strokeWidth={2.25} style={{ flexShrink: 0, color: 'var(--text-tertiary)' }} />}
                       </p>
-                      <span style={{ fontSize: '11px', color: '#A3A3A3', flexShrink: 0, marginLeft: '8px' }}>
+                      <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', flexShrink: 0, marginLeft: '8px' }}>
                         {formatTime(lastMessage?.created_at)}
                       </span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <p style={{
                         fontSize: '13px',
-                        color: getUnreadCount(conv) > 0 ? '#0a0a0a' : '#A3A3A3',
+                        color: getUnreadCount(conv) > 0 ? 'var(--text)' : 'var(--text-tertiary)',
                         fontWeight: getUnreadCount(conv) > 0 ? '600' : '400',
                         whiteSpace: 'nowrap',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                         flex: 1,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
                       }}>
-                        {lastMessage?.sender_id === userId ? 'You: ' : ''}{getLastMessagePreview(lastMessage)}
+                        {lastMessage?.sender_id === userId ? 'You: ' : ''}
+                        {PreviewIcon && <PreviewIcon size={13} strokeWidth={2.25} style={{ flexShrink: 0 }} />}
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {PreviewIcon ? preview.text : preview}
+                        </span>
                       </p>
                       {getUnreadCount(conv) > 0 && (
                         <div style={{
-                          minWidth: '20px',
-                          height: '20px',
+                          minWidth: '19px',
+                          height: '19px',
                           padding: '0 6px',
-                          background: '#FFB800',
+                          background: 'var(--accent)',
                           borderRadius: '100px',
-                          border: '1.5px solid #0a0a0a',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
                           fontSize: '11px',
                           fontWeight: '800',
-                          color: '#0a0a0a',
+                          color: 'var(--foreground)',
                           flexShrink: 0,
                           marginLeft: '8px',
                         }}>
@@ -925,30 +895,30 @@ export default function ChatList({ onSelectConversation }) {
               gap: '12px',
               padding: '14px 20px',
               cursor: 'pointer',
-              background: '#fff',
+              background: 'var(--surface)',
+              transition: 'background 0.12s ease',
             }}
-            onMouseEnter={e => e.currentTarget.style.background = '#F9F9F9'}
-            onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+            onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-hover)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'var(--surface)'}
           >
             <div style={{
-              width: '44px',
-              height: '44px',
+              width: '42px',
+              height: '42px',
               borderRadius: '50%',
-              background: '#F5F5F5',
-              border: '1.5px solid #0a0a0a',
+              background: 'var(--gray-100)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '18px',
               flexShrink: 0,
+              color: 'var(--text-secondary)',
             }}>
-              🔒
+              <EyeOff size={17} strokeWidth={2.25} />
             </div>
-            <p style={{ flex: 1, fontSize: '14px', fontWeight: '600', color: '#525252' }}>
+            <p style={{ flex: 1, fontSize: '14px', fontWeight: '600', color: 'var(--text-secondary)' }}>
               Hidden chats
             </p>
             {hiddenCount > 0 && (
-              <span style={{ fontSize: '13px', color: '#A3A3A3', fontWeight: '600' }}>
+              <span style={{ fontSize: '13px', color: 'var(--text-tertiary)', fontWeight: '600' }}>
                 {hiddenCount > 99 ? '99+' : hiddenCount}
               </span>
             )}
@@ -970,12 +940,13 @@ export default function ChatList({ onSelectConversation }) {
           fixed too (see chat/layout.js). */}
       {bulkSelectMode && (
         <div
-          className="bulk-action-bar"
+          className="bulk-action-bar relay-fade-in"
           style={{
             flexShrink: 0,
             display: 'flex',
-            borderTop: '1.5px solid #0a0a0a',
-            background: '#fff',
+            borderTop: '1px solid var(--border)',
+            background: 'var(--surface)',
+            boxShadow: '0 -4px 16px rgba(25,25,25,0.05)',
           }}
         >
           <button
@@ -983,28 +954,28 @@ export default function ChatList({ onSelectConversation }) {
             disabled={selectedConvIds.size === 0 || bulkActing}
             style={bulkActionBtnStyle(selectedConvIds.size === 0 || bulkActing)}
           >
-            ✓ Read
+            <Check size={17} strokeWidth={2.25} /> Read
           </button>
           <button
             onClick={handleBulkMute}
             disabled={selectedConvIds.size === 0 || bulkActing}
             style={bulkActionBtnStyle(selectedConvIds.size === 0 || bulkActing)}
           >
-            🔕 Mute
+            <BellOff size={17} strokeWidth={2.25} /> Mute
           </button>
           <button
             onClick={handleBulkHide}
             disabled={selectedConvIds.size === 0 || bulkActing}
             style={bulkActionBtnStyle(selectedConvIds.size === 0 || bulkActing)}
           >
-            🙈 Hide
+            <EyeOff size={17} strokeWidth={2.25} /> Hide
           </button>
           <button
             onClick={() => setBulkConfirmAction('delete')}
             disabled={selectedConvIds.size === 0 || bulkActing}
-            style={{ ...bulkActionBtnStyle(selectedConvIds.size === 0 || bulkActing), color: '#EF4444', borderRight: 'none' }}
+            style={{ ...bulkActionBtnStyle(selectedConvIds.size === 0 || bulkActing), color: 'var(--error)', borderRight: 'none' }}
           >
-            🗑️ Delete
+            <Trash2 size={17} strokeWidth={2.25} /> Delete
           </button>
         </div>
       )}
@@ -1044,14 +1015,20 @@ export default function ChatList({ onSelectConversation }) {
 function bulkActionBtnStyle(disabled) {
   return {
     flex: 1,
-    padding: '14px 8px',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '4px',
+    padding: '12px 8px',
     background: 'none',
     border: 'none',
-    borderRight: '1px solid #F5F5F5',
-    fontSize: '13px',
+    borderRight: '1px solid var(--border-light)',
+    fontSize: '11.5px',
     fontWeight: '600',
-    color: disabled ? '#D4D4D4' : '#0a0a0a',
+    color: disabled ? 'var(--text-tertiary)' : 'var(--text)',
     cursor: disabled ? 'not-allowed' : 'pointer',
+    opacity: disabled ? 0.5 : 1,
     fontFamily: 'inherit',
   }
 }

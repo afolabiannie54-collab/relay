@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { createPortal } from 'react-dom'
+import { BellOff, Bell, Check, Circle, EyeOff, Eye, UserPlus, LogOut, Trash2, Ban } from 'lucide-react'
 import BottomSheet from '@/components/shared/BottomSheet'
 import ConfirmSheet from '@/components/shared/ConfirmSheet'
 import Avatar from '@/components/shared/Avatar'
@@ -125,23 +126,11 @@ export default function ConversationContextMenu({ conversation, isMuted, positio
     setMemberResults(prev => prev.filter(u => u.id !== userId))
   }
 
-  const rowStyle = {
-    display: 'block',
-    width: '100%',
-    textAlign: 'left',
-    padding: '9px 14px',
-    fontSize: '13px',
-    fontWeight: '600',
-    color: '#0a0a0a',
-    background: 'none',
-    border: 'none',
-    cursor: 'pointer',
-    fontFamily: 'inherit',
-    whiteSpace: 'nowrap',
-  }
+  const rowStyle = { color: 'var(--text)' }
+  const dangerRowStyle = { color: 'var(--error)' }
 
   // Clamp so the menu never renders off the right/bottom edge of the viewport.
-  const menuWidth = 220
+  const menuWidth = 226
   const left = Math.min(position.x, window.innerWidth - menuWidth - 8)
   const top = Math.min(position.y, window.innerHeight - 260)
 
@@ -153,44 +142,51 @@ export default function ConversationContextMenu({ conversation, isMuted, positio
         style={{ position: 'fixed', inset: 0, zIndex: 1000 }}
       />
       <div
+        className="relay-popover relay-context-menu"
         style={{
           position: 'fixed',
           left,
           top,
           width: menuWidth,
-          background: '#fff',
-          border: '1.5px solid #0a0a0a',
-          borderRadius: '10px',
-          boxShadow: '4px 4px 0 #0a0a0a',
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderRadius: '12px',
+          boxShadow: 'var(--shadow-popover)',
           zIndex: 1001,
-          padding: '6px 0',
+          padding: '6px',
           fontFamily: "'Inter', -apple-system, sans-serif",
         }}
       >
         {isHidden ? (
           <>
-            <button style={rowStyle} onClick={handleUnhide}>🙉 Unhide</button>
-            <button style={{ ...rowStyle, color: '#EF4444' }} onClick={() => setConfirmAction('delete')}>🗑️ Delete conversation</button>
+            <button className="relay-menu-row" style={rowStyle} onClick={handleUnhide}><Eye size={15} strokeWidth={2.25} /> Unhide</button>
+            <button className="relay-menu-row" style={dangerRowStyle} onClick={() => setConfirmAction('delete')}><Trash2 size={15} strokeWidth={2.25} /> Delete conversation</button>
             {!isGroup && (
-              <button style={{ ...rowStyle, color: '#EF4444' }} onClick={() => setConfirmAction('block')}>🚫 Block user</button>
+              <button className="relay-menu-row" style={dangerRowStyle} onClick={() => setConfirmAction('block')}><Ban size={15} strokeWidth={2.25} /> Block user</button>
             )}
           </>
         ) : (
           <>
-            <button style={rowStyle} onClick={handleToggleMute}>{isMuted ? '🔔 Unmute' : '🔕 Mute'}</button>
-            <button style={rowStyle} onClick={handleToggleRead}>{isUnread ? '✓ Mark as read' : '● Mark as unread'}</button>
-            <button style={rowStyle} onClick={handleHide}>🙈 Hide conversation</button>
+            <button className="relay-menu-row" style={rowStyle} onClick={handleToggleMute}>
+              {isMuted ? <Bell size={15} strokeWidth={2.25} /> : <BellOff size={15} strokeWidth={2.25} />}
+              {isMuted ? 'Unmute' : 'Mute'}
+            </button>
+            <button className="relay-menu-row" style={rowStyle} onClick={handleToggleRead}>
+              {isUnread ? <Check size={15} strokeWidth={2.25} /> : <Circle size={9} strokeWidth={2.25} fill="currentColor" style={{ marginInline: '3px' }} />}
+              {isUnread ? 'Mark as read' : 'Mark as unread'}
+            </button>
+            <button className="relay-menu-row" style={rowStyle} onClick={handleHide}><EyeOff size={15} strokeWidth={2.25} /> Hide conversation</button>
             {isGroup ? (
               <>
                 {canManageGroup && (
-                  <button style={rowStyle} onClick={() => setShowAddMember(true)}>➕ Add member</button>
+                  <button className="relay-menu-row" style={rowStyle} onClick={() => setShowAddMember(true)}><UserPlus size={15} strokeWidth={2.25} /> Add member</button>
                 )}
-                <button style={{ ...rowStyle, color: '#EF4444' }} onClick={() => setConfirmAction('leave')}>🚪 Leave group</button>
+                <button className="relay-menu-row" style={dangerRowStyle} onClick={() => setConfirmAction('leave')}><LogOut size={15} strokeWidth={2.25} /> Leave group</button>
               </>
             ) : (
               <>
-                <button style={{ ...rowStyle, color: '#EF4444' }} onClick={() => setConfirmAction('delete')}>🗑️ Delete conversation</button>
-                <button style={{ ...rowStyle, color: '#EF4444' }} onClick={() => setConfirmAction('block')}>🚫 Block user</button>
+                <button className="relay-menu-row" style={dangerRowStyle} onClick={() => setConfirmAction('delete')}><Trash2 size={15} strokeWidth={2.25} /> Delete conversation</button>
+                <button className="relay-menu-row" style={dangerRowStyle} onClick={() => setConfirmAction('block')}><Ban size={15} strokeWidth={2.25} /> Block user</button>
               </>
             )}
           </>
@@ -207,43 +203,46 @@ export default function ConversationContextMenu({ conversation, isMuted, positio
             style={{
               width: '100%',
               padding: '12px 14px',
-              border: '1.5px solid #E5E5E5',
-              borderRadius: '10px',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-sm)',
               fontSize: '16px',
               fontFamily: 'inherit',
               outline: 'none',
               boxSizing: 'border-box',
               marginBottom: '12px',
+              background: 'var(--bg-subtle)',
+              color: 'var(--text)',
             }}
           />
           {searching ? (
-            <p style={{ fontSize: '13px', color: '#A3A3A3' }}>Searching...</p>
+            <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>Searching…</p>
           ) : memberResults.length === 0 && memberQuery.trim().length >= 3 ? (
-            <p style={{ fontSize: '13px', color: '#A3A3A3' }}>No users found</p>
+            <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>No users found</p>
           ) : (
             memberResults.map(u => (
-              <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 0', borderBottom: '1px solid #F5F5F5' }}>
+              <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 0', borderBottom: '1px solid var(--border-light)' }}>
                 <Avatar src={u.avatar_url} name={u.display_name} size={36} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: '14px', fontWeight: '600' }}>{u.display_name}</p>
-                  <p style={{ fontSize: '12px', color: '#A3A3A3' }}>@{u.username}</p>
+                  <p style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text)' }}>{u.display_name}</p>
+                  <p style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>@{u.username}</p>
                 </div>
                 <button
                   onClick={() => handleAddMember(u.id)}
                   disabled={adding === u.id}
                   style={{
                     padding: '6px 14px',
-                    background: '#0a0a0a',
-                    color: '#fff',
+                    background: 'var(--text)',
+                    color: 'var(--background)',
                     border: 'none',
-                    borderRadius: '100px',
+                    borderRadius: 'var(--radius-pill)',
                     fontSize: '12px',
                     fontWeight: '700',
                     cursor: 'pointer',
                     fontFamily: 'inherit',
+                    opacity: adding === u.id ? 0.6 : 1,
                   }}
                 >
-                  {adding === u.id ? 'Adding...' : 'Add'}
+                  {adding === u.id ? 'Adding…' : 'Add'}
                 </button>
               </div>
             ))

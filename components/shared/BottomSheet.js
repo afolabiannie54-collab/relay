@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { X } from 'lucide-react'
 
 // Base overlay used by every sheet/menu in the app: a bottom sheet on
 // mobile (drag handle, swipe down to dismiss), a centered modal on
@@ -86,7 +87,9 @@ export default function BottomSheet({ isOpen, onClose, children, title, maxHeigh
           {title && (
             <div className="relay-sheet-title-row">
               <h2 className="relay-sheet-title">{title}</h2>
-              <button onClick={onClose} className="relay-sheet-close" aria-label="Close">✕</button>
+              <button onClick={onClose} className="relay-sheet-close" aria-label="Close">
+                <X size={18} strokeWidth={2.25} />
+              </button>
             </div>
           )}
         </div>
@@ -107,7 +110,9 @@ export default function BottomSheet({ isOpen, onClose, children, title, maxHeigh
         .relay-sheet-backdrop {
           position: absolute;
           inset: 0;
-          background: rgba(0, 0, 0, 0.5);
+          background: rgba(10, 10, 10, 0.4);
+          backdrop-filter: blur(2px);
+          -webkit-backdrop-filter: blur(2px);
           animation: relay-sheet-backdrop-in 0.2s ease;
         }
         .relay-sheet-panel {
@@ -115,14 +120,15 @@ export default function BottomSheet({ isOpen, onClose, children, title, maxHeigh
           width: 100%;
           max-width: 480px;
           max-height: 85vh;
-          background: #fff;
-          border: 1.5px solid #0a0a0a;
+          background: var(--surface);
+          border: 1px solid var(--border);
           border-bottom: none;
-          border-radius: 20px 20px 0 0;
+          border-radius: 22px 22px 0 0;
+          box-shadow: var(--shadow-lg);
           display: flex;
           flex-direction: column;
           overflow: hidden;
-          animation: relay-sheet-in 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+          animation: relay-sheet-in 0.3s var(--ease-out);
         }
         .relay-sheet-grab-area {
           flex-shrink: 0;
@@ -131,35 +137,44 @@ export default function BottomSheet({ isOpen, onClose, children, title, maxHeigh
         .relay-sheet-drag-handle {
           display: flex;
           justify-content: center;
-          padding: 8px 0 4px;
+          padding: 10px 0 4px;
         }
         .relay-sheet-drag-bar {
           width: 36px;
           height: 4px;
           border-radius: 100px;
-          background: #E5E5E5;
+          background: var(--border);
         }
         .relay-sheet-title-row {
-          padding: 4px 20px 12px;
-          border-bottom: 1px solid #E5E5E5;
+          padding: 6px 16px 14px 20px;
+          border-bottom: 1px solid var(--border-light);
           display: flex;
           align-items: center;
           justify-content: space-between;
         }
         .relay-sheet-title {
           font-size: 16px;
-          font-weight: 800;
-          color: #0a0a0a;
+          font-weight: 700;
+          color: var(--text);
+          letter-spacing: -0.01em;
         }
         .relay-sheet-close {
+          display: flex;
+          align-items: center;
+          justify-content: center;
           background: none;
           border: none;
           cursor: pointer;
-          font-size: 16px;
-          color: #A3A3A3;
+          color: var(--text-tertiary);
           padding: 8px;
           min-width: 32px;
           min-height: 32px;
+          border-radius: var(--radius-pill);
+          transition: background 0.12s ease, color 0.12s ease;
+        }
+        .relay-sheet-close:hover {
+          background: var(--surface-hover);
+          color: var(--text);
         }
         .relay-sheet-body {
           overflow-y: auto;
@@ -176,7 +191,7 @@ export default function BottomSheet({ isOpen, onClose, children, title, maxHeigh
           to { transform: translateY(0); }
         }
         @keyframes relay-sheet-in-desktop {
-          from { opacity: 0; transform: translateY(10px) scale(0.98); }
+          from { opacity: 0; transform: translateY(12px) scale(0.97); }
           to { opacity: 1; transform: translateY(0) scale(1); }
         }
 
@@ -185,11 +200,10 @@ export default function BottomSheet({ isOpen, onClose, children, title, maxHeigh
             align-items: center;
           }
           .relay-sheet-panel {
-            border-radius: 16px;
-            border-bottom: 1.5px solid #0a0a0a;
+            border-radius: 18px;
+            border-bottom: 1px solid var(--border);
             max-height: 80vh;
-            box-shadow: 6px 6px 0 #FFB800;
-            animation: relay-sheet-in-desktop 0.2s ease;
+            animation: relay-sheet-in-desktop 0.22s var(--ease-out);
           }
           .relay-sheet-grab-area {
             touch-action: auto;
