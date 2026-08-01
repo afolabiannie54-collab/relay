@@ -4,6 +4,46 @@ import { sendPushNotification } from '@/lib/utils/sendPushNotification'
 import { createClient } from '@/lib/supabase/server'
 import { sanitizeText } from '@/lib/utils/sanitize'
 
+// sendMessageRequest() (new DMs) already goes through create_message_request,
+// a SECURITY DEFINER function that checks blocks itself — but sendMessage()
+// and uploadMedia() (messages in an ALREADY-existing conversation) never
+// checked at all, so a block did nothing to stop either side from
+// continuing to message in a conversation that predated it. Only restricts
+// direct messages, same as WhatsApp — a block between two people doesn't
+// affect messages either of them sends in a shared group. Returns the
+// conversation's type alongside the block result so callers that also need
+// the type (sendMessage, for its push-notification category) don't have to
+// fetch it twice.
+async function checkDmBlock(supabase, conversationId, senderId) {
+  const { data: conversationRow } = await supabase
+    .from('conversations')
+    .select('type')
+    .eq('id', conversationId)
+    .single()
+
+  if (conversationRow?.type !== 'dm') {
+    return { blocked: false, type: conversationRow?.type }
+  }
+
+  const { data: otherParticipant } = await supabase
+    .from('conversation_participants')
+    .select('user_id')
+    .eq('conversation_id', conversationId)
+    .neq('user_id', senderId)
+    .maybeSingle()
+
+  if (!otherParticipant) return { blocked: false, type: conversationRow.type }
+
+  const { data: block } = await supabase
+    .from('blocks')
+    .select('id')
+    .or(`blocker_id.eq.${senderId},blocked_id.eq.${senderId}`)
+    .or(`blocker_id.eq.${otherParticipant.user_id},blocked_id.eq.${otherParticipant.user_id}`)
+    .maybeSingle()
+
+  return { blocked: !!block, type: conversationRow.type }
+}
+
 export async function sendMessageRequest(receiverId, content) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -325,6 +365,9 @@ export async function sendMessage(conversationId, content, replyToId = null) {
 
   if (!participant) return { error: 'Not a participant' }
 
+  const { blocked, type: conversationType } = await checkDmBlock(supabase, conversationId, user.id)
+  if (blocked) return { error: 'Unable to send message' }
+
   // Get sender display name
   const { data: profile } = await supabase
     .from('users')
@@ -359,12 +402,7 @@ export async function sendMessage(conversationId, content, replyToId = null) {
 
   // Needed so the generic participant push below can tell sendPushNotification
   // whether to gate on message_notifications or group_notifications.
-  const { data: conversationRow } = await supabase
-    .from('conversations')
-    .select('type')
-    .eq('id', conversationId)
-    .single()
-  const pushType = conversationRow?.type === 'group' ? 'group_message' : 'direct_message'
+  const pushType = conversationType === 'group' ? 'group_message' : 'direct_message'
 
   // Parse mentions, create notifications, and push mentioned users directly
   // (skip them in the generic participant push below to avoid double-notifying)
@@ -666,6 +704,9 @@ export async function uploadMedia(conversationId, formData) {
     .single()
 
   if (!participant) return { error: 'Not a participant' }
+
+  const { blocked } = await checkDmBlock(supabase, conversationId, user.id)
+  if (blocked) return { error: 'Unable to send message' }
 
   // Get sender display name
   const { data: profile } = await supabase
