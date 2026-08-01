@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { MessageCircle, Search, Settings, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import { MessageSquare, Search, Settings, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import Avatar from '@/components/shared/Avatar'
 import { getOwnProfile } from '@/actions/users'
 import { PresenceProvider } from '@/lib/presence-context'
@@ -155,10 +155,18 @@ export default function MainLayout({ children }) {
   }, [])
 
   const navItems = [
-    { href: '/chat', label: 'Chats', icon: MessageCircle, badge: unreadChatsCount },
+    { href: '/chat', label: 'Chats', icon: MessageSquare, badge: unreadChatsCount },
     { href: '/search', label: 'Search', icon: Search },
     { href: '/settings', label: 'Settings', icon: Settings },
   ]
+
+  // Square terminals instead of lucide's default rounded caps/joins — at
+  // the stroke widths this app uses, rounded ends read as thick and
+  // "painted on" rather than drawn. Squared ends give a sharper, more
+  // technical-pen line that fits the notebook/neo-brutalist direction
+  // better. One shared object so every icon in the nav renders identically
+  // rather than each call site guessing its own values.
+  const iconProps = { strokeWidth: 1.75, strokeLinecap: 'square', strokeLinejoin: 'miter' }
 
   const isActive = (href) => {
     if (href === '/chat') return pathname === '/chat' || pathname.startsWith('/chat/')
@@ -194,18 +202,16 @@ export default function MainLayout({ children }) {
       }}
         className="desktop-sidebar"
       >
-        {/* Logo — the mark alone carries the brand, no wordmark */}
+        {/* Collapse toggle — the logo mark was tried here but at 34px its
+            detailed sketch linework just disappeared into noise, so it's
+            been dropped rather than kept as dead weight. */}
         <div style={{
-          padding: sidebarCollapsed ? '18px 12px 14px' : '18px 16px 14px',
+          padding: sidebarCollapsed ? '14px 12px' : '14px 16px',
           borderBottom: '2px solid var(--border-strong)',
           display: 'flex',
-          flexDirection: sidebarCollapsed ? 'column' : 'row',
           alignItems: 'center',
-          justifyContent: sidebarCollapsed ? 'center' : 'space-between',
-          gap: sidebarCollapsed ? '12px' : '0',
+          justifyContent: sidebarCollapsed ? 'center' : 'flex-end',
         }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icons/logo-light.svg" alt="Relay" style={{ width: '34px', height: '34px', flexShrink: 0 }} />
           <button
             onClick={toggleSidebar}
             aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
@@ -213,7 +219,9 @@ export default function MainLayout({ children }) {
             className="relay-icon-btn relay-icon-btn--neutral"
             style={{ width: '28px', height: '28px', border: 'none' }}
           >
-            {sidebarCollapsed ? <PanelLeftOpen size={16} strokeWidth={2.25} /> : <PanelLeftClose size={16} strokeWidth={2.25} />}
+            {sidebarCollapsed
+              ? <PanelLeftOpen size={16} {...iconProps} />
+              : <PanelLeftClose size={16} {...iconProps} />}
           </button>
         </div>
 
@@ -233,16 +241,15 @@ export default function MainLayout({ children }) {
                   padding: sidebarCollapsed ? '11px' : '11px 14px',
                   borderRadius: 'var(--radius-sm)',
                   marginBottom: '6px',
-                  background: 'var(--surface)',
+                  background: active ? 'var(--surface-active)' : 'var(--surface)',
                   border: active ? '2px solid var(--border-strong)' : '2px solid transparent',
-                  boxShadow: active ? 'var(--shadow-hard-accent)' : 'none',
                   cursor: 'pointer',
-                  transition: 'border-color 0.12s ease, transform 0.12s ease',
+                  transition: 'border-color 0.12s ease, background 0.12s ease',
                 }}
                   onMouseEnter={e => { if (!active) e.currentTarget.style.borderColor = 'var(--border)' }}
                   onMouseLeave={e => { if (!active) e.currentTarget.style.borderColor = 'transparent' }}
                 >
-                  <Icon size={22} strokeWidth={active ? 2.5 : 2} color={active ? 'var(--text)' : 'var(--text-secondary)'} style={{ flexShrink: 0 }} />
+                  <Icon size={21} {...iconProps} color={active ? 'var(--text)' : 'var(--text-secondary)'} style={{ flexShrink: 0 }} />
                   {!sidebarCollapsed && (
                     <span style={{
                       fontSize: '14.5px',
@@ -372,13 +379,13 @@ export default function MainLayout({ children }) {
                   padding: '8px 4px',
                   minHeight: '48px',
                   borderRadius: 'var(--radius-sm)',
+                  background: active ? 'var(--surface-active)' : 'transparent',
                   border: active ? '2px solid var(--border-strong)' : '2px solid transparent',
-                  boxShadow: active ? 'var(--shadow-hard-accent)' : 'none',
                   position: 'relative',
-                  transition: 'border-color 0.12s ease',
+                  transition: 'border-color 0.12s ease, background 0.12s ease',
                 }}>
                   <div style={{ position: 'relative' }}>
-                    <Icon size={23} strokeWidth={active ? 2.5 : 2.1} color={active ? 'var(--text)' : 'var(--text-tertiary)'} />
+                    <Icon size={22} {...iconProps} color={active ? 'var(--text)' : 'var(--text-tertiary)'} />
                     {item.badge > 0 && (
                       <div style={{
                         position: 'absolute',
