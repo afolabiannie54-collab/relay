@@ -766,9 +766,9 @@ export default function ConversationPage() {
                 {otherParticipant?.display_name}
               </p>
               <p style={{ fontSize: '12px', color: '#A3A3A3' }}>
-                {onlineUsers.includes(otherParticipant?.id)
+                {onlineUsers.includes(otherParticipant?.id) && otherParticipant?.show_online_status
                   ? <span style={{ color: '#22C55E' }}>● Online</span>
-                  : otherParticipant?.last_seen
+                  : otherParticipant?.show_last_seen && otherParticipant?.last_seen
                     ? `Last seen ${formatLastSeen(otherParticipant.last_seen)}`
                     : `@${otherParticipant?.username}`
                 }

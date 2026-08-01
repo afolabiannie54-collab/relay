@@ -24,6 +24,20 @@ function vibrate() {
   try { window.navigator.vibrate?.(10) } catch {}
 }
 
+function formatLastSeen(lastSeen) {
+  const date = new Date(lastSeen)
+  const now = new Date()
+  const diff = now - date
+  const minutes = Math.floor(diff / 60000)
+  const hours = Math.floor(diff / 3600000)
+  const days = Math.floor(diff / 86400000)
+  if (minutes < 1) return 'just now'
+  if (minutes < 60) return `${minutes}m ago`
+  if (hours < 24) return `${hours}h ago`
+  if (days < 7) return `${days}d ago`
+  return date.toLocaleDateString()
+}
+
 // Single entry point for all conversation-level actions — opened by
 // tapping the conversation header or its ℹ️ button. Bottom sheet on
 // mobile, centered modal on desktop (both via BottomSheet). Search and
@@ -286,11 +300,15 @@ export default function ConversationSettingsSheet({
                   <p style={{ fontSize: '13px', color: '#A3A3A3' }}>@{otherParticipant?.username}</p>
                   <CopyUsernameButton username={otherParticipant?.username} />
                 </div>
-                <p style={{ fontSize: '12px', marginTop: '4px' }}>
-                  {isOnline
-                    ? <span style={{ color: '#22C55E' }}>● Online</span>
-                    : <span style={{ color: '#A3A3A3' }}>Offline</span>}
-                </p>
+                {isOnline && otherParticipant?.show_online_status ? (
+                  <p style={{ fontSize: '12px', marginTop: '4px' }}>
+                    <span style={{ color: '#22C55E' }}>● Online</span>
+                  </p>
+                ) : otherParticipant?.show_last_seen && otherParticipant?.last_seen ? (
+                  <p style={{ fontSize: '12px', marginTop: '4px', color: '#A3A3A3' }}>
+                    Last seen {formatLastSeen(otherParticipant.last_seen)}
+                  </p>
+                ) : null}
               </>
             )}
           </div>

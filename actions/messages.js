@@ -214,7 +214,7 @@ export async function getConversation(conversationId) {
       .select(`
         user_id,
         role,
-        users!inner(id, username, display_name, avatar_url, last_seen)
+        users!inner(id, username, display_name, avatar_url, last_seen, privacy_settings(show_online_status, show_last_seen))
       `)
       .eq('conversation_id', conversationId)
       .neq('user_id', user.id),
@@ -228,11 +228,16 @@ export async function getConversation(conversationId) {
 
   if (error) return { error: error.message }
 
-  const otherParticipants = participants?.map(p => ({
-    user_id: p.user_id,
-    role: p.role,
-    ...p.users,
-  })) || []
+  const otherParticipants = participants?.map(p => {
+    const { privacy_settings, ...userFields } = p.users
+    return {
+      user_id: p.user_id,
+      role: p.role,
+      ...userFields,
+      show_online_status: privacy_settings?.show_online_status ?? true,
+      show_last_seen: privacy_settings?.show_last_seen ?? true,
+    }
+  }) || []
 
   return { data: { participants: otherParticipants, role: participant.role, type: conversationRow?.type } }
 }
