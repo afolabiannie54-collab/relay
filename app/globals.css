@@ -38,12 +38,24 @@
   --border-light: #F0EFEC;
   --border-strong: #191919;
 
-  /* Diffused elevation instead of hard offset shadows — depth communicated
-     by blur/spread, not by a drawn outline. */
+  /* Diffused elevation — kept for components not yet revisited under the
+     neo-brutalist direction below. Don't add new uses of these; migrate
+     existing ones to --shadow-hard-* deliberately, one component at a
+     time, per the redesign plan. */
   --shadow-sm: 0 1px 2px rgba(25, 25, 25, 0.06);
   --shadow-md: 0 4px 16px rgba(25, 25, 25, 0.08), 0 1px 3px rgba(25, 25, 25, 0.06);
   --shadow-lg: 0 12px 32px rgba(25, 25, 25, 0.14), 0 2px 8px rgba(25, 25, 25, 0.08);
   --shadow-popover: 0 8px 24px rgba(25, 25, 25, 0.12), 0 2px 6px rgba(25, 25, 25, 0.07);
+
+  /* The actual elevation language going forward: a solid offset block, no
+     blur — depth read from a drawn outline, not simulated light. Reserve
+     --shadow-hard-accent for real, sparing "this is the star" moments;
+     everything else structural (cards, nav, sheets) uses the neutral
+     -sm/md/lg scale against --border-strong. */
+  --shadow-hard-sm: 2px 2px 0 var(--border-strong);
+  --shadow-hard-md: 4px 4px 0 var(--border-strong);
+  --shadow-hard-lg: 6px 6px 0 var(--border-strong);
+  --shadow-hard-accent: 4px 4px 0 var(--accent);
 
   --radius-sm: 8px;
   --radius-md: 12px;

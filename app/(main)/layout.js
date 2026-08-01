@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { MessageCircle, Search, Settings, Zap } from 'lucide-react'
+import { MessageCircle, Search, Settings, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import Avatar from '@/components/shared/Avatar'
 import { getOwnProfile } from '@/actions/users'
 import { PresenceProvider } from '@/lib/presence-context'
@@ -22,6 +22,25 @@ export default function MainLayout({ children }) {
   const [profile, setProfile] = useState(() => cache.peek('profile'))
   const [unreadChatsCount, setUnreadChatsCount] = useState(0)
   const [bulkSelectActive, setBulkSelectActive] = useState(false)
+  // Defaults to collapsed on both server and client render (matching the
+  // WhatsApp-style icon rail this is modeled on) so there's no hydration
+  // mismatch; a stored "expanded" preference is applied a tick later here
+  // rather than read synchronously, since a brief width change on load is
+  // far less jarring than the dark/light flash lib/theme.js guards against.
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem('relay-sidebar-collapsed')
+    if (stored === 'false') setSidebarCollapsed(false)
+  }, [])
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed(prev => {
+      const next = !prev
+      window.localStorage.setItem('relay-sidebar-collapsed', String(next))
+      return next
+    })
+  }
 
   usePushNotifications(profile?.id)
 
@@ -161,76 +180,89 @@ export default function MainLayout({ children }) {
       fontFamily: "'Inter', -apple-system, sans-serif",
       background: 'var(--bg-subtle)',
     }}>
-      {/* Desktop sidebar */}
+      {/* Desktop sidebar — collapses to a WhatsApp-style icon rail by
+          default; the toggle's choice is remembered per-browser. */}
       <div style={{
-        width: '260px',
+        width: sidebarCollapsed ? '76px' : '240px',
         flexShrink: 0,
         background: 'var(--surface)',
-        borderRight: '1px solid var(--border)',
+        borderRight: '2px solid var(--border-strong)',
         display: 'flex',
         flexDirection: 'column',
         height: '100dvh',
+        transition: 'width 0.18s var(--ease-out)',
       }}
         className="desktop-sidebar"
       >
-        {/* Logo */}
+        {/* Logo — the mark alone carries the brand, no wordmark */}
         <div style={{
-          padding: '20px',
-          borderBottom: '1px solid var(--border-light)',
+          padding: sidebarCollapsed ? '18px 12px 14px' : '18px 16px 14px',
+          borderBottom: '2px solid var(--border-strong)',
           display: 'flex',
+          flexDirection: sidebarCollapsed ? 'column' : 'row',
           alignItems: 'center',
-          gap: '10px',
+          justifyContent: sidebarCollapsed ? 'center' : 'space-between',
+          gap: sidebarCollapsed ? '12px' : '0',
         }}>
-          <div style={{
-            width: '32px',
-            height: '32px',
-            background: 'var(--accent)',
-            borderRadius: '9px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: 'var(--shadow-sm)',
-          }}>
-            <Zap size={17} strokeWidth={2.5} fill="var(--foreground)" color="var(--foreground)" />
-          </div>
-          <span style={{ fontSize: '18px', fontWeight: '800', color: 'var(--text)', letterSpacing: '-0.02em' }}>Relay</span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/icons/logo-light.svg" alt="Relay" style={{ width: '34px', height: '34px', flexShrink: 0 }} />
+          <button
+            onClick={toggleSidebar}
+            aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            className="relay-icon-btn relay-icon-btn--neutral"
+            style={{ width: '28px', height: '28px', border: 'none' }}
+          >
+            {sidebarCollapsed ? <PanelLeftOpen size={16} strokeWidth={2.25} /> : <PanelLeftClose size={16} strokeWidth={2.25} />}
+          </button>
         </div>
 
         {/* Nav items */}
-        <nav style={{ flex: 1, padding: '12px 8px', overflowY: 'auto' }}>
+        <nav style={{ flex: 1, padding: '14px 10px', overflowY: 'auto', overflowX: 'hidden' }}>
           {navItems.map(item => {
             const active = isActive(item.href)
             const Icon = item.icon
             return (
-              <Link key={item.href} href={item.href} style={{ textDecoration: 'none' }}>
+              <Link key={item.href} href={item.href} style={{ textDecoration: 'none' }} title={sidebarCollapsed ? item.label : undefined}>
                 <div style={{
+                  position: 'relative',
                   display: 'flex',
                   alignItems: 'center',
+                  justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
                   gap: '12px',
-                  padding: '10px 12px',
+                  padding: sidebarCollapsed ? '11px' : '11px 14px',
                   borderRadius: 'var(--radius-sm)',
-                  marginBottom: '2px',
-                  background: active ? 'var(--accent-light)' : 'transparent',
+                  marginBottom: '6px',
+                  background: 'var(--surface)',
+                  border: active ? '2px solid var(--border-strong)' : '2px solid transparent',
+                  boxShadow: active ? 'var(--shadow-hard-accent)' : 'none',
                   cursor: 'pointer',
-                  transition: 'background 0.15s',
+                  transition: 'border-color 0.12s ease, transform 0.12s ease',
                 }}
-                  onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'var(--accent-light)' }}
-                  onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}
+                  onMouseEnter={e => { if (!active) e.currentTarget.style.borderColor = 'var(--border)' }}
+                  onMouseLeave={e => { if (!active) e.currentTarget.style.borderColor = 'transparent' }}
                 >
-                  <Icon size={18} strokeWidth={active ? 2.5 : 2.25} color={active ? 'var(--accent-text)' : 'var(--text-secondary)'} />
-                  <span style={{
-                    fontSize: '14px',
-                    fontWeight: active ? '700' : '500',
-                    color: active ? 'var(--text)' : 'var(--text-secondary)',
-                    flex: 1,
-                  }}>
-                    {item.label}
-                  </span>
+                  <Icon size={22} strokeWidth={active ? 2.5 : 2} color={active ? 'var(--text)' : 'var(--text-secondary)'} style={{ flexShrink: 0 }} />
+                  {!sidebarCollapsed && (
+                    <span style={{
+                      fontSize: '14.5px',
+                      fontWeight: active ? '800' : '500',
+                      color: active ? 'var(--text)' : 'var(--text-secondary)',
+                      flex: 1,
+                      whiteSpace: 'nowrap',
+                    }}>
+                      {item.label}
+                    </span>
+                  )}
                   {item.badge > 0 && (
                     <div style={{
-                      minWidth: '18px',
-                      height: '18px',
+                      position: sidebarCollapsed ? 'absolute' : 'static',
+                      top: sidebarCollapsed ? '2px' : undefined,
+                      right: sidebarCollapsed ? '2px' : undefined,
+                      minWidth: '19px',
+                      height: '19px',
                       background: 'var(--accent)',
+                      border: '2px solid var(--border-strong)',
                       borderRadius: 'var(--radius-pill)',
                       display: 'flex',
                       alignItems: 'center',
@@ -239,6 +271,7 @@ export default function MainLayout({ children }) {
                       fontWeight: '800',
                       color: 'var(--foreground)',
                       padding: '0 4px',
+                      flexShrink: 0,
                     }}>
                       {item.badge > 99 ? '99+' : item.badge}
                     </div>
@@ -251,45 +284,48 @@ export default function MainLayout({ children }) {
 
         {/* Profile at bottom — sign out lives in Settings > Security now */}
         <div style={{
-          padding: '16px',
-          borderTop: '1px solid var(--border-light)',
+          padding: sidebarCollapsed ? '12px' : '14px 12px',
+          borderTop: '2px solid var(--border-strong)',
         }}>
-          <Link href="/settings/profile" style={{ textDecoration: 'none' }}>
+          <Link href="/settings/profile" style={{ textDecoration: 'none' }} title={sidebarCollapsed ? profile?.display_name : undefined}>
             <div
               style={{
                 display: 'flex',
                 alignItems: 'center',
+                justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
                 gap: '10px',
-                padding: '8px',
+                padding: '6px',
                 borderRadius: 'var(--radius-sm)',
                 cursor: 'pointer',
                 transition: 'background 0.12s ease',
               }}
-              onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-light)'}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-hover)'}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
             >
               <Avatar src={profile?.avatar_url} name={profile?.display_name} size={36} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{
-                  fontSize: '13px',
-                  fontWeight: '700',
-                  color: 'var(--text)',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                }}>
-                  {profile?.display_name}
-                </p>
-                <p style={{
-                  fontSize: '11px',
-                  color: 'var(--text-tertiary)',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                }}>
-                  @{profile?.username}
-                </p>
-              </div>
+              {!sidebarCollapsed && (
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{
+                    fontSize: '13px',
+                    fontWeight: '700',
+                    color: 'var(--text)',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}>
+                    {profile?.display_name}
+                  </p>
+                  <p style={{
+                    fontSize: '11px',
+                    color: 'var(--text-tertiary)',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}>
+                    @{profile?.username}
+                  </p>
+                </div>
+              )}
             </div>
           </Link>
         </div>
@@ -316,9 +352,10 @@ export default function MainLayout({ children }) {
           className={(isConversationPage || bulkSelectActive) ? 'mobile-nav hide-mobile-nav' : 'mobile-nav'}
           style={{
             display: 'none',
-            borderTop: '1px solid var(--border)',
+            borderTop: '2px solid var(--border-strong)',
             background: 'var(--surface)',
-            padding: '6px 0',
+            padding: '8px 10px',
+            gap: '8px',
           }}
         >
           {navItems.map(item => {
@@ -331,38 +368,31 @@ export default function MainLayout({ children }) {
                   flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: '3px',
-                  padding: '6px',
-                  minHeight: '44px',
-                  minWidth: '44px',
+                  gap: '4px',
+                  padding: '8px 4px',
+                  minHeight: '48px',
+                  borderRadius: 'var(--radius-sm)',
+                  border: active ? '2px solid var(--border-strong)' : '2px solid transparent',
+                  boxShadow: active ? 'var(--shadow-hard-accent)' : 'none',
                   position: 'relative',
+                  transition: 'border-color 0.12s ease',
                 }}>
-                  <div style={{
-                    position: 'relative',
-                    width: '34px',
-                    height: '26px',
-                    borderRadius: 'var(--radius-sm)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    background: active ? 'var(--accent-light)' : 'transparent',
-                    transition: 'background 0.15s',
-                  }}>
-                    <Icon size={19} strokeWidth={active ? 2.5 : 2.25} color={active ? 'var(--accent-text)' : 'var(--text-tertiary)'} />
+                  <div style={{ position: 'relative' }}>
+                    <Icon size={23} strokeWidth={active ? 2.5 : 2.1} color={active ? 'var(--text)' : 'var(--text-tertiary)'} />
                     {item.badge > 0 && (
                       <div style={{
                         position: 'absolute',
-                        top: '-3px',
-                        right: '-2px',
-                        minWidth: '15px',
-                        height: '15px',
+                        top: '-6px',
+                        right: '-8px',
+                        minWidth: '16px',
+                        height: '16px',
                         background: 'var(--accent)',
-                        border: '2px solid var(--surface)',
+                        border: '2px solid var(--border-strong)',
                         borderRadius: 'var(--radius-pill)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        fontSize: '8px',
+                        fontSize: '8.5px',
                         fontWeight: '800',
                         color: 'var(--foreground)',
                         padding: '0 3px',
@@ -372,8 +402,8 @@ export default function MainLayout({ children }) {
                     )}
                   </div>
                   <span style={{
-                    fontSize: '10px',
-                    fontWeight: active ? '700' : '500',
+                    fontSize: '10.5px',
+                    fontWeight: active ? '800' : '500',
                     color: active ? 'var(--text)' : 'var(--text-tertiary)',
                   }}>
                     {item.label}

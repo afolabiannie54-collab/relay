@@ -36,7 +36,7 @@ export default function Avatar({ src, name, size = 40, userId }) {
         height: size,
         borderRadius: '50%',
         overflow: 'hidden',
-        border: '1px solid var(--border)',
+        border: `${size >= 32 ? 2 : 1.5}px solid var(--border-strong)`,
         flexShrink: 0,
         position: 'relative',
       }}>
@@ -56,6 +56,7 @@ export default function Avatar({ src, name, size = 40, userId }) {
       height: size,
       borderRadius: '50%',
       background: bgColor,
+      border: `${size >= 32 ? 2 : 1.5}px solid var(--border-strong)`,
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
