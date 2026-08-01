@@ -87,8 +87,20 @@ export default function ConversationPage() {
   const typingTimeout = useRef(null)
   const channelRef = useRef(null)
   const lastMessageIdRef = useRef(null)
+  // message_reactions has no conversation_id column to filter Realtime
+  // on, so the reactions listener below has to check each incoming
+  // change against the currently loaded messages itself — this ref
+  // keeps that check reading live data instead of whatever `messages`
+  // was when the channel effect last ran (it isn't in that effect's
+  // dependency array, since resubscribing the channel on every new
+  // message would be wasteful).
+  const messagesRef = useRef(messages)
 
   useReadReceipts(id, profile?.id, messages)
+
+  useEffect(() => {
+    messagesRef.current = messages
+  }, [messages])
 
   useEffect(() => {
     async function load() {
@@ -309,6 +321,41 @@ export default function ConversationPage() {
         filter: `conversation_id=eq.${id}`,
       }, () => {
         reloadGroupInfo()
+      })
+      // message_reactions has no conversation_id column, so this can't
+      // be filtered server-side the way the others above are — it's
+      // scoped to this conversation by checking the changed row's
+      // message_id against messagesRef instead (see that ref's comment).
+      // Without this, only the person who added/removed a reaction saw
+      // it; anyone else already viewing the conversation needed to
+      // reopen it to see reactions someone else made.
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'message_reactions',
+      }, async (payload) => {
+        const messageId = payload.new?.message_id || payload.old?.message_id
+        if (!messageId) return
+        if (!messagesRef.current.some(m => m.id === messageId)) return
+        const result = await getReactions(messageId)
+        if (result.data) {
+          setMessageReactions(prev => ({ ...prev, [messageId]: result.data }))
+        }
+      })
+      // Pin/unpin for this conversation — keeps both the pinned panel
+      // (if open) and pinnedCount (shown in ConversationSettingsSheet)
+      // in sync for everyone, not just whoever toggled the pin.
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'pinned_messages',
+        filter: `conversation_id=eq.${id}`,
+      }, async () => {
+        const result = await getPinnedMessages(id)
+        if (result.data) {
+          setPinnedMessages(result.data)
+          setPinnedMessageIds(new Set(result.data.map(p => p.messages?.id)))
+        }
       })
       .on('broadcast', { event: 'typing' }, (payload) => {
         if (payload.payload.userId === profile?.id) return
