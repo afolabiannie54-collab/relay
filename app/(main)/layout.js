@@ -471,15 +471,20 @@ export default function MainLayout({ children }) {
 
         /* Hover feedback for nav items now that there's no button-box to
            darken — an underline on the label (like marking a line in a
-           notebook) plus a small icon lift instead. */
-        .relay-nav-item:hover .relay-nav-label {
-          text-decoration: underline;
-          text-decoration-color: var(--accent);
-          text-decoration-thickness: 2px;
-          text-underline-offset: 3px;
-        }
-        .relay-nav-item:hover .relay-nav-icon svg {
-          transform: translateY(-1px);
+           notebook) plus a small icon lift instead. Scoped to
+           (hover: hover) so it's mouse/trackpad only — touch devices fire
+           :hover on tap but never cleanly un-fire it, which was leaving
+           the underline "stuck" on the mobile nav after a tap. */
+        @media (hover: hover) and (pointer: fine) {
+          .relay-nav-item:hover .relay-nav-label {
+            text-decoration: underline;
+            text-decoration-color: var(--accent);
+            text-decoration-thickness: 2px;
+            text-underline-offset: 3px;
+          }
+          .relay-nav-item:hover .relay-nav-icon svg {
+            transform: translateY(-1px);
+          }
         }
         .relay-nav-icon svg {
           transition: transform 0.12s ease;

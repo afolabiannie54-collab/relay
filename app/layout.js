@@ -27,9 +27,14 @@ export const viewport = {
   themeColor: '#FFB800',
 }
 
+// suppressHydrationWarning below is scoped to just the <html> element (not
+// deep — it won't hide mismatches in children) — needed because
+// themeInitScript intentionally mutates this tag's data-theme attribute
+// before React hydrates, based on localStorage the server has no way to
+// know. Without it, React flags that deliberate mutation as a mismatch.
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <link rel="apple-touch-icon" href="/icons/logo-light.png" />
