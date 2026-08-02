@@ -1,14 +1,22 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import {
+  Bell, BellOff, Pin, Search, CheckSquare, ChevronRight, Pencil,
+  DoorOpen, Trash2, User, Share2, UserX, EyeOff, UserPlus, Crown,
+  ShieldCheck, ShieldOff, CheckCircle2, Camera,
+} from 'lucide-react'
 import BottomSheet from '@/components/shared/BottomSheet'
 import ConfirmSheet from '@/components/shared/ConfirmSheet'
 import Avatar from '@/components/shared/Avatar'
 import CopyUsernameButton from '@/components/profile/CopyUsernameButton'
 import { hideConversation } from '@/actions/messages'
 import { getMuteStatus, muteConversation, unmuteConversation } from '@/actions/conversations'
-import { removeMember, promoteToAdmin, demoteAdmin, leaveGroup, deleteGroup, addMember, transferOwnership } from '@/actions/groups'
+import {
+  removeMember, promoteToAdmin, demoteAdmin, leaveGroup, deleteGroup, addMember,
+  transferOwnership, updateGroupInfo, uploadGroupAvatar,
+} from '@/actions/groups'
 import { blockUser } from '@/actions/blocks'
 import { searchUsers } from '@/actions/users'
 import { cache } from '@/lib/cache'
@@ -19,6 +27,11 @@ const MUTE_OPTIONS = [
   { label: '1 week', hours: 24 * 7 },
   { label: 'Forever', hours: null },
 ]
+
+const GROUP_NAME_MAX = 50
+const GROUP_DESCRIPTION_MAX = 200
+
+const iconProps = { strokeWidth: 2, strokeLinecap: 'square', strokeLinejoin: 'miter' }
 
 function vibrate() {
   try { window.navigator.vibrate?.(10) } catch {}
@@ -39,7 +52,7 @@ function formatLastSeen(lastSeen) {
 }
 
 // Single entry point for all conversation-level actions — opened by
-// tapping the conversation header or its ℹ️ button. Bottom sheet on
+// tapping the conversation header or its info button. Bottom sheet on
 // mobile, centered modal on desktop (both via BottomSheet). Search and
 // pinned messages are already implemented inline in the conversation
 // page itself; this sheet just closes and asks the parent to open them
@@ -82,6 +95,23 @@ export default function ConversationSettingsSheet({
   // changed until the whole conversation page next remounts.
   const [selfRoleOverride, setSelfRoleOverride] = useState(null)
   const [successMessage, setSuccessMessage] = useState(null)
+  const [showEditGroup, setShowEditGroup] = useState(false)
+  const [editFormData, setEditFormData] = useState({ name: '', description: '' })
+  const [editSaving, setEditSaving] = useState(false)
+  const [editError, setEditError] = useState(null)
+  const [avatarUploading, setAvatarUploading] = useState(false)
+  const avatarInputRef = useRef(null)
+
+  // groupInfo only exists once loaded, and this sheet can be opened
+  // before that happens — seeding the form from the current values each
+  // time the edit sub-sheet opens (rather than on every groupInfo
+  // change) keeps an in-progress edit from being clobbered by an
+  // unrelated onGroupChanged refetch firing while it's open.
+  useEffect(() => {
+    if (!showEditGroup) return
+    setEditFormData({ name: groupInfo?.name || '', description: groupInfo?.description || '' })
+    setEditError(null)
+  }, [showEditGroup, groupInfo])
 
   useEffect(() => {
     if (!isOpen || !conversationId) return
@@ -109,6 +139,7 @@ export default function ConversationSettingsSheet({
     setConfirmAction(null)
     setShowMutePicker(false)
     setShowAddMember(false)
+    setShowEditGroup(false)
     setSuccessMessage(null)
   }, [isOpen])
 
@@ -198,6 +229,32 @@ export default function ConversationSettingsSheet({
     setSearching(false)
   }
 
+  const editIsDirty = editFormData.name !== (groupInfo?.name || '') || editFormData.description !== (groupInfo?.description || '')
+
+  const handleSaveGroupInfo = async () => {
+    setEditSaving(true)
+    setEditError(null)
+    const data = new FormData()
+    data.append('name', editFormData.name.trim().slice(0, GROUP_NAME_MAX))
+    data.append('description', editFormData.description.trim().slice(0, GROUP_DESCRIPTION_MAX))
+    const result = await updateGroupInfo(conversationId, data)
+    if (result.error) setEditError(result.error)
+    else onGroupChanged?.()
+    setEditSaving(false)
+  }
+
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setAvatarUploading(true)
+    const data = new FormData()
+    data.append('avatar', file)
+    const result = await uploadGroupAvatar(conversationId, data)
+    if (result.error) setEditError(result.error)
+    else onGroupChanged?.()
+    setAvatarUploading(false)
+  }
+
   const handleAddMember = async (userId) => {
     setActing(userId)
     await addMember(conversationId, userId)
@@ -262,26 +319,17 @@ export default function ConversationSettingsSheet({
   }
 
   const rowStyle = {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     padding: '14px 20px',
-    borderBottom: '1px solid #F5F5F5',
-    cursor: 'pointer',
-    background: 'none',
-    border: 'none',
-    borderBottomWidth: '1px',
-    width: '100%',
-    textAlign: 'left',
-    fontFamily: 'inherit',
+    borderBottom: '1px solid var(--border-light)',
+    borderRadius: 0,
     fontSize: '14px',
-    fontWeight: '500',
-    color: '#0a0a0a',
+    fontWeight: '600',
+    color: 'var(--text)',
   }
 
   const getRoleBadge = (role) => {
-    if (role === 'owner') return <span style={{ padding: '2px 8px', background: '#FFB800', border: '1px solid #0a0a0a', borderRadius: '100px', fontSize: '10px', fontWeight: '700' }}>Owner</span>
-    if (role === 'admin') return <span style={{ padding: '2px 8px', background: '#F5F5F5', border: '1px solid #0a0a0a', borderRadius: '100px', fontSize: '10px', fontWeight: '700' }}>Admin</span>
+    if (role === 'owner') return <span style={{ display: 'flex', alignItems: 'center', gap: '3px', padding: '2px 8px', background: 'var(--accent)', border: '1.5px solid var(--border-strong)', borderRadius: 'var(--radius-pill)', fontSize: '10px', fontWeight: '700', color: 'var(--foreground)' }}><Crown size={10} {...iconProps} /> Owner</span>
+    if (role === 'admin') return <span style={{ padding: '2px 8px', background: 'var(--gray-100)', border: '1.5px solid var(--border-strong)', borderRadius: 'var(--radius-pill)', fontSize: '10px', fontWeight: '700', color: 'var(--text)' }}>Admin</span>
     return null
   }
 
@@ -290,28 +338,28 @@ export default function ConversationSettingsSheet({
       <BottomSheet isOpen={isOpen} onClose={onClose} title={isGroup ? 'Group info' : 'Conversation info'}>
         <div style={{ fontFamily: "'Inter', -apple-system, sans-serif" }}>
           {successMessage && (
-            <div style={{ padding: '10px 20px', background: '#F0FDF4', borderBottom: '1px solid #E5E5E5', fontSize: '13px', color: '#22C55E', fontWeight: '600', textAlign: 'center' }}>
-              {successMessage}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '10px 20px', background: 'var(--surface)', borderBottom: '1px solid var(--border-light)', fontSize: '13px', color: 'var(--success)', fontWeight: '700', textAlign: 'center' }}>
+              <CheckCircle2 size={15} {...iconProps} /> {successMessage}
             </div>
           )}
           {/* Identity card */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '24px 20px', borderBottom: '1px solid #E5E5E5' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '24px 20px', borderBottom: '2px solid var(--border-strong)' }}>
             <Avatar src={isGroup ? groupInfo?.avatar_url : otherParticipant?.avatar_url} name={name} size={72} />
-            <p style={{ fontSize: '18px', fontWeight: '800', color: '#0a0a0a', marginTop: '12px' }}>{name}</p>
+            <p style={{ fontSize: '18px', fontWeight: '800', color: 'var(--text)', marginTop: '12px' }}>{name}</p>
             {isGroup ? (
-              <p style={{ fontSize: '13px', color: '#A3A3A3', marginTop: '2px' }}>{groupInfo?.members?.length || 0} members</p>
+              <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginTop: '2px' }}>{groupInfo?.members?.length || 0} members</p>
             ) : (
               <>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
-                  <p style={{ fontSize: '13px', color: '#A3A3A3' }}>@{otherParticipant?.username}</p>
+                  <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>@{otherParticipant?.username}</p>
                   <CopyUsernameButton username={otherParticipant?.username} />
                 </div>
                 {isOnline && otherParticipant?.show_online_status ? (
-                  <p style={{ fontSize: '12px', marginTop: '4px' }}>
-                    <span style={{ color: '#22C55E' }}>● Online</span>
+                  <p style={{ fontSize: '12px', marginTop: '4px', color: 'var(--success)', fontWeight: '600' }}>
+                    ● Online
                   </p>
                 ) : otherParticipant?.show_last_seen && otherParticipant?.last_seen ? (
-                  <p style={{ fontSize: '12px', marginTop: '4px', color: '#A3A3A3' }}>
+                  <p style={{ fontSize: '12px', marginTop: '4px', color: 'var(--text-tertiary)' }}>
                     Last seen {formatLastSeen(otherParticipant.last_seen)}
                   </p>
                 ) : null}
@@ -320,34 +368,38 @@ export default function ConversationSettingsSheet({
           </div>
 
           {/* Mute */}
-          <div style={{ padding: '14px 20px', borderBottom: '1px solid #F5F5F5', position: 'relative' }}>
+          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border-light)', position: 'relative' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div>
-                <p style={{ fontSize: '14px', fontWeight: '600' }}>Notifications</p>
-                <p style={{ fontSize: '12px', color: '#A3A3A3' }}>
-                  {muteStatus.muted
-                    ? muteStatus.mutedUntil ? `Muted until ${new Date(muteStatus.mutedUntil).toLocaleString()}` : 'Muted forever'
-                    : 'Notifications are on'}
-                </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                {muteStatus.muted ? <BellOff size={18} {...iconProps} color="var(--text-secondary)" /> : <Bell size={18} {...iconProps} color="var(--text-secondary)" />}
+                <div>
+                  <p style={{ fontSize: '14px', fontWeight: '700', color: 'var(--text)' }}>Notifications</p>
+                  <p style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>
+                    {muteStatus.muted
+                      ? muteStatus.mutedUntil ? `Muted until ${new Date(muteStatus.mutedUntil).toLocaleString()}` : 'Muted forever'
+                      : 'Notifications are on'}
+                  </p>
+                </div>
               </div>
               {muteStatus.muted ? (
-                <button onClick={handleUnmute} disabled={muting} style={{ padding: '8px 16px', background: '#fff', border: '1.5px solid #0a0a0a', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>
+                <button className="relay-btn" onClick={handleUnmute} disabled={muting}>
                   Unmute
                 </button>
               ) : (
-                <button onClick={() => setShowMutePicker(v => !v)} style={{ padding: '8px 16px', background: '#0a0a0a', color: '#fff', border: '1.5px solid #0a0a0a', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>
+                <button className="relay-btn relay-btn--filled" onClick={() => setShowMutePicker(v => !v)}>
                   Mute
                 </button>
               )}
             </div>
             {showMutePicker && (
-              <div style={{ marginTop: '10px', border: '1.5px solid #0a0a0a', borderRadius: '10px', overflow: 'hidden' }}>
+              <div style={{ marginTop: '10px', border: '2px solid var(--border-strong)', borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
                 {MUTE_OPTIONS.map(opt => (
                   <button
                     key={opt.label}
                     disabled={muting}
                     onClick={() => handleMute(opt.hours)}
-                    style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 14px', background: 'none', border: 'none', borderBottom: '1px solid #F5F5F5', fontSize: '13px', cursor: 'pointer', fontFamily: 'inherit' }}
+                    className="relay-menu-row"
+                    style={{ borderRadius: 0, borderBottom: '1px solid var(--border-light)', fontSize: '13px', fontWeight: '600', color: 'var(--text)' }}
                   >
                     {opt.label}
                   </button>
@@ -357,16 +409,19 @@ export default function ConversationSettingsSheet({
           </div>
 
           {/* Pinned + search */}
-          <button style={rowStyle} onClick={() => { onClose?.(); onOpenPinned?.() }}>
-            <span>📌 Pinned messages</span>
-            <span style={{ color: '#A3A3A3' }}>{pinnedCount} →</span>
+          <button className="relay-menu-row" style={rowStyle} onClick={() => { onClose?.(); onOpenPinned?.() }}>
+            <Pin size={17} {...iconProps} />
+            <span style={{ flex: 1 }}>Pinned messages</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '2px', color: 'var(--text-tertiary)', fontWeight: '600' }}>{pinnedCount} <ChevronRight size={15} {...iconProps} /></span>
           </button>
-          <button style={rowStyle} onClick={() => { onClose?.(); onOpenSearch?.() }}>
-            <span>🔍 Search in conversation</span>
-            <span style={{ color: '#A3A3A3' }}>→</span>
+          <button className="relay-menu-row" style={rowStyle} onClick={() => { onClose?.(); onOpenSearch?.() }}>
+            <Search size={17} {...iconProps} />
+            <span style={{ flex: 1 }}>Search in conversation</span>
+            <ChevronRight size={15} {...iconProps} color="var(--text-tertiary)" />
           </button>
-          <button style={rowStyle} onClick={() => { onClose?.(); onSelectMessages?.() }}>
-            <span>☑️ Select messages</span>
+          <button className="relay-menu-row" style={rowStyle} onClick={() => { onClose?.(); onSelectMessages?.() }}>
+            <CheckSquare size={17} {...iconProps} />
+            <span style={{ flex: 1 }}>Select messages</span>
           </button>
 
           {isGroup ? (
@@ -374,76 +429,156 @@ export default function ConversationSettingsSheet({
               {/* Members */}
               <div style={{ padding: '16px 20px 8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <p style={{ fontSize: '13px', fontWeight: '700', color: '#A3A3A3', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  <p style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                     Members ({groupInfo?.members?.length || 0})
                   </p>
                   {canManageGroup && (
-                    <button onClick={() => setShowAddMember(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '700', color: '#0a0a0a', fontFamily: 'inherit' }}>
-                      + Add
+                    <button onClick={() => setShowAddMember(true)} style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '700', color: 'var(--text)', fontFamily: 'inherit' }}>
+                      <UserPlus size={15} {...iconProps} /> Add
                     </button>
                   )}
                 </div>
               </div>
-              <div style={{ maxHeight: '240px', overflowY: 'auto', borderBottom: '1px solid #F5F5F5' }}>
+              <div style={{ maxHeight: '240px', overflowY: 'auto', borderBottom: '1px solid var(--border-light)' }}>
                 {groupInfo?.members?.map(member => {
                   const role = getMemberRole(member)
                   return (
-                    <div
+                    <button
                       key={member.user_id}
                       onClick={() => setMemberActionUser({ ...member, role })}
-                      style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 20px', cursor: 'pointer' }}
+                      className="relay-menu-row"
+                      style={{ borderRadius: 0, padding: '10px 20px' }}
                     >
                       <Avatar src={member.avatar_url} name={member.display_name} size={36} />
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <p style={{ fontSize: '14px', fontWeight: '600', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{member.display_name}</p>
+                          <p style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{member.display_name}</p>
                           {getRoleBadge(role)}
                         </div>
-                        <p style={{ fontSize: '12px', color: '#A3A3A3' }}>@{member.username}</p>
+                        <p style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>@{member.username}</p>
                       </div>
-                    </div>
+                    </button>
                   )
                 })}
               </div>
 
               {canManageGroup && (
-                <button style={rowStyle} onClick={() => { onClose?.(); router.push(`/groups/${conversationId}/settings`) }}>
-                  <span>✏️ Edit group</span>
-                  <span style={{ color: '#A3A3A3' }}>→</span>
+                <button className="relay-menu-row" style={rowStyle} onClick={() => setShowEditGroup(true)}>
+                  <Pencil size={17} {...iconProps} />
+                  <span style={{ flex: 1 }}>Edit group</span>
+                  <ChevronRight size={15} {...iconProps} color="var(--text-tertiary)" />
                 </button>
               )}
               {isOwner ? (
-                <div style={{ ...rowStyle, color: '#A3A3A3', cursor: 'default' }}>
-                  <span>🚪 Transfer ownership before leaving</span>
+                <div style={{ ...rowStyle, display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--text-tertiary)', cursor: 'default' }}>
+                  <DoorOpen size={17} {...iconProps} />
+                  <span>Transfer ownership before leaving</span>
                 </div>
               ) : (
-                <button style={{ ...rowStyle, color: '#EF4444' }} onClick={() => setConfirmAction('leave')}>
-                  <span>🚪 Leave group</span>
+                <button className="relay-menu-row" style={{ ...rowStyle, color: 'var(--error)' }} onClick={() => setConfirmAction('leave')}>
+                  <DoorOpen size={17} {...iconProps} />
+                  <span>Leave group</span>
                 </button>
               )}
               {isOwner && (
-                <button style={{ ...rowStyle, color: '#EF4444', borderBottom: 'none' }} onClick={() => setConfirmAction('deleteGroup')}>
-                  <span>🗑️ Delete group</span>
+                <button className="relay-menu-row" style={{ ...rowStyle, color: 'var(--error)', borderBottom: 'none' }} onClick={() => setConfirmAction('deleteGroup')}>
+                  <Trash2 size={17} {...iconProps} />
+                  <span>Delete group</span>
                 </button>
               )}
             </>
           ) : (
             <>
-              <button style={rowStyle} onClick={() => { onClose?.(); router.push(`/u/${otherParticipant?.username}?from=conversation-settings&convId=${conversationId}`) }}>
-                <span>View profile</span>
-                <span style={{ color: '#A3A3A3' }}>→</span>
+              <button className="relay-menu-row" style={rowStyle} onClick={() => { onClose?.(); router.push(`/u/${otherParticipant?.username}?from=conversation-settings&convId=${conversationId}`) }}>
+                <User size={17} {...iconProps} />
+                <span style={{ flex: 1 }}>View profile</span>
+                <ChevronRight size={15} {...iconProps} color="var(--text-tertiary)" />
               </button>
-              <button style={rowStyle} onClick={handleShareProfile}>
+              <button className="relay-menu-row" style={rowStyle} onClick={handleShareProfile}>
+                <Share2 size={17} {...iconProps} />
                 <span>Share profile</span>
               </button>
-              <button style={{ ...rowStyle, color: '#EF4444' }} onClick={() => setConfirmAction('block')}>
+              <button className="relay-menu-row" style={{ ...rowStyle, color: 'var(--error)' }} onClick={() => setConfirmAction('block')}>
+                <UserX size={17} {...iconProps} />
                 <span>Block user</span>
               </button>
-              <button style={{ ...rowStyle, color: '#EF4444', borderBottom: 'none' }} onClick={handleHide}>
+              <button className="relay-menu-row" style={{ ...rowStyle, color: 'var(--error)', borderBottom: 'none' }} onClick={handleHide}>
+                <EyeOff size={17} {...iconProps} />
                 <span>Hide conversation</span>
               </button>
             </>
           )}
+        </div>
+      </BottomSheet>
+
+      {/* Edit group — folded in from the old standalone /groups/[id]/settings
+          route. Everything else that page did (mute, members, leave,
+          delete) already lived here too; this sub-sheet only needs to
+          own what was actually unique to it: avatar, name, description. */}
+      <BottomSheet isOpen={showEditGroup} onClose={() => setShowEditGroup(false)} title="Edit group">
+        <div style={{ padding: '16px 20px 20px', fontFamily: "'Inter', -apple-system, sans-serif" }}>
+          {editError && (
+            <div style={{ background: 'var(--error-light)', border: '1.5px solid var(--error)', borderRadius: 'var(--radius-sm)', padding: '10px 14px', marginBottom: '16px', fontSize: '13px', color: 'var(--error)' }}>
+              {editError}
+            </div>
+          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
+            <div style={{ position: 'relative' }}>
+              <Avatar src={groupInfo?.avatar_url} name={groupInfo?.name} size={64} />
+              <button
+                onClick={() => avatarInputRef.current?.click()}
+                disabled={avatarUploading}
+                aria-label="Change group photo"
+                className="relay-icon-btn"
+                style={{
+                  position: 'absolute', bottom: '-4px', right: '-4px',
+                  width: '28px', height: '28px', borderRadius: 'var(--radius-pill)',
+                  background: 'var(--text)', color: 'var(--background)',
+                }}
+              >
+                <Camera size={13} {...iconProps} />
+              </button>
+              <input ref={avatarInputRef} type="file" accept="image/*" onChange={handleAvatarChange} style={{ display: 'none' }} />
+            </div>
+            <div>
+              <p style={{ fontSize: '16px', fontWeight: '800', color: 'var(--text)' }}>{groupInfo?.name}</p>
+              <p style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>{groupInfo?.members?.length || 0} members</p>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div>
+              <label style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text)', display: 'block', marginBottom: '6px' }}>Name</label>
+              <input
+                type="text"
+                value={editFormData.name}
+                onChange={e => setEditFormData(prev => ({ ...prev, name: e.target.value.slice(0, GROUP_NAME_MAX) }))}
+                maxLength={GROUP_NAME_MAX}
+                className="relay-input"
+                style={{ width: '100%', padding: '10px 12px', fontSize: '16px', boxSizing: 'border-box' }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text)', display: 'block', marginBottom: '6px' }}>Description</label>
+              <input
+                type="text"
+                value={editFormData.description}
+                onChange={e => setEditFormData(prev => ({ ...prev, description: e.target.value.slice(0, GROUP_DESCRIPTION_MAX) }))}
+                placeholder="Optional"
+                maxLength={GROUP_DESCRIPTION_MAX}
+                className="relay-input"
+                style={{ width: '100%', padding: '10px 12px', fontSize: '16px', boxSizing: 'border-box' }}
+              />
+            </div>
+            <button
+              className="relay-btn relay-btn--filled"
+              onClick={handleSaveGroupInfo}
+              disabled={editSaving || !editIsDirty || !editFormData.name.trim()}
+              style={{ padding: '10px' }}
+            >
+              {editSaving ? 'Saving...' : 'Save changes'}
+            </button>
+          </div>
         </div>
       </BottomSheet>
 
@@ -455,24 +590,26 @@ export default function ConversationSettingsSheet({
             value={memberQuery}
             onChange={e => handleMemberSearch(e.target.value)}
             placeholder="Search by username..."
-            style={{ width: '100%', padding: '12px 14px', border: '1.5px solid #E5E5E5', borderRadius: '10px', fontSize: '16px', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: '12px' }}
+            className="relay-input"
+            style={{ width: '100%', padding: '12px 14px', fontSize: '16px', boxSizing: 'border-box', marginBottom: '12px' }}
           />
           {searching ? (
-            <p style={{ fontSize: '13px', color: '#A3A3A3' }}>Searching...</p>
+            <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>Searching...</p>
           ) : memberResults.length === 0 && memberQuery.trim().length >= 3 ? (
-            <p style={{ fontSize: '13px', color: '#A3A3A3' }}>No users found</p>
+            <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>No users found</p>
           ) : (
             memberResults.map(u => (
-              <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 0', borderBottom: '1px solid #F5F5F5' }}>
+              <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 0', borderBottom: '1px solid var(--border-light)' }}>
                 <Avatar src={u.avatar_url} name={u.display_name} size={36} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: '14px', fontWeight: '600' }}>{u.display_name}</p>
-                  <p style={{ fontSize: '12px', color: '#A3A3A3' }}>@{u.username}</p>
+                  <p style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text)' }}>{u.display_name}</p>
+                  <p style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>@{u.username}</p>
                 </div>
                 <button
+                  className="relay-btn relay-btn--filled"
                   onClick={() => handleAddMember(u.id)}
                   disabled={acting === u.id}
-                  style={{ padding: '6px 14px', background: '#0a0a0a', color: '#fff', border: 'none', borderRadius: '100px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit' }}
+                  style={{ padding: '6px 14px', borderRadius: 'var(--radius-pill)', fontSize: '12px' }}
                 >
                   {acting === u.id ? 'Adding...' : 'Add'}
                 </button>
@@ -485,34 +622,40 @@ export default function ConversationSettingsSheet({
       {/* Per-member action sheet */}
       <BottomSheet isOpen={!!memberActionUser} onClose={() => setMemberActionUser(null)}>
         <div style={{ fontFamily: "'Inter', -apple-system, sans-serif" }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '4px 20px 16px', borderBottom: '1px solid #E5E5E5' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '4px 20px 16px', borderBottom: '1px solid var(--border-light)' }}>
             <Avatar src={memberActionUser?.avatar_url} name={memberActionUser?.display_name} size={40} />
-            <p style={{ fontSize: '15px', fontWeight: '800' }}>{memberActionUser?.display_name}</p>
+            <p style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text)' }}>{memberActionUser?.display_name}</p>
           </div>
           <div style={{ padding: '8px 0' }}>
             <button
+              className="relay-menu-row"
               style={rowStyle}
               onClick={() => { const u = memberActionUser?.username; setMemberActionUser(null); onClose?.(); router.push(`/u/${u}?from=conversation-settings&convId=${conversationId}`) }}
             >
+              <User size={17} {...iconProps} />
               <span>View profile</span>
             </button>
             {isOwner && memberActionUser?.role === 'member' && (
-              <button style={rowStyle} onClick={() => handlePromote(memberActionUser.user_id)}>
+              <button className="relay-menu-row" style={rowStyle} onClick={() => handlePromote(memberActionUser.user_id)}>
+                <ShieldCheck size={17} {...iconProps} />
                 <span>Promote to admin</span>
               </button>
             )}
             {isOwner && memberActionUser?.role === 'admin' && (
-              <button style={rowStyle} onClick={() => handleDemote(memberActionUser.user_id)}>
+              <button className="relay-menu-row" style={rowStyle} onClick={() => handleDemote(memberActionUser.user_id)}>
+                <ShieldOff size={17} {...iconProps} />
                 <span>Demote to member</span>
               </button>
             )}
             {isOwner && memberActionUser?.role !== 'owner' && (
-              <button style={rowStyle} onClick={handleTransferOwnership}>
-                <span>👑 Make owner</span>
+              <button className="relay-menu-row" style={rowStyle} onClick={handleTransferOwnership}>
+                <Crown size={17} {...iconProps} />
+                <span>Make owner</span>
               </button>
             )}
             {canManageGroup && memberActionUser?.role !== 'owner' && (
-              <button style={{ ...rowStyle, color: '#EF4444', borderBottom: 'none' }} onClick={handleRemoveMember}>
+              <button className="relay-menu-row" style={{ ...rowStyle, color: 'var(--error)', borderBottom: 'none' }} onClick={handleRemoveMember}>
+                <UserX size={17} {...iconProps} />
                 <span>Remove from group</span>
               </button>
             )}

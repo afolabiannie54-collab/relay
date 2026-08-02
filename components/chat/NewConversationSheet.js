@@ -2,6 +2,10 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import {
+  X, ChevronLeft, Users, Camera, Check, MoreHorizontal, MessageCircle,
+  Send, User, Share2, UserX,
+} from 'lucide-react'
 import BottomSheet from '@/components/shared/BottomSheet'
 import ConfirmSheet from '@/components/shared/ConfirmSheet'
 import Avatar from '@/components/shared/Avatar'
@@ -13,6 +17,7 @@ import { cache } from '@/lib/cache'
 
 const GROUP_NAME_MAX = 50
 const GROUP_DESCRIPTION_MAX = 200
+const iconProps = { strokeWidth: 2, strokeLinecap: 'square', strokeLinejoin: 'miter' }
 
 // Thin wrapper — BottomSheet already unmounts its children whenever isOpen
 // is false, but this component itself never unmounts (the parent keeps it
@@ -54,7 +59,11 @@ function SheetBody({ onClose, initialMode }) {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState([])
   const [searching, setSearching] = useState(false)
-  const [opening, setOpening] = useState(false)
+  // Which row's "open or start a chat" tap is in flight — rather than a
+  // blind boolean, this is the specific user id so that row alone can
+  // swap to a spinner while every other row visibly disables, instead
+  // of leaving the whole screen looking unchanged until it navigates.
+  const [openingId, setOpeningId] = useState(null)
   const searchTimeout = useRef(null)
 
   const [groupName, setGroupName] = useState('')
@@ -152,9 +161,8 @@ function SheetBody({ onClose, initialMode }) {
   // goes to their profile, where the existing MessageButton already
   // handles composing that first message.
   const handleRowTap = async (user) => {
-    setOpening(true)
+    setOpeningId(user.id)
     const conversationId = await checkExistingDM(user.id)
-    setOpening(false)
     if (conversationId) {
       router.push(`/chat/${conversationId}`)
     } else {
@@ -278,6 +286,7 @@ function SheetBody({ onClose, initialMode }) {
 
   const isTyping = searchQuery.trim().length > 0
   const screenIndex = mode === 'search' ? 0 : groupStep === 1 ? 1 : 2
+  const canCreateGroup = groupName.trim().length > 0
 
   const chipsRow = (
     <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', padding: '12px 20px 0', WebkitOverflowScrolling: 'touch' }}>
@@ -292,19 +301,23 @@ function SheetBody({ onClose, initialMode }) {
         {mode === 'search' ? (
           <div style={headerStyle}>
             <h2 style={headerTitleStyle}>New conversation</h2>
-            <button onClick={onClose} style={closeBtnStyle} aria-label="Close">✕</button>
+            <button onClick={onClose} className="relay-plain-icon-btn" aria-label="Close">
+              <X size={20} {...iconProps} />
+            </button>
           </div>
         ) : (
           <div style={headerStyle}>
             <button
               onClick={groupStep === 1 ? backToSearch : backToMembers}
-              style={backBtnStyle}
+              className="relay-plain-icon-btn"
               aria-label="Back"
             >
-              ←
+              <ChevronLeft size={22} {...iconProps} />
             </button>
             <h2 style={{ ...headerTitleStyle, flex: 1 }}>New Group</h2>
-            <button onClick={onClose} style={closeBtnStyle} aria-label="Close">✕</button>
+            <button onClick={onClose} className="relay-plain-icon-btn" aria-label="Close">
+              <X size={20} {...iconProps} />
+            </button>
           </div>
         )}
 
@@ -325,27 +338,29 @@ function SheetBody({ onClose, initialMode }) {
                   value={mode === 'search' ? searchQuery : ''}
                   onChange={e => handleSearch(e.target.value)}
                   placeholder="Search by username..."
+                  className="relay-input"
                   style={searchInputStyle}
                 />
               </div>
 
               {!isTyping ? (
                 <>
-                  <div
+                  <button
                     onClick={goToGroupCreation}
-                    style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 20px', cursor: 'pointer', borderBottom: '1px solid #F5F5F5', marginTop: '8px' }}
+                    className="relay-menu-row"
+                    style={{ padding: '14px 20px', borderRadius: 0, borderBottom: '1px solid var(--border-light)', marginTop: '8px' }}
                   >
-                    <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#F5F5F5', border: '1.5px solid #0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>
-                      👥
+                    <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--surface)', border: '2px solid var(--border-strong)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: 'var(--text)' }}>
+                      <Users size={18} {...iconProps} />
                     </div>
-                    <p style={{ fontSize: '14px', fontWeight: '700', color: '#0a0a0a' }}>New Group</p>
-                  </div>
+                    <p style={{ fontSize: '14px', fontWeight: '700', color: 'var(--text)' }}>New Group</p>
+                  </button>
 
                   {recentContacts.length > 0 && (
                     <p style={sectionHeaderStyle}>Recent</p>
                   )}
                   {recentContacts.map(u => (
-                    <SearchResultRow key={u.id} user={u} onTap={() => handleRowTap(u)} onMenu={() => openRowMenu(u)} />
+                    <SearchResultRow key={u.id} user={u} opening={openingId === u.id} disabled={!!openingId} onTap={() => handleRowTap(u)} onMenu={() => openRowMenu(u)} />
                   ))}
                 </>
               ) : (
@@ -358,14 +373,10 @@ function SheetBody({ onClose, initialMode }) {
                     <p style={hintTextStyle}>No users found</p>
                   ) : (
                     searchResults.map(u => (
-                      <SearchResultRow key={u.id} user={u} onTap={() => handleRowTap(u)} onMenu={() => openRowMenu(u)} />
+                      <SearchResultRow key={u.id} user={u} opening={openingId === u.id} disabled={!!openingId} onTap={() => handleRowTap(u)} onMenu={() => openRowMenu(u)} />
                     ))
                   )}
                 </div>
-              )}
-
-              {opening && (
-                <p style={{ padding: '12px 20px', fontSize: '12px', color: '#A3A3A3' }}>Opening chat...</p>
               )}
             </div>
 
@@ -377,6 +388,7 @@ function SheetBody({ onClose, initialMode }) {
                   value={mode === 'group' && groupStep === 1 ? searchQuery : ''}
                   onChange={e => handleSearch(e.target.value)}
                   placeholder="Search by username..."
+                  className="relay-input"
                   style={searchInputStyle}
                 />
               </div>
@@ -384,7 +396,7 @@ function SheetBody({ onClose, initialMode }) {
               {selectedMembers.length > 0 && (
                 <>
                   {chipsRow}
-                  <p style={{ padding: '8px 20px 0', fontSize: '12px', fontWeight: '600', color: '#525252' }}>
+                  <p style={{ padding: '8px 20px 0', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)' }}>
                     {selectedMembers.length} member{selectedMembers.length !== 1 ? 's' : ''} selected
                   </p>
                 </>
@@ -420,7 +432,7 @@ function SheetBody({ onClose, initialMode }) {
             <div style={{ width: `${100 / 3}%`, height: '100%', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
               <div style={{ padding: '16px 20px 0' }}>
                 {chipsRow}
-                <p style={{ padding: '8px 0 0', fontSize: '12px', fontWeight: '600', color: '#525252' }}>
+                <p style={{ padding: '8px 0 0', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)' }}>
                   {selectedMembers.length} member{selectedMembers.length !== 1 ? 's' : ''}
                 </p>
 
@@ -428,13 +440,13 @@ function SheetBody({ onClose, initialMode }) {
                   <label style={{ cursor: 'pointer', position: 'relative' }}>
                     <input type="file" accept="image/*" onChange={handleAvatarChange} style={{ display: 'none' }} />
                     {avatarPreview ? (
-                      <img src={avatarPreview} alt="Group avatar" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', border: '1.5px solid #0a0a0a', display: 'block' }} />
+                      <img src={avatarPreview} alt="Group avatar" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--border-strong)', display: 'block' }} />
                     ) : (
-                      <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: '#F5F5F5', border: '1.5px solid #0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '26px' }}>
-                        📷
+                      <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'var(--surface)', border: '2px solid var(--border-strong)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
+                        <Camera size={26} {...iconProps} />
                       </div>
                     )}
-                    <p style={{ fontSize: '12px', color: '#A3A3A3', textAlign: 'center', marginTop: '8px' }}>Add photo</p>
+                    <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', textAlign: 'center', marginTop: '8px' }}>Add photo</p>
                   </label>
                 </div>
 
@@ -446,6 +458,7 @@ function SheetBody({ onClose, initialMode }) {
                     onChange={e => setGroupName(e.target.value.slice(0, GROUP_NAME_MAX))}
                     placeholder="e.g. Study Group, Family, Work Team"
                     maxLength={GROUP_NAME_MAX}
+                    className="relay-input"
                     style={fieldInputStyle}
                   />
                   {groupName.length >= GROUP_NAME_MAX - 10 && (
@@ -461,6 +474,7 @@ function SheetBody({ onClose, initialMode }) {
                     onChange={e => setGroupDescription(e.target.value.slice(0, GROUP_DESCRIPTION_MAX))}
                     placeholder="What's this group about?"
                     maxLength={GROUP_DESCRIPTION_MAX}
+                    className="relay-input"
                     style={fieldInputStyle}
                   />
                   {groupDescription.length >= GROUP_DESCRIPTION_MAX - 20 && (
@@ -477,58 +491,32 @@ function SheetBody({ onClose, initialMode }) {
             the bulk-select action bar earlier (plain flex, no
             sticky/fixed positioning needed). */}
         {mode === 'group' && groupStep === 1 && (
-          <div style={{ flexShrink: 0, padding: '12px 20px', borderTop: '1.5px solid #0a0a0a', background: '#fff' }}>
+          <div style={{ flexShrink: 0, padding: '12px 20px', borderTop: '2px solid var(--border-strong)', background: 'var(--surface)' }}>
             <button
               onClick={() => setGroupStep(2)}
               disabled={selectedMembers.length === 0}
-              style={{
-                width: '100%',
-                padding: '12px',
-                background: selectedMembers.length > 0 ? '#0a0a0a' : '#E5E5E5',
-                color: selectedMembers.length > 0 ? '#fff' : '#A3A3A3',
-                border: '1.5px solid #0a0a0a',
-                borderRadius: '10px',
-                fontSize: '14px',
-                fontWeight: '700',
-                cursor: selectedMembers.length > 0 ? 'pointer' : 'not-allowed',
-                fontFamily: 'inherit',
-                boxShadow: selectedMembers.length > 0 ? '3px 3px 0 #FFB800' : 'none',
-              }}
+              className="relay-btn relay-btn--filled"
+              style={{ width: '100%', padding: '12px', fontSize: '14px', boxShadow: 'var(--shadow-hard-accent)' }}
             >
-              Next →
+              Next
             </button>
           </div>
         )}
 
         {mode === 'group' && groupStep === 2 && (
-          <div style={{ flexShrink: 0, padding: '12px 20px', borderTop: '1.5px solid #0a0a0a', background: '#fff' }}>
+          <div style={{ flexShrink: 0, padding: '12px 20px', borderTop: '2px solid var(--border-strong)', background: 'var(--surface)' }}>
             {error && (
-              <div style={{ background: '#FEF2F2', border: '1.5px solid #EF4444', borderRadius: '8px', padding: '10px 14px', marginBottom: '10px', fontSize: '13px', color: '#EF4444' }}>
+              <div style={{ background: 'var(--error-light)', border: '1.5px solid var(--error)', borderRadius: 'var(--radius-sm)', padding: '10px 14px', marginBottom: '10px', fontSize: '13px', color: 'var(--error)' }}>
                 {error}
               </div>
             )}
             <button
               onClick={handleCreateGroup}
-              disabled={!groupName.trim() || isCreating}
-              style={{
-                width: '100%',
-                padding: '12px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                background: groupName.trim() ? '#0a0a0a' : '#E5E5E5',
-                color: groupName.trim() ? '#fff' : '#A3A3A3',
-                border: '1.5px solid #0a0a0a',
-                borderRadius: '10px',
-                fontSize: '14px',
-                fontWeight: '700',
-                cursor: groupName.trim() ? 'pointer' : 'not-allowed',
-                fontFamily: 'inherit',
-                boxShadow: groupName.trim() ? '3px 3px 0 #FFB800' : 'none',
-              }}
+              disabled={!canCreateGroup || isCreating}
+              className="relay-btn relay-btn--filled"
+              style={{ width: '100%', padding: '12px', fontSize: '14px', gap: '8px', boxShadow: 'var(--shadow-hard-accent)' }}
             >
-              {isCreating && <Spinner />}
+              {isCreating && <Spinner variant="onDark" />}
               {isCreating ? 'Creating...' : 'Create group'}
             </button>
           </div>
@@ -537,24 +525,32 @@ function SheetBody({ onClose, initialMode }) {
 
       <BottomSheet isOpen={!!menuUser} onClose={closeRowMenu}>
         <div style={{ fontFamily: "'Inter', -apple-system, sans-serif" }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '4px 20px 16px', borderBottom: '1px solid #E5E5E5' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '4px 20px 16px', borderBottom: '1px solid var(--border-light)' }}>
             <Avatar src={menuUser?.avatar_url} name={menuUser?.display_name} size={40} />
             <div style={{ minWidth: 0 }}>
-              <p style={{ fontSize: '15px', fontWeight: '800' }}>{menuUser?.display_name}</p>
-              <p style={{ fontSize: '12px', color: '#A3A3A3' }}>@{menuUser?.username}</p>
+              <p style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text)' }}>{menuUser?.display_name}</p>
+              <p style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>@{menuUser?.username}</p>
             </div>
           </div>
           <div style={{ padding: '8px 0' }}>
             <button
-              style={{ ...menuRowStyle, opacity: checkingConv ? 0.5 : 1 }}
+              className="relay-menu-row"
+              style={{ ...menuRowStyle }}
               onClick={handleMenuOpenOrRequest}
               disabled={checkingConv}
             >
-              {checkingConv ? '···' : menuConvId ? '💬 Open chat' : '✉️ Send message request'}
+              {checkingConv ? <Spinner /> : menuConvId ? <MessageCircle size={17} {...iconProps} /> : <Send size={17} {...iconProps} />}
+              {checkingConv ? 'Checking...' : menuConvId ? 'Open chat' : 'Send message request'}
             </button>
-            <button style={menuRowStyle} onClick={handleMenuViewProfile}>👤 View profile</button>
-            <button style={menuRowStyle} onClick={handleMenuShareProfile}>🔗 Share profile</button>
-            <button style={{ ...menuRowStyle, color: '#EF4444' }} onClick={handleMenuBlockClick}>🚫 Block</button>
+            <button className="relay-menu-row" style={menuRowStyle} onClick={handleMenuViewProfile}>
+              <User size={17} {...iconProps} /> View profile
+            </button>
+            <button className="relay-menu-row" style={menuRowStyle} onClick={handleMenuShareProfile}>
+              <Share2 size={17} {...iconProps} /> Share profile
+            </button>
+            <button className="relay-menu-row" style={{ ...menuRowStyle, color: 'var(--error)' }} onClick={handleMenuBlockClick}>
+              <UserX size={17} {...iconProps} /> Block
+            </button>
           </div>
         </div>
       </BottomSheet>
@@ -579,11 +575,12 @@ function MemberChip({ user, onRemove }) {
       alignItems: 'center',
       gap: '6px',
       padding: '4px 10px 4px 6px',
-      background: '#FFB800',
-      border: '1.5px solid #0a0a0a',
-      borderRadius: '100px',
+      background: 'var(--surface)',
+      border: '2px solid var(--border-strong)',
+      borderRadius: 'var(--radius-pill)',
       fontSize: '13px',
       fontWeight: '600',
+      color: 'var(--text)',
       flexShrink: 0,
       whiteSpace: 'nowrap',
     }}>
@@ -591,8 +588,11 @@ function MemberChip({ user, onRemove }) {
       {user.display_name}
       <button
         onClick={onRemove}
-        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '14px', lineHeight: 1, color: '#0a0a0a', marginLeft: '2px' }}
-      >×</button>
+        aria-label={`Remove ${user.display_name}`}
+        style={{ display: 'flex', background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'var(--text-secondary)', marginLeft: '2px' }}
+      >
+        <X size={13} {...iconProps} />
+      </button>
     </div>
   )
 }
@@ -600,22 +600,33 @@ function MemberChip({ user, onRemove }) {
 // Mode 1 (search/discovery): tapping the row navigates; a separate ⋯
 // button opens the menu. Not nested inside a Link (unlike ChatLink
 // elsewhere), so no navigation-suppression tricks are needed here.
-function SearchResultRow({ user, onTap, onMenu }) {
+// `opening`/`disabled` give the tapped row its own spinner while every
+// row in the list disables — a tap into a profile or existing DM can
+// take a beat (existing-DM lookup), and this app never leaves that gap
+// silent.
+function SearchResultRow({ user, onTap, onMenu, opening, disabled }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', borderBottom: '1px solid #F5F5F5' }}>
-      <div onClick={onTap} style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0, cursor: 'pointer' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', borderBottom: '1px solid var(--border-light)', opacity: disabled && !opening ? 0.5 : 1 }}>
+      <button
+        onClick={onTap}
+        disabled={disabled}
+        style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0, background: 'none', border: 'none', padding: 0, cursor: disabled ? 'default' : 'pointer', textAlign: 'left', fontFamily: 'inherit' }}
+      >
         <Avatar src={user.avatar_url} name={user.display_name} size={40} />
-        <div style={{ minWidth: 0 }}>
-          <p style={{ fontSize: '14px', fontWeight: '600', color: '#0a0a0a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.display_name}</p>
-          <p style={{ fontSize: '12px', color: '#A3A3A3' }}>@{user.username}</p>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <p style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.display_name}</p>
+          <p style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>{opening ? 'Opening...' : `@${user.username}`}</p>
         </div>
-      </div>
+        {opening && <Spinner />}
+      </button>
       <button
         onClick={onMenu}
+        disabled={disabled}
         aria-label="More options"
-        style={{ width: '36px', height: '36px', flexShrink: 0, background: 'none', border: 'none', fontSize: '18px', color: '#525252', cursor: 'pointer' }}
+        className="relay-plain-icon-btn"
+        style={{ width: '32px', height: '32px', flexShrink: 0 }}
       >
-        ⋯
+        <MoreHorizontal size={18} {...iconProps} />
       </button>
     </div>
   )
@@ -624,45 +635,48 @@ function SearchResultRow({ user, onTap, onMenu }) {
 // Mode 2 (group creation): tapping anywhere on the row toggles selection.
 function MemberSelectRow({ user, selected, onTap }) {
   return (
-    <div
+    <button
       onClick={onTap}
-      style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 20px', borderBottom: '1px solid #F5F5F5', cursor: 'pointer' }}
+      className="relay-menu-row"
+      style={{ padding: '10px 20px', borderRadius: 0, borderBottom: '1px solid var(--border-light)' }}
     >
       <Avatar src={user.avatar_url} name={user.display_name} size={40} />
       <div style={{ minWidth: 0, flex: 1 }}>
-        <p style={{ fontSize: '14px', fontWeight: '600', color: '#0a0a0a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.display_name}</p>
-        <p style={{ fontSize: '12px', color: '#A3A3A3' }}>@{user.username}</p>
+        <p style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.display_name}</p>
+        <p style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>@{user.username}</p>
       </div>
       <div style={{
-        width: '26px',
-        height: '26px',
-        borderRadius: '50%',
-        border: `1.5px solid ${selected ? '#0a0a0a' : '#E5E5E5'}`,
-        background: selected ? '#0a0a0a' : '#fff',
+        width: '24px',
+        height: '24px',
+        borderRadius: 'var(--radius-pill)',
+        border: `2px solid ${selected ? 'var(--border-strong)' : 'var(--border)'}`,
+        background: selected ? 'var(--text)' : 'var(--surface)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         flexShrink: 0,
       }}>
-        {selected && (
-          <svg width="12" height="12" viewBox="0 0 10 10" fill="none">
-            <path d="M2 5 L4 7 L8 3" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        )}
+        {selected && <Check size={13} strokeWidth={3} color="var(--background)" />}
       </div>
-    </div>
+    </button>
   )
 }
 
-function Spinner() {
+// variant 'onDark' is for a spinner sitting on the filled CTA button
+// (background var(--text)) — needs light strokes to read against it,
+// the inverse of the default neutral-row spinner.
+function Spinner({ size = 14, variant = 'default' }) {
+  const trackColor = variant === 'onDark' ? 'rgba(255,255,255,0.3)' : 'var(--border)'
+  const headColor = variant === 'onDark' ? 'var(--background)' : 'var(--text-secondary)'
   return (
     <div style={{
-      width: '14px',
-      height: '14px',
-      border: '2px solid rgba(255,255,255,0.4)',
-      borderTopColor: '#fff',
+      width: size,
+      height: size,
+      border: `2px solid ${trackColor}`,
+      borderTopColor: headColor,
       borderRadius: '50%',
       animation: 'relay-ncs-spin 0.7s linear infinite',
+      flexShrink: 0,
     }}>
       <style>{`
         @keyframes relay-ncs-spin {
@@ -674,8 +688,8 @@ function Spinner() {
 }
 
 const headerStyle = {
-  padding: '4px 20px 12px',
-  borderBottom: '1px solid #E5E5E5',
+  padding: '4px 16px 12px 20px',
+  borderBottom: '1px solid var(--border-light)',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
@@ -685,43 +699,22 @@ const headerStyle = {
 
 const headerTitleStyle = {
   fontSize: '16px',
-  fontWeight: '800',
-  color: '#0a0a0a',
-}
-
-const closeBtnStyle = {
-  background: 'none',
-  border: 'none',
-  cursor: 'pointer',
-  fontSize: '16px',
-  color: '#A3A3A3',
-  padding: '8px',
-}
-
-const backBtnStyle = {
-  background: 'none',
-  border: 'none',
-  cursor: 'pointer',
-  fontSize: '18px',
-  color: '#0a0a0a',
-  padding: '4px',
+  fontWeight: '700',
+  color: 'var(--text)',
 }
 
 const searchInputStyle = {
   width: '100%',
   padding: '12px 14px',
-  border: '1.5px solid #E5E5E5',
-  borderRadius: '10px',
+  borderRadius: 'var(--radius-pill)',
   fontSize: '16px',
-  fontFamily: 'inherit',
-  outline: 'none',
   boxSizing: 'border-box',
 }
 
 const sectionHeaderStyle = {
   fontSize: '11px',
   fontWeight: '700',
-  color: '#A3A3A3',
+  color: 'var(--text-tertiary)',
   letterSpacing: '1px',
   textTransform: 'uppercase',
   padding: '16px 20px 4px',
@@ -729,14 +722,14 @@ const sectionHeaderStyle = {
 
 const hintTextStyle = {
   fontSize: '13px',
-  color: '#A3A3A3',
+  color: 'var(--text-tertiary)',
   padding: '16px 20px',
 }
 
 const fieldLabelStyle = {
   fontSize: '13px',
-  fontWeight: '600',
-  color: '#0a0a0a',
+  fontWeight: '700',
+  color: 'var(--text)',
   display: 'block',
   marginBottom: '8px',
 }
@@ -744,31 +737,21 @@ const fieldLabelStyle = {
 const fieldInputStyle = {
   width: '100%',
   padding: '12px 14px',
-  border: '1.5px solid #E5E5E5',
-  borderRadius: '8px',
   fontSize: '16px',
-  fontFamily: 'inherit',
-  outline: 'none',
   boxSizing: 'border-box',
 }
 
 const charCountStyle = {
   fontSize: '11px',
-  color: '#A3A3A3',
+  color: 'var(--text-tertiary)',
   marginTop: '4px',
   textAlign: 'right',
 }
 
 const menuRowStyle = {
-  display: 'block',
-  width: '100%',
-  textAlign: 'left',
   padding: '14px 20px',
   fontSize: '15px',
   fontWeight: '600',
-  color: '#0a0a0a',
-  background: 'none',
-  border: 'none',
-  cursor: 'pointer',
-  fontFamily: 'inherit',
+  color: 'var(--text)',
+  borderRadius: 0,
 }

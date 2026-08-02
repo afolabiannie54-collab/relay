@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Smile, Reply, Copy, Pin, PinOff, Pencil, Trash2 } from 'lucide-react'
+import { Smile, Reply, Copy, Pin, PinOff, Pencil, Trash2, CheckSquare } from 'lucide-react'
 
 const QUICK_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🙏']
 const EDIT_WINDOW_MS = 15 * 60 * 1000
@@ -49,6 +49,7 @@ export default function MessageActionBar({
   onTogglePin,
   onReact,
   onCopy,
+  onSelect,
 }) {
   const [showEmojiRow, setShowEmojiRow] = useState(false)
   const [popoverPos, setPopoverPos] = useState(null)
@@ -198,6 +199,9 @@ export default function MessageActionBar({
                 <Trash2 size={17} {...iconProps} /> Delete
               </button>
             )}
+            <button className="relay-menu-row" style={{ color: 'var(--text)' }} onClick={() => { onSelect?.(); onDropdownOpenChange?.(false) }}>
+              <CheckSquare size={17} {...iconProps} /> Select
+            </button>
           </div>
         </>,
         document.body

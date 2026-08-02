@@ -23,7 +23,7 @@ export default function CopyUsernameButton({ username }) {
         border: 'none',
         cursor: 'pointer',
         fontSize: '11px',
-        color: copied ? '#22C55E' : '#A3A3A3',
+        color: copied ? 'var(--success)' : 'var(--text-tertiary)',
         fontFamily: 'inherit',
         fontWeight: '600',
         padding: '2px 6px',

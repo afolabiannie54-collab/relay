@@ -180,7 +180,8 @@ export default function ChatList({ onSelectConversation }) {
     window.addEventListener('relay:conversation-read', handleConversationRead)
 
     // Same idea, fired by whoever just deleted/left a group themselves
-    // (ConversationSettingsSheet, groups/[id]/settings/page.js). Deleting
+    // (ConversationSettingsSheet, which now owns all group-settings UI).
+    // Deleting
     // a group removes every participant row in one go, and Realtime's
     // authorization check for delivering that DELETE event re-queries
     // conversation_participants to confirm the subscriber was a member —
@@ -642,7 +643,7 @@ export default function ChatList({ onSelectConversation }) {
 
         {/* Title — its own row underneath, full width, no longer sharing
             the line with the icons. */}
-        <h1 style={{ fontSize: '28px', fontWeight: '800', color: 'var(--text)', letterSpacing: '-0.02em' }}>Messages</h1>
+        <h1 className="relay-page-title">Messages</h1>
       </div>
       )}
 

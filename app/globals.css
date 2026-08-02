@@ -323,13 +323,21 @@ a, button, input, textarea, select {
   background: var(--surface);
   color: var(--text);
   cursor: pointer;
-  transition: background 0.12s ease, transform 0.08s ease;
+  transition: background 0.12s ease, transform 0.12s var(--ease-out), box-shadow 0.12s var(--ease-out);
 }
+/* The hover cue is the same hard offset-shadow language used for
+   elevation elsewhere (--shadow-hard-*), just applied momentarily: the
+   button lifts toward the corner the shadow is cast in, revealing a
+   solid accent block behind it — no blur, no border recolor. Pressing
+   snaps it back flat, like the shadow got pushed underneath. */
 .relay-icon-btn:hover {
   background: var(--surface-hover);
+  transform: translate(-2px, -2px);
+  box-shadow: var(--shadow-hard-accent);
 }
 .relay-icon-btn:active {
-  transform: scale(0.94);
+  transform: translate(0, 0) scale(0.96);
+  box-shadow: none;
 }
 .relay-icon-btn--accent {
   background: var(--accent);
@@ -339,6 +347,84 @@ a, button, input, textarea, select {
 }
 .relay-icon-btn--accent:hover {
   background: var(--accent-hover);
+  border-color: var(--border-strong);
+}
+
+/* Bordered text button — the rectangular/pill counterpart to
+   .relay-icon-btn (Mute, Add member, form Save/Cancel, etc). Border
+   flips to accent on hover, same crisp edge-only cue as the icon
+   buttons — never a fill/wash, so it stays inside the accent-restraint
+   rule while still giving every bold-bordered control the same
+   "alive" hover feedback. --filled is for the rare bordered button
+   that also carries a dark fill (e.g. the primary Mute action). */
+.relay-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.12s ease, transform 0.12s var(--ease-out), box-shadow 0.12s var(--ease-out);
+}
+.relay-btn:hover {
+  background: var(--surface-hover);
+  transform: translate(-2px, -2px);
+  box-shadow: var(--shadow-hard-accent);
+}
+.relay-btn:active {
+  transform: translate(0, 0) scale(0.97);
+  box-shadow: none;
+}
+.relay-btn--filled {
+  background: var(--text);
+  color: var(--background);
+}
+.relay-btn--filled:hover {
+  background: var(--text);
+}
+
+/* pointer-events: none (not just cursor/opacity) so disabled buttons
+   don't register :hover at all — otherwise the hard-shadow lift above
+   would still fire on mouseover even though the click does nothing. */
+.relay-icon-btn:disabled,
+.relay-btn:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* Loading placeholder for content that briefly has nothing to show
+   (e.g. a conversation header before its fetch resolves) — a pulsing
+   neutral block rather than truly empty space, so that gap reads as
+   "loading" instead of "broken". */
+@keyframes relay-skeleton-pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+.relay-skeleton {
+  background: var(--surface-hover);
+  border-radius: var(--radius-sm);
+  animation: relay-skeleton-pulse 1.3s ease-in-out infinite;
+}
+
+/* The one standardized type scale for screen-level titles — establishes
+   what was previously just ChatList's one-off "Messages" heading as the
+   actual convention for every root/top-level screen (a tab's own list,
+   not a nested settings sub-page or a modal/sheet, which stay on
+   .relay-sheet-title's smaller 16px/700 instead — that size difference
+   is a deliberate hierarchy cue: root screen vs. something you drilled
+   into). Big and bold on purpose, but only for a screen's one title. */
+.relay-page-title {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text);
 }
 
 /* Plain icon button — no border, no persistent fill, just a neutral

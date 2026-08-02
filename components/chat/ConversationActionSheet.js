@@ -2,6 +2,10 @@
 
 import { useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
+import {
+  Bell, BellOff, CheckCheck, Circle, EyeOff, Eye, UserPlus, DoorOpen,
+  Trash2, UserX,
+} from 'lucide-react'
 import BottomSheet from '@/components/shared/BottomSheet'
 import ConfirmSheet from '@/components/shared/ConfirmSheet'
 import Avatar from '@/components/shared/Avatar'
@@ -12,8 +16,53 @@ import { blockUser } from '@/actions/blocks'
 import { searchUsers } from '@/actions/users'
 import { cache } from '@/lib/cache'
 
+const iconProps = { strokeWidth: 2, strokeLinecap: 'square', strokeLinejoin: 'miter' }
+
 function vibrate() {
   try { window.navigator.vibrate?.(10) } catch {}
+}
+
+const rowStyle = {
+  padding: '14px 20px',
+  fontSize: '14px',
+  fontWeight: '600',
+  color: 'var(--text)',
+  borderRadius: 0,
+}
+
+// Every row shares this shape: an icon/spinner, a label, disabled +
+// dimmed while any action anywhere in this sheet is pending. Kept at
+// module scope (rather than a closure inside the sheet component) so
+// it isn't torn down and recreated — with its own local state, if it
+// ever grows any — on every render of the parent.
+function Row({ id, icon, label, onClick, danger, pending }) {
+  return (
+    <button
+      className="relay-menu-row"
+      style={{ ...rowStyle, ...(danger ? { color: 'var(--error)' } : {}) }}
+      onClick={onClick}
+      disabled={!!pending}
+    >
+      {pending === id ? <Spinner /> : icon}
+      <span>{pending === id ? `${label}...` : label}</span>
+    </button>
+  )
+}
+
+function Spinner({ size = 14 }) {
+  return (
+    <div style={{
+      width: size,
+      height: size,
+      border: '2px solid var(--border)',
+      borderTopColor: 'var(--text-secondary)',
+      borderRadius: '50%',
+      animation: 'relay-cas-spin 0.7s linear infinite',
+      flexShrink: 0,
+    }}>
+      <style>{`@keyframes relay-cas-spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  )
 }
 
 // Long-press menu for a conversation tile on mobile. `conversation` is
@@ -34,6 +83,13 @@ export default function ConversationActionSheet({ conversation, isMuted, isOpen,
   const [memberResults, setMemberResults] = useState([])
   const [searching, setSearching] = useState(false)
   const [adding, setAdding] = useState(null)
+  // Which row's mutation is currently in flight — every row disables
+  // itself while any single one is pending (avoids double-taps landing
+  // two conflicting actions, e.g. mute + hide at once) and the active
+  // row swaps its own label/icon for a spinner so a tap always visibly
+  // registers instead of leaving the sheet sitting there unchanged
+  // until it suddenly closes.
+  const [pending, setPending] = useState(null)
 
   if (!conversation) return null
 
@@ -55,11 +111,13 @@ export default function ConversationActionSheet({ conversation, isMuted, isOpen,
     setMode('menu')
     setMemberQuery('')
     setMemberResults([])
+    setPending(null)
     onClose?.()
   }
 
   const handleToggleMute = async () => {
     vibrate()
+    setPending('mute')
     if (isMuted) {
       await unmuteConversation(conversation.conversation_id)
     } else {
@@ -71,6 +129,7 @@ export default function ConversationActionSheet({ conversation, isMuted, isOpen,
 
   const handleToggleRead = async () => {
     vibrate()
+    setPending('read')
     if (isUnread) {
       await markConversationRead(conversation.conversation_id)
     } else {
@@ -82,6 +141,7 @@ export default function ConversationActionSheet({ conversation, isMuted, isOpen,
 
   const handleHide = async () => {
     vibrate()
+    setPending('hide')
     await hideConversation(conversation.conversation_id)
     onChanged?.()
     // replace, not push — a hidden/deleted/left conversation's URL
@@ -92,11 +152,17 @@ export default function ConversationActionSheet({ conversation, isMuted, isOpen,
 
   const handleUnhide = async () => {
     vibrate()
+    setPending('unhide')
     await unhideConversation(conversation.conversation_id)
     onChanged?.()
     close()
   }
 
+  // delete/leave/block are only ever reached through their ConfirmSheet
+  // (the row itself just opens that), which already owns its own
+  // "Please wait…" pending state on the confirm button — no need to
+  // duplicate it here since this sheet's own menu is covered by that
+  // point anyway.
   const handleDelete = async () => {
     await deleteConversationForUser(conversation.conversation_id)
     // A stale cached page of messages (from before the deletion cutoff)
@@ -139,92 +205,41 @@ export default function ConversationActionSheet({ conversation, isMuted, isOpen,
     setMemberResults(prev => prev.filter(u => u.id !== userId))
   }
 
-  const rowStyle = {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    padding: '14px 20px',
-    fontSize: '15px',
-    fontWeight: '600',
-    color: '#0a0a0a',
-    cursor: 'pointer',
-    background: 'none',
-    border: 'none',
-    width: '100%',
-    textAlign: 'left',
-    fontFamily: 'inherit',
-  }
-
   return (
     <>
       <BottomSheet isOpen={isOpen && mode === 'menu'} onClose={close}>
         <div style={{ fontFamily: "'Inter', -apple-system, sans-serif" }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '4px 20px 16px', borderBottom: '1px solid #E5E5E5' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '4px 20px 16px', borderBottom: '1px solid var(--border-light)' }}>
             <Avatar src={avatarUrl} name={name} size={40} />
-            <p style={{ fontSize: '15px', fontWeight: '800', color: '#0a0a0a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</p>
+            <p style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</p>
           </div>
 
           <div style={{ padding: '8px 0' }}>
             {isHidden ? (
               <>
-                <button style={rowStyle} onClick={handleUnhide}>
-                  🙉 Unhide
-                </button>
-                <button
-                  style={{ ...rowStyle, color: '#EF4444' }}
-                  onClick={() => setConfirmAction('delete')}
-                >
-                  🗑️ Delete conversation
-                </button>
+                <Row id="unhide" icon={<Eye size={17} {...iconProps} />} label="Unhide" onClick={handleUnhide} pending={pending} />
+                <Row id="delete" icon={<Trash2 size={17} {...iconProps} />} label="Delete conversation" onClick={() => setConfirmAction('delete')} danger pending={pending} />
                 {!isGroup && (
-                  <button
-                    style={{ ...rowStyle, color: '#EF4444' }}
-                    onClick={() => setConfirmAction('block')}
-                  >
-                    🚫 Block user
-                  </button>
+                  <Row id="block" icon={<UserX size={17} {...iconProps} />} label="Block user" onClick={() => setConfirmAction('block')} danger pending={pending} />
                 )}
               </>
             ) : (
               <>
-                <button style={rowStyle} onClick={handleToggleMute}>
-                  {isMuted ? '🔔 Unmute' : '🔕 Mute'}
-                </button>
-                <button style={rowStyle} onClick={handleToggleRead}>
-                  {isUnread ? '✓ Mark as read' : '● Mark as unread'}
-                </button>
-                <button style={rowStyle} onClick={handleHide}>
-                  🙈 Hide conversation
-                </button>
+                <Row id="mute" icon={isMuted ? <Bell size={17} {...iconProps} /> : <BellOff size={17} {...iconProps} />} label={isMuted ? 'Unmute' : 'Mute'} onClick={handleToggleMute} pending={pending} />
+                <Row id="read" icon={isUnread ? <CheckCheck size={17} {...iconProps} /> : <Circle size={17} {...iconProps} />} label={isUnread ? 'Mark as read' : 'Mark as unread'} onClick={handleToggleRead} pending={pending} />
+                <Row id="hide" icon={<EyeOff size={17} {...iconProps} />} label="Hide conversation" onClick={handleHide} pending={pending} />
 
                 {isGroup ? (
                   <>
                     {canManageGroup && (
-                      <button style={rowStyle} onClick={() => setMode('addMember')}>
-                        ➕ Add member
-                      </button>
+                      <Row id="addMember" icon={<UserPlus size={17} {...iconProps} />} label="Add member" onClick={() => setMode('addMember')} pending={pending} />
                     )}
-                    <button
-                      style={{ ...rowStyle, color: '#EF4444' }}
-                      onClick={() => setConfirmAction('leave')}
-                    >
-                      🚪 Leave group
-                    </button>
+                    <Row id="leave" icon={<DoorOpen size={17} {...iconProps} />} label="Leave group" onClick={() => setConfirmAction('leave')} danger pending={pending} />
                   </>
                 ) : (
                   <>
-                    <button
-                      style={{ ...rowStyle, color: '#EF4444' }}
-                      onClick={() => setConfirmAction('delete')}
-                    >
-                      🗑️ Delete conversation
-                    </button>
-                    <button
-                      style={{ ...rowStyle, color: '#EF4444' }}
-                      onClick={() => setConfirmAction('block')}
-                    >
-                      🚫 Block user
-                    </button>
+                    <Row id="delete" icon={<Trash2 size={17} {...iconProps} />} label="Delete conversation" onClick={() => setConfirmAction('delete')} danger pending={pending} />
+                    <Row id="block" icon={<UserX size={17} {...iconProps} />} label="Block user" onClick={() => setConfirmAction('block')} danger pending={pending} />
                   </>
                 )}
               </>
@@ -240,44 +255,26 @@ export default function ConversationActionSheet({ conversation, isMuted, isOpen,
             value={memberQuery}
             onChange={e => handleMemberSearch(e.target.value)}
             placeholder="Search by username..."
-            style={{
-              width: '100%',
-              padding: '12px 14px',
-              border: '1.5px solid #E5E5E5',
-              borderRadius: '10px',
-              fontSize: '16px',
-              fontFamily: 'inherit',
-              outline: 'none',
-              boxSizing: 'border-box',
-              marginBottom: '12px',
-            }}
+            className="relay-input"
+            style={{ width: '100%', padding: '12px 14px', fontSize: '16px', boxSizing: 'border-box', marginBottom: '12px' }}
           />
           {searching ? (
-            <p style={{ fontSize: '13px', color: '#A3A3A3' }}>Searching...</p>
+            <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>Searching...</p>
           ) : memberResults.length === 0 && memberQuery.trim().length >= 3 ? (
-            <p style={{ fontSize: '13px', color: '#A3A3A3' }}>No users found</p>
+            <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>No users found</p>
           ) : (
             memberResults.map(u => (
-              <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 0', borderBottom: '1px solid #F5F5F5' }}>
+              <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 0', borderBottom: '1px solid var(--border-light)' }}>
                 <Avatar src={u.avatar_url} name={u.display_name} size={36} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: '14px', fontWeight: '600' }}>{u.display_name}</p>
-                  <p style={{ fontSize: '12px', color: '#A3A3A3' }}>@{u.username}</p>
+                  <p style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text)' }}>{u.display_name}</p>
+                  <p style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>@{u.username}</p>
                 </div>
                 <button
+                  className="relay-btn relay-btn--filled"
                   onClick={() => handleAddMember(u.id)}
                   disabled={adding === u.id}
-                  style={{
-                    padding: '6px 14px',
-                    background: '#0a0a0a',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '100px',
-                    fontSize: '12px',
-                    fontWeight: '700',
-                    cursor: 'pointer',
-                    fontFamily: 'inherit',
-                  }}
+                  style={{ padding: '6px 14px', borderRadius: 'var(--radius-pill)', fontSize: '12px' }}
                 >
                   {adding === u.id ? 'Adding...' : 'Add'}
                 </button>

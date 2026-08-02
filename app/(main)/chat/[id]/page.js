@@ -181,15 +181,32 @@ export default function ConversationPage() {
             return data
           })()
 
-      const convPromise = freshConvCache
-        ? Promise.resolve(freshConvCache)
-        : (async () => {
-            const result = await getConversation(id)
-            if (result.data) cache.set(`conversation:${id}`, result.data, 60000)
-            return result.data
-          })()
+      // Group info is folded into this same promise (rather than fetched
+      // in a second `await` after setConversation below) so the two ever
+      // land in the same render. A gap between them meant React committed
+      // an intermediate render with the conversation set but groupInfo
+      // still null — Avatar got an undefined src/name for that one frame
+      // and flashed its "?" placeholder before the real avatar arrived.
+      const convPromise = (async () => {
+        const convData = freshConvCache || (await getConversation(id)).data
+        if (!convData) return { conversation: null, groupInfo: null }
+        if (!freshConvCache) cache.set(`conversation:${id}`, convData, 60000)
 
-      const [freshProfile, freshConv, msgsResult] = await Promise.all([
+        let groupInfo = null
+        if (convData.type === 'group') {
+          groupInfo = cache.get(`group:${id}`)
+          if (!groupInfo) {
+            const groupResult = await getGroupInfo(id)
+            if (groupResult.data) {
+              groupInfo = groupResult.data
+              cache.set(`group:${id}`, groupInfo, 60000)
+            }
+          }
+        }
+        return { conversation: convData, groupInfo }
+      })()
+
+      const [freshProfile, convResult, msgsResult] = await Promise.all([
         profilePromise,
         convPromise,
         getMessages(id),
@@ -197,20 +214,9 @@ export default function ConversationPage() {
 
       if (freshProfile) setProfile(freshProfile)
 
-      if (freshConv) {
-        setConversation(freshConv)
-        if (freshConv.type === 'group') {
-          const cachedGroup = cache.get(`group:${id}`)
-          if (cachedGroup) {
-            setGroupInfo(cachedGroup)
-          } else {
-            const groupResult = await getGroupInfo(id)
-            if (groupResult.data) {
-              setGroupInfo(groupResult.data)
-              cache.set(`group:${id}`, groupResult.data, 60000)
-            }
-          }
-        }
+      if (convResult.conversation) {
+        setConversation(convResult.conversation)
+        if (convResult.groupInfo) setGroupInfo(convResult.groupInfo)
       }
 
       if (Array.isArray(msgsResult.data)) {
@@ -822,7 +828,7 @@ export default function ConversationPage() {
         </button>
         {conversation?.type === 'group' ? (
           <button
-            onClick={() => router.push(`/groups/${id}/settings`)}
+            onClick={() => setShowSettingsSheet(true)}
             style={{ background: 'none', border: 'none', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '10px', flex: 1, cursor: 'pointer', padding: 0, textAlign: 'left', fontFamily: 'inherit' }}
           >
             <Avatar src={groupInfo?.avatar_url} name={groupInfo?.name} size={38} />
@@ -860,7 +866,12 @@ export default function ConversationPage() {
               </p>
             </div>
           </button>
-        ) : null}
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
+            <div className="relay-skeleton" style={{ width: '38px', height: '38px', borderRadius: '50%', flexShrink: 0 }} />
+            <div className="relay-skeleton" style={{ width: '120px', height: '14px' }} />
+          </div>
+        )}
         <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto' }}>
           <button
             onClick={() => setShowSettingsSheet(true)}
@@ -1254,6 +1265,7 @@ export default function ConversationPage() {
                               onTogglePin={() => handleTogglePin(msg.id)}
                               onReact={(emoji) => handleQuickReact(msg.id, emoji)}
                               onCopy={() => handleCopyMessage(msg)}
+                              onSelect={() => handleEnterSelectMode(msg)}
                             />
                           </div>
                         )}
@@ -1785,8 +1797,8 @@ export default function ConversationPage() {
           className="relay-input"
           style={{
             flex: 1,
-            padding: '10px 14px',
-            borderRadius: '12px',
+            padding: '10px 16px',
+            borderRadius: 'var(--radius-pill)',
             fontSize: '16px',
             resize: 'none',
             lineHeight: '1.5',
