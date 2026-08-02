@@ -162,7 +162,7 @@ export default function HiddenConversationsPage() {
             textAlign: 'center',
           }}>
             <div style={{ marginBottom: '16px' }}>
-              <NotionDoodle d={COMMENT_SLASH_PATH} size={88} />
+              <NotionDoodle d={COMMENT_SLASH_PATH} />
             </div>
             <h2 style={{ fontSize: '18px', fontWeight: '800', color: 'var(--text)', marginBottom: '6px', letterSpacing: '-0.01em' }}>No hidden chats</h2>
             <p style={{ fontSize: '14px', color: 'var(--text-tertiary)' }}>

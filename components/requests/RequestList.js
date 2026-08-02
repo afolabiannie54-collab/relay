@@ -171,7 +171,7 @@ export default function RequestList({ initialReceived, initialSent, userId }) {
             textAlign: 'center',
           }}>
             <div style={{ marginBottom: '16px' }}>
-              <NotionDoodle d={INBOX_PATH} size={88} />
+              <NotionDoodle d={INBOX_PATH} />
             </div>
             <h2 style={{ fontSize: '18px', fontWeight: '800', color: 'var(--text)', marginBottom: '6px', letterSpacing: '-0.01em' }}>
               {tab === 'received' ? 'No requests' : 'No pending requests'}

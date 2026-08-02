@@ -123,7 +123,7 @@ export default function NotificationList({ initialNotifications }) {
             textAlign: 'center',
           }}>
             <div style={{ marginBottom: '16px' }}>
-              <NotionDoodle d={BELL_PATH} size={88} />
+              <NotionDoodle d={BELL_PATH} />
             </div>
             <h2 style={{ fontSize: '18px', fontWeight: '800', color: 'var(--text)', marginBottom: '6px', letterSpacing: '-0.01em' }}>No notifications</h2>
             <p style={{ fontSize: '14px', color: 'var(--text-tertiary)' }}>
