@@ -2,7 +2,21 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import {
+  ChevronLeft, Check, Bell, MessageSquare, Users, AtSign, Mail, UserPlus, Heart,
+} from 'lucide-react'
 import { markNotificationRead, markAllNotificationsRead } from '@/actions/notifications'
+
+const iconProps = { strokeWidth: 2, strokeLinecap: 'square', strokeLinejoin: 'miter' }
+
+const NOTIFICATION_ICONS = {
+  message: MessageSquare,
+  group_message: Users,
+  mention: AtSign,
+  message_request: Mail,
+  group_invite: UserPlus,
+  reaction: Heart,
+}
 
 export default function NotificationList({ initialNotifications }) {
   const [notifications, setNotifications] = useState(initialNotifications)
@@ -46,18 +60,6 @@ export default function NotificationList({ initialNotifications }) {
     }
   }
 
-  const getNotificationIcon = (type) => {
-    switch (type) {
-      case 'message': return '💬'
-      case 'group_message': return '👥'
-      case 'mention': return '@'
-      case 'message_request': return '📨'
-      case 'group_invite': return '👋'
-      case 'reaction': return '❤️'
-      default: return '🔔'
-    }
-  }
-
   const formatTime = (timestamp) => {
     const date = new Date(timestamp)
     const now = new Date()
@@ -82,38 +84,27 @@ export default function NotificationList({ initialNotifications }) {
       fontFamily: "'Inter', -apple-system, sans-serif",
     }}>
       {/* Header */}
-      <div style={{
-        padding: '16px 20px',
-        borderBottom: '1.5px solid #E5E5E5',
-        background: '#fff',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-      }}>
-        <div>
-          <h1 style={{ fontSize: '20px', fontWeight: '800', color: '#0a0a0a' }}>Notifications</h1>
+      <div style={{ padding: '14px 20px 16px', borderBottom: '1px solid var(--border)', background: 'var(--surface)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+          <button
+            onClick={() => router.push('/chat')}
+            aria-label="Back"
+            className="relay-plain-icon-btn"
+            style={{ marginLeft: '-10px' }}
+          >
+            <ChevronLeft size={22} {...iconProps} />
+          </button>
           {unreadCount > 0 && (
-            <p style={{ fontSize: '12px', color: '#A3A3A3', marginTop: '2px' }}>
-              {unreadCount} unread
-            </p>
+            <button onClick={handleMarkAllRead} className="relay-btn">
+              <Check size={15} {...iconProps} /> Mark all read
+            </button>
           )}
         </div>
+        <h1 className="relay-page-title">Notifications</h1>
         {unreadCount > 0 && (
-          <button
-            onClick={handleMarkAllRead}
-            style={{
-              padding: '7px 14px',
-              background: '#fff',
-              border: '1.5px solid #0a0a0a',
-              borderRadius: '8px',
-              fontSize: '12px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-            }}
-          >
-            Mark all read
-          </button>
+          <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginTop: '4px' }}>
+            {unreadCount} unread
+          </p>
         )}
       </div>
 
@@ -128,86 +119,97 @@ export default function NotificationList({ initialNotifications }) {
             padding: '40px',
             textAlign: 'center',
           }}>
-            <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔔</div>
-            <h2 style={{ fontSize: '18px', fontWeight: '800', marginBottom: '8px' }}>No notifications</h2>
-            <p style={{ fontSize: '14px', color: '#A3A3A3' }}>
-              You're all caught up.
+            <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'var(--surface)', border: '2px solid var(--border-strong)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', marginBottom: '16px' }}>
+              <Bell size={24} {...iconProps} />
+            </div>
+            <h2 style={{ fontSize: '18px', fontWeight: '800', color: 'var(--text)', marginBottom: '6px', letterSpacing: '-0.01em' }}>No notifications</h2>
+            <p style={{ fontSize: '14px', color: 'var(--text-tertiary)' }}>
+              You&apos;re all caught up.
             </p>
           </div>
         ) : (
-          notifications.map(notification => (
-            <div
-              key={notification.id}
-              onClick={() => handleNotificationClick(notification)}
-              style={{
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: '12px',
-                padding: '14px 20px',
-                borderBottom: '1px solid #F5F5F5',
-                cursor: 'pointer',
-                background: notification.read ? '#fff' : '#FFFBEB',
-                transition: 'background 0.1s',
-              }}
-              onMouseEnter={e => e.currentTarget.style.background = notification.read ? '#F9F9F9' : '#FFF8E1'}
-              onMouseLeave={e => e.currentTarget.style.background = notification.read ? '#fff' : '#FFFBEB'}
-            >
-              <div style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: '50%',
-                background: notification.read ? '#F5F5F5' : '#FFB800',
-                border: '1.5px solid #0a0a0a',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: notification.type === 'mention' ? '14px' : '18px',
-                fontWeight: '800',
-                flexShrink: 0,
-              }}>
-                {getNotificationIcon(notification.type)}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{
-                  fontSize: '14px',
-                  fontWeight: notification.read ? '500' : '700',
-                  color: '#0a0a0a',
-                  marginBottom: '2px',
-                }}>
-                  {notification.title}
-                </p>
-                {notification.body && (
-                  <p style={{
-                    fontSize: '13px',
-                    color: '#525252',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                  }}>
-                    {notification.body}
-                  </p>
-                )}
-                <p style={{
-                  fontSize: '11px',
-                  color: '#A3A3A3',
-                  marginTop: '4px',
-                }}>
-                  {formatTime(notification.created_at)}
-                </p>
-              </div>
-              {!notification.read && (
+          notifications.map(notification => {
+            const NotifIcon = NOTIFICATION_ICONS[notification.type] || Bell
+            return (
+              <div
+                key={notification.id}
+                onClick={() => handleNotificationClick(notification)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '12px',
+                  padding: '14px 20px 14px 17px',
+                  borderLeft: '3px solid transparent',
+                  borderBottom: '1px solid var(--border-light)',
+                  cursor: 'pointer',
+                  background: notification.read ? 'var(--surface)' : 'var(--accent-light)',
+                  transition: 'background 0.1s, border-color 0.1s',
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.background = notification.read ? 'var(--surface-hover)' : 'var(--accent-wash-strong)'
+                  e.currentTarget.style.borderLeftColor = 'var(--accent)'
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background = notification.read ? 'var(--surface)' : 'var(--accent-light)'
+                  e.currentTarget.style.borderLeftColor = 'transparent'
+                }}
+              >
                 <div style={{
-                  width: '8px',
-                  height: '8px',
+                  width: '40px',
+                  height: '40px',
                   borderRadius: '50%',
-                  background: '#FFB800',
-                  border: '1.5px solid #0a0a0a',
+                  background: notification.read ? 'var(--gray-100)' : 'var(--accent)',
+                  border: '2px solid var(--border-strong)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: notification.read ? 'var(--text-secondary)' : 'var(--foreground)',
                   flexShrink: 0,
-                  marginTop: '6px',
-                }} />
-              )}
-            </div>
-          ))
+                }}>
+                  <NotifIcon size={17} {...iconProps} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{
+                    fontSize: '14px',
+                    fontWeight: notification.read ? '500' : '700',
+                    color: 'var(--text)',
+                    marginBottom: '2px',
+                  }}>
+                    {notification.title}
+                  </p>
+                  {notification.body && (
+                    <p style={{
+                      fontSize: '13px',
+                      color: 'var(--text-secondary)',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}>
+                      {notification.body}
+                    </p>
+                  )}
+                  <p style={{
+                    fontSize: '11px',
+                    color: 'var(--text-tertiary)',
+                    marginTop: '4px',
+                  }}>
+                    {formatTime(notification.created_at)}
+                  </p>
+                </div>
+                {!notification.read && (
+                  <div style={{
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    background: 'var(--accent)',
+                    border: '1.5px solid var(--border-strong)',
+                    flexShrink: 0,
+                    marginTop: '6px',
+                  }} />
+                )}
+              </div>
+            )
+          })
         )}
       </div>
     </div>

@@ -95,6 +95,7 @@ export default function ConversationPage() {
   const inputRef = useRef(null)
   const typingTimeout = useRef(null)
   const channelRef = useRef(null)
+  const wasDisconnectedRef = useRef(false)
   const lastMessageIdRef = useRef(null)
   // message_reactions has no conversation_id column to filter Realtime
   // on, so the reactions listener below has to check each incoming
@@ -288,6 +289,7 @@ export default function ConversationPage() {
   // Supabase Realtime subscription
   useEffect(() => {
     const supabase = createClient()
+    wasDisconnectedRef.current = false
 
     const channel = supabase
       .channel(`conversation:${id}`)
@@ -400,7 +402,29 @@ export default function ConversationPage() {
           }
         })
       })
-      .subscribe()
+      .subscribe((status) => {
+        // A dropped connection (network blip, laptop sleep, Supabase
+        // realtime hiccup) used to leave this conversation silently
+        // stale forever — nothing here ever noticed the channel came
+        // back, so anything sent/edited while disconnected only showed
+        // up once you manually left and reopened the conversation. Once
+        // we've seen a real disconnect (TIMED_OUT/CHANNEL_ERROR/CLOSED),
+        // the next SUBSCRIBED is a reconnect, not the initial one, so
+        // refetch messages to catch up on whatever was missed.
+        if (status === 'SUBSCRIBED') {
+          if (wasDisconnectedRef.current) {
+            wasDisconnectedRef.current = false
+            getMessages(id).then(result => {
+              if (Array.isArray(result.data)) {
+                setMessages(result.data)
+                cache.set(`messages:${id}`, result.data, 20000)
+              }
+            })
+          }
+        } else if (['TIMED_OUT', 'CHANNEL_ERROR', 'CLOSED'].includes(status)) {
+          wasDisconnectedRef.current = true
+        }
+      })
 
     channelRef.current = channel
 

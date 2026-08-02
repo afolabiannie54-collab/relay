@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { ChevronLeft, EyeOff, Image as ImageIcon, Music, Paperclip } from 'lucide-react'
 import Avatar from '@/components/shared/Avatar'
 import ChatLink from '@/components/chat/ChatLink'
 import ConversationActionSheet from '@/components/chat/ConversationActionSheet'
@@ -10,8 +11,10 @@ import { getHiddenConversations } from '@/actions/messages'
 
 const LONG_PRESS_MS = 400
 const LONG_PRESS_MOVE_TOLERANCE = 10
+const iconProps = { strokeWidth: 2, strokeLinecap: 'square', strokeLinejoin: 'miter' }
 
 export default function HiddenConversationsPage() {
+  const router = useRouter()
   const [conversations, setConversations] = useState([])
   const [loading, setLoading] = useState(true)
   const [actionSheetConv, setActionSheetConv] = useState(null)
@@ -91,13 +94,16 @@ export default function HiddenConversationsPage() {
     return date.toLocaleDateString([], { month: 'short', day: 'numeric' })
   }
 
+  // Same shape as ChatList's own getLastMessagePreview — kept in sync
+  // deliberately since this list is meant to read as the same visual
+  // language, just filtered to hidden conversations.
   const getLastMessagePreview = (msg) => {
     if (!msg) return 'No messages yet'
     if (msg.type === 'deleted') return 'This message was deleted'
     if (msg.type === 'system') return msg.content
-    if (msg.type === 'image') return '📷 Image'
-    if (msg.type === 'audio') return '🎵 Audio'
-    if (msg.type === 'file') return '📎 File'
+    if (msg.type === 'image') return { icon: ImageIcon, text: 'Photo' }
+    if (msg.type === 'audio') return { icon: Music, text: 'Voice message' }
+    if (msg.type === 'file') return { icon: Paperclip, text: 'File' }
     return msg.content || ''
   }
 
@@ -110,7 +116,7 @@ export default function HiddenConversationsPage() {
         justifyContent: 'center',
         fontFamily: "'Inter', -apple-system, sans-serif",
       }}>
-        <p style={{ color: '#A3A3A3', fontSize: '14px' }}>Loading...</p>
+        <p style={{ color: 'var(--text-tertiary)', fontSize: '14px' }}>Loading...</p>
       </div>
     )
   }
@@ -123,23 +129,16 @@ export default function HiddenConversationsPage() {
       fontFamily: "'Inter', -apple-system, sans-serif",
     }}>
       {/* Header */}
-      <div style={{
-        padding: '16px 20px',
-        borderBottom: '1.5px solid #E5E5E5',
-        background: '#fff',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '16px',
-      }}>
-        <Link href="/chat" style={{
-          textDecoration: 'none',
-          color: '#0a0a0a',
-          fontSize: '14px',
-          fontWeight: '600',
-        }}>
-          ← Back
-        </Link>
-        <h1 style={{ fontSize: '20px', fontWeight: '800', color: '#0a0a0a' }}>Hidden chats</h1>
+      <div style={{ padding: '14px 20px 16px', borderBottom: '1px solid var(--border)', background: 'var(--surface)' }}>
+        <button
+          onClick={() => router.push('/chat')}
+          aria-label="Back"
+          className="relay-plain-icon-btn"
+          style={{ marginLeft: '-10px', marginBottom: '10px' }}
+        >
+          <ChevronLeft size={22} {...iconProps} />
+        </button>
+        <h1 className="relay-page-title">Hidden chats</h1>
       </div>
 
       {/* Conversation list */}
@@ -154,9 +153,11 @@ export default function HiddenConversationsPage() {
             padding: '40px',
             textAlign: 'center',
           }}>
-            <div style={{ fontSize: '48px', marginBottom: '16px' }}>🗄️</div>
-            <h2 style={{ fontSize: '18px', fontWeight: '800', marginBottom: '8px' }}>No hidden chats</h2>
-            <p style={{ fontSize: '14px', color: '#A3A3A3' }}>
+            <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'var(--surface)', border: '2px solid var(--border-strong)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', marginBottom: '16px' }}>
+              <EyeOff size={24} {...iconProps} />
+            </div>
+            <h2 style={{ fontSize: '18px', fontWeight: '800', color: 'var(--text)', marginBottom: '6px', letterSpacing: '-0.01em' }}>No hidden chats</h2>
+            <p style={{ fontSize: '14px', color: 'var(--text-tertiary)' }}>
               Conversations you hide will show up here.
             </p>
           </div>
@@ -167,6 +168,8 @@ export default function HiddenConversationsPage() {
             const otherUser = conv.other_participants?.[0]
             const displayName = isGroup ? conv.group_info?.name : otherUser?.display_name
             const avatarUrl = isGroup ? conv.group_info?.avatar_url : otherUser?.avatar_url
+            const preview = getLastMessagePreview(lastMessage)
+            const PreviewIcon = preview?.icon
 
             return (
               <ChatLink
@@ -180,13 +183,21 @@ export default function HiddenConversationsPage() {
                     display: 'flex',
                     alignItems: 'center',
                     gap: '12px',
-                    padding: '14px 20px',
-                    borderBottom: '1px solid #F5F5F5',
-                    background: '#fff',
+                    padding: '13px 20px 13px 17px',
+                    borderLeft: '3px solid transparent',
+                    borderBottom: '1px solid var(--border-light)',
                     cursor: 'pointer',
+                    background: 'var(--surface)',
+                    transition: 'background 0.1s, border-color 0.1s',
                   }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#F9F9F9'}
-                  onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.background = 'var(--surface-hover)'
+                    e.currentTarget.style.borderLeftColor = 'var(--accent)'
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.background = 'var(--surface)'
+                    e.currentTarget.style.borderLeftColor = 'transparent'
+                  }}
                   onTouchStart={handleRowTouchStart(conv)}
                   onTouchMove={handleRowTouchMove}
                   onTouchEnd={handleRowTouchEnd}
@@ -198,25 +209,31 @@ export default function HiddenConversationsPage() {
                       <p style={{
                         fontSize: '15px',
                         fontWeight: '700',
-                        color: '#0a0a0a',
+                        color: 'var(--text)',
                         whiteSpace: 'nowrap',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                       }}>
                         {displayName || 'Unknown'}
                       </p>
-                      <span style={{ fontSize: '11px', color: '#A3A3A3', flexShrink: 0, marginLeft: '8px' }}>
+                      <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', flexShrink: 0, marginLeft: '8px' }}>
                         {formatTime(lastMessage?.created_at)}
                       </span>
                     </div>
                     <p style={{
                       fontSize: '13px',
-                      color: '#A3A3A3',
+                      color: 'var(--text-tertiary)',
                       whiteSpace: 'nowrap',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
                     }}>
-                      {getLastMessagePreview(lastMessage)}
+                      {PreviewIcon && <PreviewIcon size={13} {...iconProps} style={{ flexShrink: 0 }} />}
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {PreviewIcon ? preview.text : preview}
+                      </span>
                     </p>
                   </div>
                 </div>

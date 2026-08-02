@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { ChevronLeft, Mail } from 'lucide-react'
 import Avatar from '@/components/shared/Avatar'
 import ConfirmSheet from '@/components/shared/ConfirmSheet'
 import {
@@ -13,6 +14,8 @@ import { blockUser } from '@/actions/blocks'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
+const iconProps = { strokeWidth: 2, strokeLinecap: 'square', strokeLinejoin: 'miter' }
+
 function formatTime(timestamp) {
   if (!timestamp) return ''
   const date = new Date(timestamp)
@@ -23,6 +26,22 @@ function formatTime(timestamp) {
   if (days === 1) return 'Yesterday'
   if (days < 7) return date.toLocaleDateString([], { weekday: 'short' })
   return date.toLocaleDateString([], { month: 'short', day: 'numeric' })
+}
+
+function Spinner({ size = 14 }) {
+  return (
+    <div style={{
+      width: size,
+      height: size,
+      border: '2px solid rgba(255,255,255,0.3)',
+      borderTopColor: 'var(--background)',
+      borderRadius: '50%',
+      animation: 'relay-req-spin 0.7s linear infinite',
+      flexShrink: 0,
+    }}>
+      <style>{`@keyframes relay-req-spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  )
 }
 
 export default function RequestList({ initialReceived, initialSent, userId }) {
@@ -104,10 +123,10 @@ export default function RequestList({ initialReceived, initialSent, userId }) {
     padding: '12px',
     background: 'none',
     border: 'none',
-    borderBottom: active ? '2.5px solid #0a0a0a' : '2.5px solid transparent',
+    borderBottom: active ? '2.5px solid var(--border-strong)' : '2.5px solid transparent',
     fontSize: '14px',
     fontWeight: active ? '800' : '600',
-    color: active ? '#0a0a0a' : '#A3A3A3',
+    color: active ? 'var(--text)' : 'var(--text-tertiary)',
     cursor: 'pointer',
     fontFamily: 'inherit',
   })
@@ -122,12 +141,16 @@ export default function RequestList({ initialReceived, initialSent, userId }) {
       fontFamily: "'Inter', -apple-system, sans-serif",
     }}>
       {/* Header */}
-      <div style={{
-        padding: '16px 20px 0',
-        borderBottom: '1.5px solid #E5E5E5',
-        background: '#fff',
-      }}>
-        <h1 style={{ fontSize: '20px', fontWeight: '800', color: '#0a0a0a', marginBottom: '12px' }}>Requests</h1>
+      <div style={{ padding: '14px 20px 0', borderBottom: '1px solid var(--border)', background: 'var(--surface)' }}>
+        <button
+          onClick={() => router.push('/chat')}
+          aria-label="Back"
+          className="relay-plain-icon-btn"
+          style={{ marginLeft: '-10px', marginBottom: '10px' }}
+        >
+          <ChevronLeft size={22} {...iconProps} />
+        </button>
+        <h1 className="relay-page-title" style={{ marginBottom: '14px' }}>Requests</h1>
         <div style={{ display: 'flex' }}>
           <button style={tabStyle(tab === 'received')} onClick={() => setTab('received')}>
             Received{received.length > 0 ? ` (${received.length})` : ''}
@@ -149,11 +172,13 @@ export default function RequestList({ initialReceived, initialSent, userId }) {
             padding: '40px',
             textAlign: 'center',
           }}>
-            <div style={{ fontSize: '48px', marginBottom: '16px' }}>📨</div>
-            <h2 style={{ fontSize: '18px', fontWeight: '800', marginBottom: '8px' }}>
+            <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'var(--surface)', border: '2px solid var(--border-strong)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', marginBottom: '16px' }}>
+              <Mail size={24} {...iconProps} />
+            </div>
+            <h2 style={{ fontSize: '18px', fontWeight: '800', color: 'var(--text)', marginBottom: '6px', letterSpacing: '-0.01em' }}>
               {tab === 'received' ? 'No requests' : 'No pending requests'}
             </h2>
-            <p style={{ fontSize: '14px', color: '#A3A3A3' }}>
+            <p style={{ fontSize: '14px', color: 'var(--text-tertiary)', maxWidth: '260px' }}>
               {tab === 'received'
                 ? 'When someone wants to message you for the first time, it will appear here.'
                 : "Message requests you've sent that haven't been accepted yet will appear here."}
@@ -165,22 +190,22 @@ export default function RequestList({ initialReceived, initialSent, userId }) {
               <div
                 key={request.id}
                 style={{
-                  background: '#fff',
-                  border: '1.5px solid #0a0a0a',
-                  borderRadius: '12px',
+                  background: 'var(--surface)',
+                  border: '2px solid var(--border-strong)',
+                  borderRadius: 'var(--radius-md)',
                   padding: '16px',
-                  boxShadow: '3px 3px 0 #0a0a0a',
+                  boxShadow: 'var(--shadow-hard-sm)',
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
                   <Avatar src={request.sender?.avatar_url} name={request.sender?.display_name} size={44} />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: '15px', fontWeight: '700', color: '#0a0a0a' }}>
+                    <p style={{ fontSize: '15px', fontWeight: '700', color: 'var(--text)' }}>
                       {request.sender?.display_name}
                     </p>
-                    <p style={{ fontSize: '12px', color: '#A3A3A3' }}>@{request.sender?.username}</p>
+                    <p style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>@{request.sender?.username}</p>
                   </div>
-                  <span style={{ fontSize: '11px', color: '#A3A3A3', flexShrink: 0 }}>
+                  <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', flexShrink: 0 }}>
                     {formatTime(request.created_at)}
                   </span>
                 </div>
@@ -188,10 +213,11 @@ export default function RequestList({ initialReceived, initialSent, userId }) {
                 {request.message?.content && (
                   <div style={{
                     padding: '10px 14px',
-                    background: '#F5F5F5',
-                    borderRadius: '8px',
+                    background: 'var(--bg-subtle)',
+                    border: '1px solid var(--border-light)',
+                    borderRadius: 'var(--radius-sm)',
                     fontSize: '14px',
-                    color: '#525252',
+                    color: 'var(--text-secondary)',
                     lineHeight: '1.5',
                     marginBottom: '14px',
                   }}>
@@ -203,36 +229,17 @@ export default function RequestList({ initialReceived, initialSent, userId }) {
                   <button
                     onClick={() => handleAccept(request.id)}
                     disabled={acting === request.id}
-                    style={{
-                      flex: 1,
-                      padding: '10px',
-                      background: acting === request.id ? '#525252' : '#0a0a0a',
-                      color: '#fff',
-                      border: '1.5px solid #0a0a0a',
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      fontWeight: '700',
-                      cursor: acting === request.id ? 'not-allowed' : 'pointer',
-                      fontFamily: 'inherit',
-                      boxShadow: acting === request.id ? 'none' : '2px 2px 0 #FFB800',
-                    }}
+                    className="relay-btn relay-btn--filled"
+                    style={{ flex: 1, padding: '10px', fontSize: '14px' }}
                   >
+                    {acting === request.id && <Spinner />}
                     {acting === request.id ? 'Accepting...' : 'Accept'}
                   </button>
                   <button
                     onClick={() => setBlockTarget({ requestId: request.id, userId: request.sender?.id })}
                     disabled={acting === request.id}
-                    style={{
-                      padding: '10px 16px',
-                      background: '#fff',
-                      color: '#EF4444',
-                      border: '1.5px solid #EF4444',
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      cursor: 'pointer',
-                      fontFamily: 'inherit',
-                    }}
+                    className="relay-btn"
+                    style={{ padding: '10px 16px', fontSize: '14px', color: 'var(--error)', borderColor: 'var(--error)' }}
                   >
                     Block
                   </button>
@@ -242,22 +249,22 @@ export default function RequestList({ initialReceived, initialSent, userId }) {
               <div
                 key={request.id}
                 style={{
-                  background: '#fff',
-                  border: '1.5px solid #0a0a0a',
-                  borderRadius: '12px',
+                  background: 'var(--surface)',
+                  border: '2px solid var(--border-strong)',
+                  borderRadius: 'var(--radius-md)',
                   padding: '16px',
-                  boxShadow: '3px 3px 0 #0a0a0a',
+                  boxShadow: 'var(--shadow-hard-sm)',
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
                   <Avatar src={request.receiver?.avatar_url} name={request.receiver?.display_name} size={44} />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: '15px', fontWeight: '700', color: '#0a0a0a' }}>
+                    <p style={{ fontSize: '15px', fontWeight: '700', color: 'var(--text)' }}>
                       {request.receiver?.display_name}
                     </p>
-                    <p style={{ fontSize: '12px', color: '#A3A3A3' }}>@{request.receiver?.username}</p>
+                    <p style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>@{request.receiver?.username}</p>
                   </div>
-                  <span style={{ fontSize: '11px', color: '#A3A3A3', flexShrink: 0 }}>
+                  <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', flexShrink: 0 }}>
                     {formatTime(request.created_at)}
                   </span>
                 </div>
@@ -266,27 +273,19 @@ export default function RequestList({ initialReceived, initialSent, userId }) {
                   <span style={{
                     fontSize: '12px',
                     fontWeight: '700',
-                    color: '#A3A3A3',
+                    color: 'var(--text-tertiary)',
                     padding: '4px 10px',
-                    background: '#F5F5F5',
-                    borderRadius: '100px',
+                    background: 'var(--gray-100)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 'var(--radius-pill)',
                   }}>
                     Pending
                   </span>
                   <button
                     onClick={() => handleCancel(request.id)}
                     disabled={acting === request.id}
-                    style={{
-                      padding: '8px 14px',
-                      background: '#fff',
-                      color: '#525252',
-                      border: '1.5px solid #E5E5E5',
-                      borderRadius: '8px',
-                      fontSize: '13px',
-                      fontWeight: '600',
-                      cursor: 'pointer',
-                      fontFamily: 'inherit',
-                    }}
+                    className="relay-btn"
+                    style={{ padding: '8px 14px', fontSize: '13px' }}
                   >
                     {acting === request.id ? 'Cancelling...' : 'Cancel'}
                   </button>
