@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="140" height="140" viewBox="0 0 140 140">
+  <!-- chat bubble + "sent" tick, self-authored -->
+  <g fill="none" stroke="#191919" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.05">
+    <path d="M14 12h20a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5h-11l-6 5v-5a5 5 0 0 1-5-5V17a5 5 0 0 1 5-5z" transform="rotate(-6 26 22)"/>
+    <path d="M90 26l2.4 2.4 4.6-4.6" transform="rotate(8 93 24)"/>
+    <circle cx="93" cy="24" r="9" transform="rotate(8 93 24)"/>
+  </g>
+
+  <!-- wobbly plus, adapted from Notion-Icons ni-plus.svg, accent color -->
+  <g stroke="#FFB800" stroke-width="2" stroke-linecap="round" opacity="0.16" transform="translate(104,86) scale(0.5)">
+    <path d="M6 12H12M12 12H18M12 12V18M12 12V6"/>
+  </g>
+
+  <!-- wobbly checkmark, adapted from Notion-Icons ni-check.svg -->
+  <g stroke="#191919" stroke-width="1.6" stroke-linecap="round" opacity="0.06" transform="translate(16,92) scale(0.7)">
+    <path d="M4 13.8701C4.23098 15.5811 7.48261 22.8661 8.96601 18.7654C10.7368 13.8701 12.4211 8.8 20 4"/>
+  </g>
+
+  <!-- second wobbly plus, smaller, accent color, for rhythm -->
+  <g stroke="#FFB800" stroke-width="2" stroke-linecap="round" opacity="0.14" transform="translate(58,110) scale(0.34)">
+    <path d="M6 12H12M12 12H18M12 12V18M12 12V6"/>
+  </g>
+
+  <path d="M46 20l3-3 3 3-3 3z" fill="none" stroke="#191919" stroke-width="1.4" stroke-linejoin="round" opacity="0.05"/>
+</svg>

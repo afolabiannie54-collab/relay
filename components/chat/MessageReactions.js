@@ -36,8 +36,8 @@ export default function MessageReactions({ messageId, reactions, currentUserId, 
                 alignItems: 'center',
                 gap: '4px',
                 padding: '3px 8px',
-                background: hasReacted ? '#FFF8E1' : '#F5F5F5',
-                border: `1.5px solid ${hasReacted ? '#FFB800' : '#E5E5E5'}`,
+                background: hasReacted ? 'var(--accent-light)' : 'var(--surface)',
+                border: `1.5px solid ${hasReacted ? 'var(--accent)' : 'var(--border)'}`,
                 borderRadius: '100px',
                 cursor: 'pointer',
                 fontSize: '13px',
@@ -45,21 +45,22 @@ export default function MessageReactions({ messageId, reactions, currentUserId, 
               }}
             >
               <span>{emoji}</span>
-              <span style={{ fontSize: '11px', fontWeight: '700', color: hasReacted ? '#0a0a0a' : '#525252' }}>
+              <span style={{ fontSize: '11px', fontWeight: '700', color: hasReacted ? 'var(--text)' : 'var(--text-secondary)' }}>
                 {count}
               </span>
             </button>
           ))}
           <button
             onClick={() => onTogglePicker?.()}
+            aria-label="Add reaction"
             style={{
-              padding: '3px 8px',
-              background: '#F5F5F5',
-              border: '1.5px solid #E5E5E5',
+              padding: '3px 10px',
+              background: 'var(--surface)',
+              border: '1.5px solid var(--border)',
               borderRadius: '100px',
               cursor: 'pointer',
               fontSize: '13px',
-              color: '#A3A3A3',
+              color: 'var(--text-tertiary)',
               fontFamily: 'inherit',
             }}
           >+</button>
@@ -72,40 +73,35 @@ export default function MessageReactions({ messageId, reactions, currentUserId, 
             onClick={() => onTogglePicker?.()}
             style={{ position: 'fixed', inset: 0, zIndex: 99 }}
           />
-          <div style={{
+          <div className="relay-popover" style={{
             position: 'fixed',
             bottom: '120px',
             left: '50%',
             transform: 'translateX(-50%)',
-            background: '#fff',
-            border: '1.5px solid #0a0a0a',
+            background: 'var(--surface)',
+            border: '2px solid var(--border-strong)',
             borderRadius: '12px',
             padding: '8px',
             display: 'flex',
             gap: '4px',
             flexWrap: 'wrap',
             zIndex: 100,
-            boxShadow: '3px 3px 0 #0a0a0a',
+            boxShadow: 'var(--shadow-hard-sm)',
             width: '220px',
           }}>
             {COMMON_EMOJIS.map(emoji => (
               <button
                 key={emoji}
                 onClick={() => handleReact(emoji)}
+                className="relay-menu-row"
                 style={{
                   width: '36px',
                   height: '36px',
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
+                  padding: 0,
                   fontSize: '20px',
                   borderRadius: '8px',
-                  display: 'flex',
-                  alignItems: 'center',
                   justifyContent: 'center',
                 }}
-                onMouseEnter={e => e.currentTarget.style.background = '#F5F5F5'}
-                onMouseLeave={e => e.currentTarget.style.background = 'none'}
               >
                 {emoji}
               </button>

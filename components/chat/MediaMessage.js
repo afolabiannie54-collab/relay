@@ -1,6 +1,9 @@
 'use client'
 
 import { useState } from 'react'
+import { Download, X, Mic, FileText } from 'lucide-react'
+
+const iconProps = { strokeWidth: 2, strokeLinecap: 'square', strokeLinejoin: 'miter' }
 
 export default function MediaMessage({ message, isOwn }) {
   const [imageError, setImageError] = useState(false)
@@ -19,10 +22,10 @@ export default function MediaMessage({ message, isOwn }) {
     return (
       <div style={{
         padding: '12px 14px',
-        background: isOwn ? '#0a0a0a' : '#F5F5F5',
+        background: isOwn ? 'var(--text)' : 'var(--gray-100)',
         borderRadius: isOwn ? '16px 4px 16px 16px' : '4px 16px 16px 16px',
-        border: '1.5px solid #0a0a0a',
-        color: isOwn ? '#fff' : '#525252',
+        border: isOwn ? '2px solid var(--accent)' : '2px solid var(--border-strong)',
+        color: isOwn ? 'var(--background)' : 'var(--text-secondary)',
         fontSize: '13px',
       }}>
         {message.content || 'File'}
@@ -35,7 +38,7 @@ export default function MediaMessage({ message, isOwn }) {
       <>
         <div style={{
           borderRadius: isOwn ? '16px 4px 16px 16px' : '4px 16px 16px 16px',
-          border: '1.5px solid #0a0a0a',
+          border: isOwn ? '2px solid var(--accent)' : '2px solid var(--border-strong)',
           overflow: 'hidden',
           maxWidth: '280px',
           cursor: 'pointer',
@@ -58,9 +61,9 @@ export default function MediaMessage({ message, isOwn }) {
           ) : (
             <div style={{
               padding: '16px',
-              background: '#F5F5F5',
+              background: 'var(--gray-100)',
               fontSize: '13px',
-              color: '#525252',
+              color: 'var(--text-secondary)',
             }}>
               Could not load image
             </div>
@@ -107,10 +110,11 @@ export default function MediaMessage({ message, isOwn }) {
                 }}
                 title="Download"
               >
-                ⬇️
+                <Download size={18} {...iconProps} />
               </a>
               <button
                 onClick={() => setLightboxOpen(false)}
+                aria-label="Close"
                 style={{
                   width: '40px',
                   height: '40px',
@@ -118,14 +122,13 @@ export default function MediaMessage({ message, isOwn }) {
                   border: 'none',
                   borderRadius: '8px',
                   cursor: 'pointer',
-                  fontSize: '20px',
                   color: '#fff',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
               >
-                ×
+                <X size={20} {...iconProps} />
               </button>
             </div>
             <img
@@ -157,20 +160,23 @@ export default function MediaMessage({ message, isOwn }) {
     return (
       <div style={{
         padding: '12px 14px',
-        background: isOwn ? '#0a0a0a' : '#F5F5F5',
+        background: isOwn ? 'var(--text)' : 'var(--gray-100)',
         borderRadius: isOwn ? '16px 4px 16px 16px' : '4px 16px 16px 16px',
-        border: '1.5px solid #0a0a0a',
+        border: isOwn ? '2px solid var(--accent)' : '2px solid var(--border-strong)',
         minWidth: '200px',
       }}>
         <p style={{
           fontSize: '11px',
-          color: isOwn ? '#A3A3A3' : '#525252',
+          color: isOwn ? 'var(--text-tertiary)' : 'var(--text-secondary)',
           marginBottom: '8px',
           whiteSpace: 'nowrap',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '4px',
         }}>
-          🎙️ {media.filename.startsWith('voice-') ? 'Voice message' : media.filename}
+          <Mic size={12} {...iconProps} /> {media.filename.startsWith('voice-') ? 'Voice message' : media.filename}
         </p>
         <audio
           controls
@@ -191,9 +197,9 @@ export default function MediaMessage({ message, isOwn }) {
   return (
     <div style={{
       padding: '12px 14px',
-      background: isOwn ? '#0a0a0a' : '#F5F5F5',
+      background: isOwn ? 'var(--text)' : 'var(--gray-100)',
       borderRadius: isOwn ? '16px 4px 16px 16px' : '4px 16px 16px 16px',
-      border: '1.5px solid #0a0a0a',
+      border: isOwn ? '2px solid var(--accent)' : '2px solid var(--border-strong)',
       display: 'flex',
       alignItems: 'center',
       gap: '10px',
@@ -203,21 +209,21 @@ export default function MediaMessage({ message, isOwn }) {
       <div style={{
         width: '36px',
         height: '36px',
-        background: isOwn ? '#333' : '#E5E5E5',
+        background: isOwn ? 'rgba(255,255,255,0.12)' : 'var(--gray-200)',
         borderRadius: '8px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        fontSize: '18px',
+        color: isOwn ? 'var(--background)' : 'var(--text-secondary)',
         flexShrink: 0,
       }}>
-        📄
+        <FileText size={18} {...iconProps} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <p style={{
           fontSize: '13px',
           fontWeight: '600',
-          color: isOwn ? '#fff' : '#0a0a0a',
+          color: isOwn ? 'var(--background)' : 'var(--text)',
           whiteSpace: 'nowrap',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
@@ -225,7 +231,7 @@ export default function MediaMessage({ message, isOwn }) {
         }}>
           {media.filename}
         </p>
-        <p style={{ fontSize: '11px', color: isOwn ? '#A3A3A3' : '#525252' }}>
+        <p style={{ fontSize: '11px', color: isOwn ? 'var(--text-tertiary)' : 'var(--text-secondary)' }}>
           {formatSize(media.size)}
         </p>
       </div>
@@ -234,21 +240,22 @@ export default function MediaMessage({ message, isOwn }) {
         download={media.filename}
         target="_blank"
         rel="noopener noreferrer"
+        aria-label="Download"
         style={{
           width: '30px',
           height: '30px',
-          background: isOwn ? '#333' : '#E5E5E5',
+          background: isOwn ? 'rgba(255,255,255,0.12)' : 'var(--gray-200)',
           borderRadius: '6px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           textDecoration: 'none',
-          fontSize: '14px',
+          color: isOwn ? 'var(--background)' : 'var(--text-secondary)',
           flexShrink: 0,
         }}
         title="Download"
       >
-        ⬇️
+        <Download size={14} {...iconProps} />
       </a>
     </div>
   )

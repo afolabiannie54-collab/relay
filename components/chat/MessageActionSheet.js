@@ -1,12 +1,14 @@
 'use client'
 
 import { useState } from 'react'
+import { Plus, Reply, Copy, Pin, PinOff, Pencil, Trash2, CheckSquare } from 'lucide-react'
 import BottomSheet from '@/components/shared/BottomSheet'
 
 const QUICK_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🙏']
 const MORE_EMOJIS = ['🔥', '👏', '😍', '😡', '🎉', '👀']
 
 const EDIT_WINDOW_MS = 15 * 60 * 1000
+const iconProps = { strokeWidth: 2.5, strokeLinecap: 'square', strokeLinejoin: 'miter' }
 
 // Long-press menu for a single message bubble. `message` is the full
 // message row (id, content, type, sender_id, created_at). The actual
@@ -32,35 +34,22 @@ export default function MessageActionSheet({
 
   const canEdit = isOwn && message.type === 'text' && (Date.now() - new Date(message.created_at).getTime()) < EDIT_WINDOW_MS
 
-  const rowStyle = {
-    display: 'block',
-    width: '100%',
-    textAlign: 'left',
-    padding: '14px 20px',
-    fontSize: '15px',
-    fontWeight: '600',
-    color: '#0a0a0a',
-    background: 'none',
-    border: 'none',
-    cursor: 'pointer',
-    fontFamily: 'inherit',
-  }
-
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose}>
       <div style={{ fontFamily: "'Inter', -apple-system, sans-serif" }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 16px 12px', borderBottom: '1px solid #E5E5E5' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 16px 12px', borderBottom: '1px solid var(--border-light)' }}>
           {(showMoreEmojis ? [...QUICK_EMOJIS, ...MORE_EMOJIS] : QUICK_EMOJIS).map(emoji => (
             <button
               key={emoji}
               onClick={() => { onReact?.(emoji); onClose?.() }}
+              className="relay-menu-row"
               style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
+                width: '36px',
+                height: '36px',
+                padding: 0,
                 fontSize: '24px',
-                padding: '6px',
                 borderRadius: '50%',
+                justifyContent: 'center',
                 lineHeight: 1,
               }}
             >
@@ -72,41 +61,51 @@ export default function MessageActionSheet({
               onClick={() => setShowMoreEmojis(true)}
               aria-label="More reactions"
               style={{
-                background: '#F5F5F5',
-                border: '1.5px solid #E5E5E5',
+                background: 'var(--gray-100)',
+                border: '1px solid var(--border)',
                 borderRadius: '50%',
                 cursor: 'pointer',
                 width: '36px',
                 height: '36px',
-                fontSize: '16px',
-                color: '#525252',
+                color: 'var(--text-secondary)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              ⊕
+              <Plus size={16} {...iconProps} />
             </button>
           )}
         </div>
 
-        <div style={{ padding: '8px 0' }}>
-          <button style={rowStyle} onClick={() => { onReply?.(); onClose?.() }}>↩️ Reply</button>
+        <div style={{ padding: '8px' }}>
+          <button className="relay-menu-row" style={{ padding: '14px 12px', fontSize: '15px', color: 'var(--text)' }} onClick={() => { onReply?.(); onClose?.() }}>
+            <Reply size={17} {...iconProps} /> Reply
+          </button>
           {message.type === 'text' && (
-            <button style={rowStyle} onClick={() => { onCopy?.(); onClose?.() }}>📋 Copy</button>
+            <button className="relay-menu-row" style={{ padding: '14px 12px', fontSize: '15px', color: 'var(--text)' }} onClick={() => { onCopy?.(); onClose?.() }}>
+              <Copy size={17} {...iconProps} /> Copy
+            </button>
           )}
-          <button style={rowStyle} onClick={() => { onTogglePin?.(); onClose?.() }}>
-            {isPinned ? '📌 Unpin' : '📌 Pin'}
+          <button className="relay-menu-row" style={{ padding: '14px 12px', fontSize: '15px', color: 'var(--text)' }} onClick={() => { onTogglePin?.(); onClose?.() }}>
+            {isPinned ? <PinOff size={17} {...iconProps} /> : <Pin size={17} {...iconProps} />}
+            {isPinned ? 'Unpin' : 'Pin'}
           </button>
           {canEdit && (
-            <button style={rowStyle} onClick={() => { onEdit?.(); onClose?.() }}>✏️ Edit</button>
+            <button className="relay-menu-row" style={{ padding: '14px 12px', fontSize: '15px', color: 'var(--text)' }} onClick={() => { onEdit?.(); onClose?.() }}>
+              <Pencil size={17} {...iconProps} /> Edit
+            </button>
           )}
           {isOwn && (
-            <button style={{ ...rowStyle, color: '#EF4444' }} onClick={() => { onDelete?.(); onClose?.() }}>🗑️ Delete</button>
+            <button className="relay-menu-row" style={{ padding: '14px 12px', fontSize: '15px', color: 'var(--error)' }} onClick={() => { onDelete?.(); onClose?.() }}>
+              <Trash2 size={17} {...iconProps} /> Delete
+            </button>
           )}
-          <button style={rowStyle} onClick={() => { onSelect?.(); onClose?.() }}>☑️ Select messages</button>
-          <div style={{ borderTop: '1px solid #E5E5E5', margin: '4px 0' }} />
-          <button style={{ ...rowStyle, color: '#A3A3A3' }} onClick={onClose}>Cancel</button>
+          <button className="relay-menu-row" style={{ padding: '14px 12px', fontSize: '15px', color: 'var(--text)' }} onClick={() => { onSelect?.(); onClose?.() }}>
+            <CheckSquare size={17} {...iconProps} /> Select messages
+          </button>
+          <div style={{ borderTop: '1px solid var(--border-light)', margin: '4px 0' }} />
+          <button className="relay-menu-row" style={{ padding: '14px 12px', fontSize: '15px', color: 'var(--text-tertiary)' }} onClick={onClose}>Cancel</button>
         </div>
       </div>
     </BottomSheet>

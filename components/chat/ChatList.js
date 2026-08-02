@@ -751,10 +751,6 @@ export default function ChatList({ onSelectConversation }) {
             padding: '40px',
             textAlign: 'center',
           }}>
-            <div style={{ marginBottom: '8px' }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/illustrations/ec-chat-service-circle.svg" alt="" width={220} height={241} />
-            </div>
             <h2 style={{ fontSize: '18px', fontWeight: '800', color: 'var(--text)', marginBottom: '6px', letterSpacing: '-0.01em' }}>No conversations yet</h2>
             <p style={{ fontSize: '14px', color: 'var(--text-tertiary)', marginBottom: '24px', maxWidth: '260px' }}>
               Search for people and start a conversation.

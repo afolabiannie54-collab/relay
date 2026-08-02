@@ -2,7 +2,12 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import {
+  ChevronLeft, Pin, X, ArrowDown, Paperclip, Camera, Mic, Send,
+  Trash2, Forward, Copy, FileText, Reply,
+} from 'lucide-react'
 import Avatar from '@/components/shared/Avatar'
+import EllipsisDoodle from '@/components/shared/icons/EllipsisDoodle'
 import { getMessages, sendMessage, getConversation, markConversationRead, editMessage, deleteMessage, uploadMedia, getReactions, toggleReaction, getPinnedMessages, togglePin, searchMessages } from '@/actions/messages'
 import { getGroupInfo } from '@/actions/groups'
 import { createClient } from '@/lib/supabase/client'
@@ -17,6 +22,10 @@ import ConversationSettingsSheet from '@/components/chat/ConversationSettingsShe
 import MessageActionSheet from '@/components/chat/MessageActionSheet'
 import MessageActionBar from '@/components/chat/MessageActionBar'
 import ConfirmSheet from '@/components/shared/ConfirmSheet'
+
+// Matches the nav/ChatList icon convention — square caps/miter joins
+// instead of lucide's default rounded ones.
+const iconProps = { strokeWidth: 2, strokeLinecap: 'square', strokeLinejoin: 'miter' }
 
 export default function ConversationPage() {
   const { id } = useParams()
@@ -740,7 +749,7 @@ export default function ConversationPage() {
         justifyContent: 'center',
         fontFamily: "'Inter', -apple-system, sans-serif",
       }}>
-        <p style={{ color: '#A3A3A3', fontSize: '14px' }}>Loading...</p>
+        <p style={{ color: 'var(--text-tertiary)', fontSize: '14px' }}>Loading…</p>
       </div>
     )
   }
@@ -751,7 +760,7 @@ export default function ConversationPage() {
       display: 'flex',
       flexDirection: 'column',
       fontFamily: "'Inter', -apple-system, sans-serif",
-      background: '#fff',
+      background: 'var(--surface)',
     }}>
       {showCamera && (
         <CameraCapture
@@ -762,63 +771,54 @@ export default function ConversationPage() {
 
       {/* Header */}
       {selectMode ? (
-        <div style={{
+        <div className="relay-fade-in" style={{
           padding: '12px 16px',
-          borderBottom: '1.5px solid #E5E5E5',
+          borderBottom: '2px solid var(--border-strong)',
           display: 'flex',
           alignItems: 'center',
           gap: '12px',
-          background: '#fff',
+          background: 'var(--surface)',
           flexShrink: 0,
         }}>
           <button
             onClick={handleExitSelectMode}
-            style={{
-              background: 'none',
-              border: 'none',
-              fontSize: '18px',
-              cursor: 'pointer',
-              padding: '4px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              minWidth: '44px',
-              minHeight: '44px',
-            }}
+            aria-label="Exit select mode"
+            className="relay-plain-icon-btn"
           >
-            ✕
+            <X size={24} {...iconProps} />
           </button>
-          <p style={{ fontSize: '15px', fontWeight: '700', color: '#0a0a0a' }}>
+          <p style={{ fontSize: '15px', fontWeight: '700', color: 'var(--text)' }}>
             {selectedMsgIds.size} selected
           </p>
         </div>
       ) : (
       <div style={{
         padding: '12px 16px',
-        borderBottom: '1.5px solid #E5E5E5',
+        borderBottom: '2px solid var(--border-strong)',
         display: 'flex',
         alignItems: 'center',
         gap: '12px',
-        background: '#fff',
+        background: 'var(--surface)',
         flexShrink: 0,
       }}>
         <button
           onClick={() => router.push('/chat')}
-          className="mobile-back-btn"
-          style={{
-            background: 'none',
-            border: 'none',
-            fontSize: '18px',
-            cursor: 'pointer',
-            padding: '4px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            minWidth: '44px',
-            minHeight: '44px',
-          }}
+          aria-label="Back"
+          className="mobile-back-btn relay-plain-icon-btn"
         >
-          ←
+          <ChevronLeft size={26} {...iconProps} />
+        </button>
+        {/* Desktop equivalent — the list stays visible on desktop so this
+            isn't "back" in the navigation-stack sense, but there was
+            previously no way at all to deselect a conversation and return
+            to the empty state once one was open. */}
+        <button
+          onClick={() => router.push('/chat')}
+          aria-label="Close conversation"
+          className="desktop-close-btn relay-plain-icon-btn"
+          title="Close conversation"
+        >
+          <ChevronLeft size={26} {...iconProps} />
         </button>
         {conversation?.type === 'group' ? (
           <button
@@ -827,10 +827,10 @@ export default function ConversationPage() {
           >
             <Avatar src={groupInfo?.avatar_url} name={groupInfo?.name} size={38} />
             <div>
-              <p style={{ fontSize: '15px', fontWeight: '700', color: '#0a0a0a' }}>
+              <p style={{ fontSize: '15px', fontWeight: '700', color: 'var(--text)' }}>
                 {groupInfo?.name}
               </p>
-              <p style={{ fontSize: '12px', color: '#A3A3A3' }}>
+              <p style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>
                 {groupInfo ? `${groupInfo.members?.length} members` : ''}
               </p>
             </div>
@@ -842,12 +842,12 @@ export default function ConversationPage() {
           >
             <Avatar src={otherParticipant.avatar_url} name={otherParticipant.display_name} size={38} />
             <div>
-              <p style={{ fontSize: '15px', fontWeight: '700', color: '#0a0a0a' }}>
+              <p style={{ fontSize: '15px', fontWeight: '700', color: 'var(--text)' }}>
                 {otherParticipant?.display_name}
               </p>
-              <p style={{ fontSize: '12px', color: '#A3A3A3' }}>
+              <p style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>
                 {onlineUsers.includes(otherParticipant?.id) && otherParticipant?.show_online_status
-                  ? <span style={{ color: '#22C55E' }}>● Online</span>
+                  ? <span style={{ color: 'var(--success)' }}>● Online</span>
                   : otherParticipant?.show_last_seen
                     // @username only as a placeholder when last-seen is
                     // permitted but there's simply no data yet — never
@@ -864,30 +864,20 @@ export default function ConversationPage() {
         <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto' }}>
           <button
             onClick={() => setShowSettingsSheet(true)}
-            style={{
-              width: '44px',
-              height: '44px',
-              background: '#fff',
-              border: '1.5px solid #0a0a0a',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontSize: '16px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
+            aria-label="Conversation info"
+            className="relay-plain-icon-btn"
             title="Conversation info"
           >
-            ℹ️
+            <EllipsisDoodle size={24} />
           </button>
         </div>
       </div>
       )}
 
       {showPinnedPanel && (
-        <div style={{
-          borderBottom: '1.5px solid #0a0a0a',
-          background: '#fff',
+        <div className="relay-fade-in" style={{
+          borderBottom: '2px solid var(--border-strong)',
+          background: 'var(--surface)',
           flexShrink: 0,
           maxHeight: '250px',
           overflowY: 'auto',
@@ -897,44 +887,47 @@ export default function ConversationPage() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            borderBottom: '1px solid #F5F5F5',
+            borderBottom: '1px solid var(--border-light)',
             position: 'sticky',
             top: 0,
-            background: '#fff',
+            background: 'var(--surface)',
           }}>
-            <p style={{ fontSize: '14px', fontWeight: '700' }}>📌 Pinned messages</p>
+            <p style={{ fontSize: '14px', fontWeight: '700', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Pin size={14} {...iconProps} /> Pinned messages
+            </p>
             <button
               onClick={() => setShowPinnedPanel(false)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', color: '#A3A3A3' }}
-            >×</button>
+              aria-label="Close"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', display: 'flex', padding: '4px' }}
+            ><X size={16} {...iconProps} /></button>
           </div>
           {pinnedMessages.length === 0 ? (
-            <p style={{ padding: '16px', fontSize: '13px', color: '#A3A3A3' }}>No pinned messages</p>
+            <p style={{ padding: '16px', fontSize: '13px', color: 'var(--text-tertiary)' }}>No pinned messages</p>
           ) : pinnedMessages.map(pin => (
             <div
               key={pin.id}
               style={{
                 padding: '10px 16px',
-                borderBottom: '1px solid #F5F5F5',
+                borderBottom: '1px solid var(--border-light)',
                 cursor: 'pointer',
               }}
               onClick={() => {
                 const el = document.getElementById(`msg-${pin.messages?.id}`)
                 if (el) {
                   el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-                  el.style.background = '#FFF8E1'
+                  el.style.background = 'var(--accent-light)'
                   setTimeout(() => el.style.background = '', 2000)
                 }
                 setShowPinnedPanel(false)
               }}
             >
-              <p style={{ fontSize: '12px', fontWeight: '700', color: '#0a0a0a', marginBottom: '2px' }}>
+              <p style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text)', marginBottom: '2px' }}>
                 {pin.messages?.sender_name_snapshot}
               </p>
-              <p style={{ fontSize: '13px', color: '#525252', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <p style={{ fontSize: '13px', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {pin.messages?.type === 'deleted' ? 'This message was deleted' : pin.messages?.content}
               </p>
-              <p style={{ fontSize: '11px', color: '#A3A3A3', marginTop: '2px' }}>
+              <p style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
                 Pinned by {pin.users?.display_name}
               </p>
             </div>
@@ -942,7 +935,10 @@ export default function ConversationPage() {
         </div>
       )}
 
-      {/* Messages */}
+      {/* Messages — a faint tiled doodle pattern behind the bubbles, same
+          idea as WhatsApp's default chat wallpaper: barely-there texture
+          rather than a flat surface, without competing with the bubbles
+          themselves for attention. */}
       <div
         ref={messagesContainerRef}
         className="messages-scroll-area"
@@ -956,22 +952,31 @@ export default function ConversationPage() {
           display: 'flex',
           flexDirection: 'column',
           gap: '2px',
+          backgroundColor: 'var(--bg-subtle)',
+          backgroundImage: 'url(/patterns/chat-bg.svg)',
+          backgroundRepeat: 'repeat',
         }}
       >
         {Object.entries(groupedMessages).map(([date, msgs]) => (
           <div key={date}>
-            {/* Date divider */}
+            {/* Date divider — a solid pill rather than plain text, so it
+                stays legible sitting on the tiled background pattern. */}
             <div style={{
               display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
+              justifyContent: 'center',
               margin: '16px 0 8px',
             }}>
-              <div style={{ flex: 1, height: '1px', background: '#E5E5E5' }} />
-              <span style={{ fontSize: '11px', color: '#A3A3A3', fontWeight: '600' }}>
+              <span style={{
+                fontSize: '11px',
+                color: 'var(--text-secondary)',
+                fontWeight: '700',
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
+                borderRadius: 'var(--radius-pill)',
+                padding: '4px 12px',
+              }}>
                 {formatDate(msgs[0].created_at)}
               </span>
-              <div style={{ flex: 1, height: '1px', background: '#E5E5E5' }} />
             </div>
 
             {msgs.map((msg, i) => {
@@ -998,13 +1003,17 @@ export default function ConversationPage() {
                   : msg.content
 
                 return (
-                  <div key={msg.id} style={{
-                    textAlign: 'center',
-                    padding: '8px 0',
-                    fontSize: '12px',
-                    color: '#A3A3A3',
-                  }}>
-                    {systemText}
+                  <div key={msg.id} style={{ display: 'flex', justifyContent: 'center', padding: '6px 0' }}>
+                    <span style={{
+                      fontSize: '12px',
+                      color: 'var(--text-secondary)',
+                      background: 'var(--surface)',
+                      border: '1px solid var(--border)',
+                      borderRadius: 'var(--radius-pill)',
+                      padding: '4px 12px',
+                    }}>
+                      {systemText}
+                    </span>
                   </div>
                 )
               }
@@ -1030,8 +1039,8 @@ export default function ConversationPage() {
                         width: '22px',
                         height: '22px',
                         borderRadius: '50%',
-                        border: `1.5px solid ${selectedMsgIds.has(msg.id) ? '#0a0a0a' : '#E5E5E5'}`,
-                        background: selectedMsgIds.has(msg.id) ? '#0a0a0a' : '#fff',
+                        border: selectedMsgIds.has(msg.id) ? 'none' : '1.5px solid var(--border-strong)',
+                        background: selectedMsgIds.has(msg.id) ? 'var(--accent)' : 'var(--surface)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -1042,7 +1051,7 @@ export default function ConversationPage() {
                     >
                       {selectedMsgIds.has(msg.id) && (
                         <svg width="12" height="12" viewBox="0 0 10 10" fill="none">
-                          <path d="M2 5 L4 7 L8 3" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path d="M2 5 L4 7 L8 3" stroke="var(--foreground)" strokeWidth="1.5" strokeLinecap="square" strokeLinejoin="miter"/>
                         </svg>
                       )}
                     </button>
@@ -1083,15 +1092,16 @@ export default function ConversationPage() {
                     {msg.reply && (
                       <div style={{
                         padding: '6px 10px',
-                        background: '#F5F5F5',
+                        background: 'var(--surface)',
+                        border: '1px solid var(--border)',
                         borderRadius: '8px',
                         marginBottom: '4px',
-                        borderLeft: '3px solid #FFB800',
+                        borderLeft: '3px solid var(--accent)',
                         fontSize: '12px',
-                        color: '#525252',
+                        color: 'var(--text-secondary)',
                         maxWidth: '100%',
                       }}>
-                        <p style={{ fontWeight: '700', marginBottom: '2px', fontSize: '11px' }}>
+                        <p style={{ fontWeight: '700', marginBottom: '2px', fontSize: '11px', color: 'var(--text)' }}>
                           {msg.reply.sender_name_snapshot === profile?.display_name ? 'You' : msg.reply.sender_name_snapshot}
                         </p>
                         <p style={{
@@ -1116,26 +1126,26 @@ export default function ConversationPage() {
                           }}
                           maxLength={2000}
                           autoFocus
+                          className="relay-input"
                           style={{
                             flex: 1,
                             padding: '8px 12px',
-                            border: '1.5px solid #0a0a0a',
                             borderRadius: '8px',
                             fontSize: '16px',
                             fontFamily: 'inherit',
-                            outline: 'none',
                           }}
                         />
                         <button
                           onClick={() => handleEdit(msg.id)}
                           style={{
                             padding: '8px 12px',
-                            background: '#0a0a0a',
-                            color: '#fff',
+                            background: 'var(--text)',
+                            color: 'var(--background)',
                             border: 'none',
                             borderRadius: '8px',
                             cursor: 'pointer',
                             fontSize: '13px',
+                            fontWeight: '700',
                             fontFamily: 'inherit',
                           }}
                         >
@@ -1145,12 +1155,13 @@ export default function ConversationPage() {
                           onClick={() => { setEditingId(null); setEditContent('') }}
                           style={{
                             padding: '8px 12px',
-                            background: '#F5F5F5',
-                            color: '#0a0a0a',
-                            border: '1.5px solid #E5E5E5',
+                            background: 'var(--surface)',
+                            color: 'var(--text)',
+                            border: '1px solid var(--border)',
                             borderRadius: '8px',
                             cursor: 'pointer',
                             fontSize: '13px',
+                            fontWeight: '600',
                             fontFamily: 'inherit',
                           }}
                         >
@@ -1177,10 +1188,11 @@ export default function ConversationPage() {
                             left: '-30px',
                             transform: 'translateY(-50%)',
                             opacity: Math.min(swipeDx / 40, 1),
-                            fontSize: '18px',
+                            color: 'var(--text-secondary)',
+                            display: 'flex',
                             pointerEvents: 'none',
                           }}>
-                            ↩️
+                            <Reply size={18} {...iconProps} />
                           </div>
                         )}
                         <div style={{
@@ -1193,10 +1205,10 @@ export default function ConversationPage() {
                             <div
                               style={{
                                 padding: isDeleted ? '8px 12px' : '10px 14px',
-                                background: isDeleted ? '#F5F5F5' : isOwn ? '#0a0a0a' : '#F5F5F5',
-                                color: isDeleted ? '#A3A3A3' : isOwn ? '#fff' : '#0a0a0a',
+                                background: isDeleted ? 'var(--gray-100)' : isOwn ? 'var(--text)' : 'var(--gray-100)',
+                                color: isDeleted ? 'var(--text-tertiary)' : isOwn ? 'var(--background)' : 'var(--text)',
                                 borderRadius: isOwn ? '16px 4px 16px 16px' : '4px 16px 16px 16px',
-                                border: '1.5px solid #0a0a0a',
+                                border: isDeleted ? '1px solid var(--border)' : isOwn ? '2px solid var(--accent)' : '2px solid var(--border-strong)',
                                 fontSize: '14px',
                                 lineHeight: '1.5',
                                 fontStyle: isDeleted ? 'italic' : 'normal',
@@ -1213,7 +1225,19 @@ export default function ConversationPage() {
                             className="message-action-bar-wrap"
                             style={{
                               position: 'absolute',
-                              top: '-16px',
+                              // The wrap's own box touches the bubble with
+                              // zero gap (bottom: 100%, not +6px) — a real
+                              // empty gap there meant the cursor crossed
+                              // genuinely unhovered space on its way from
+                              // the bubble to the bar, which instantly
+                              // killed pointer-events (that's not animated,
+                              // it flips the moment hover breaks) before
+                              // the bar could be reached at all. The visual
+                              // gap now comes from paddingBottom below,
+                              // which is still part of this element's own
+                              // hoverable box.
+                              bottom: '100%',
+                              paddingBottom: '6px',
                               [isOwn ? 'left' : 'right']: 0,
                               zIndex: 5,
                             }}
@@ -1244,9 +1268,9 @@ export default function ConversationPage() {
                       marginTop: '2px',
                     }}>
                       {msg.is_edited && (
-                        <span style={{ fontSize: '10px', color: '#A3A3A3' }}>edited</span>
+                        <span style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>edited</span>
                       )}
-                      <span style={{ fontSize: '10px', color: '#A3A3A3' }}>
+                      <span style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>
                         {formatTime(msg.created_at)}
                       </span>
                     </div>
@@ -1282,16 +1306,16 @@ export default function ConversationPage() {
           }}>
             <div style={{
               padding: '8px 14px',
-              background: '#F5F5F5',
+              background: 'var(--surface)',
               borderRadius: '4px 16px 16px 16px',
-              border: '1.5px solid #E5E5E5',
+              border: '2px solid var(--border-strong)',
               fontSize: '13px',
-              color: '#A3A3A3',
+              color: 'var(--text-secondary)',
               fontStyle: 'italic',
             }}>
               {typingUsers.length === 1
-                ? `${typingUsers[0].displayName} is typing...`
-                : 'Several people are typing...'}
+                ? `${typingUsers[0].displayName} is typing…`
+                : 'Several people are typing…'}
             </div>
           </div>
         )}
@@ -1310,19 +1334,18 @@ export default function ConversationPage() {
             width: '44px',
             height: '44px',
             borderRadius: '50%',
-            background: '#0a0a0a',
-            border: 'none',
-            color: '#fff',
-            fontSize: '16px',
+            background: 'var(--surface)',
+            border: '2px solid var(--border-strong)',
+            color: 'var(--text)',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '2px 2px 0 #FFB800',
+            boxShadow: 'var(--shadow-hard-sm)',
             zIndex: 20,
           }}
         >
-          ↓
+          <ArrowDown size={18} {...iconProps} />
           {newMessageCount > 0 && (
             <div style={{
               position: 'absolute',
@@ -1331,15 +1354,15 @@ export default function ConversationPage() {
               minWidth: '18px',
               height: '18px',
               padding: '0 4px',
-              background: '#FFB800',
-              border: '1.5px solid #0a0a0a',
+              background: 'var(--accent)',
+              border: '1.5px solid var(--border-strong)',
               borderRadius: '100px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               fontSize: '10px',
               fontWeight: '800',
-              color: '#0a0a0a',
+              color: 'var(--foreground)',
             }}>
               {newMessageCount > 99 ? '99+' : newMessageCount}
             </div>
@@ -1349,10 +1372,10 @@ export default function ConversationPage() {
 
       {/* Reply preview */}
       {replyTo && (
-        <div style={{
+        <div className="relay-fade-in" style={{
           padding: '8px 16px',
-          background: '#F5F5F5',
-          borderTop: '1px solid #E5E5E5',
+          background: 'var(--surface)',
+          borderTop: '2px solid var(--border-strong)',
           display: 'flex',
           alignItems: 'center',
           gap: '10px',
@@ -1360,15 +1383,15 @@ export default function ConversationPage() {
         }}>
           <div style={{
             flex: 1,
-            borderLeft: '3px solid #FFB800',
+            borderLeft: '3px solid var(--accent)',
             paddingLeft: '10px',
           }}>
-            <p style={{ fontSize: '11px', fontWeight: '700', color: '#0a0a0a', marginBottom: '2px' }}>
+            <p style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text)', marginBottom: '2px' }}>
               Replying to {replyTo.sender_name_snapshot}
             </p>
             <p style={{
               fontSize: '12px',
-              color: '#525252',
+              color: 'var(--text-secondary)',
               whiteSpace: 'nowrap',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
@@ -1378,16 +1401,17 @@ export default function ConversationPage() {
           </div>
           <button
             onClick={() => setReplyTo(null)}
+            aria-label="Cancel reply"
             style={{
               background: 'none',
               border: 'none',
               cursor: 'pointer',
-              fontSize: '18px',
-              color: '#A3A3A3',
+              color: 'var(--text-tertiary)',
+              display: 'flex',
               padding: '4px',
             }}
           >
-            ×
+            <X size={16} {...iconProps} />
           </button>
         </div>
       )}
@@ -1402,13 +1426,13 @@ export default function ConversationPage() {
       {mediaPreview && (
         <div style={{
           padding: '12px 16px',
-          background: '#F5F5F5',
-          borderTop: '1px solid #E5E5E5',
+          background: 'var(--surface)',
+          borderTop: '2px solid var(--border-strong)',
           flexShrink: 0,
         }}>
           <div style={{
-            background: '#fff',
-            border: '1.5px solid #0a0a0a',
+            background: 'var(--surface)',
+            border: '2px solid var(--border-strong)',
             borderRadius: '12px',
             padding: '12px',
             display: 'flex',
@@ -1424,29 +1448,29 @@ export default function ConversationPage() {
                   height: '60px',
                   objectFit: 'cover',
                   borderRadius: '8px',
-                  border: '1px solid #E5E5E5',
+                  border: '1px solid var(--border)',
                 }}
               />
             ) : (
               <div style={{
                 width: '44px',
                 height: '44px',
-                background: '#F5F5F5',
+                background: 'var(--gray-100)',
                 borderRadius: '8px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '22px',
+                color: 'var(--text-secondary)',
                 flexShrink: 0,
               }}>
-                📄
+                <FileText size={20} {...iconProps} />
               </div>
             )}
             <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{
                 fontSize: '13px',
                 fontWeight: '600',
-                color: '#0a0a0a',
+                color: 'var(--text)',
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
@@ -1454,111 +1478,101 @@ export default function ConversationPage() {
               }}>
                 {mediaPreview.file.name}
               </p>
-              <p style={{ fontSize: '11px', color: '#A3A3A3' }}>
+              <p style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
                 {(mediaPreview.file.size / 1024).toFixed(1)} KB
               </p>
             </div>
             <button
               onClick={handleConfirmMediaUpload}
               disabled={sending}
-              style={{
-                padding: '8px 16px',
-                background: '#0a0a0a',
-                color: '#fff',
-                border: '1.5px solid #0a0a0a',
-                borderRadius: '8px',
-                fontSize: '13px',
-                fontWeight: '700',
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-                boxShadow: '2px 2px 0 #FFB800',
-                flexShrink: 0,
-              }}
+              className="relay-icon-btn relay-icon-btn--accent"
+              style={{ width: 'auto', padding: '8px 16px', fontSize: '13px', fontWeight: '700' }}
             >
-              {sending ? 'Sending...' : 'Send'}
+              {sending ? 'Sending…' : 'Send'}
             </button>
             <button
               onClick={() => {
                 if (mediaPreview.previewUrl) URL.revokeObjectURL(mediaPreview.previewUrl)
                 setMediaPreview(null)
               }}
+              aria-label="Remove attachment"
               style={{
                 background: 'none',
                 border: 'none',
                 cursor: 'pointer',
-                fontSize: '20px',
-                color: '#A3A3A3',
+                color: 'var(--text-tertiary)',
+                display: 'flex',
                 padding: '4px',
                 flexShrink: 0,
               }}
             >
-              ×
+              <X size={18} {...iconProps} />
             </button>
           </div>
         </div>
       )}
 
       {showSearch && (
-        <div style={{
-          borderTop: '1px solid #E5E5E5',
-          background: '#fff',
+        <div className="relay-fade-in" style={{
+          borderTop: '2px solid var(--border-strong)',
+          background: 'var(--surface)',
           flexShrink: 0,
           maxHeight: '300px',
           display: 'flex',
           flexDirection: 'column',
         }}>
-          <div style={{ padding: '10px 16px', borderBottom: '1px solid #F5F5F5' }}>
+          <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border-light)' }}>
             <input
               type="text"
               value={searchQuery}
               onChange={e => handleSearch(e.target.value)}
-              placeholder="Search messages..."
+              placeholder="Search messages…"
               autoFocus
+              className="relay-input"
               style={{
                 width: '100%',
                 padding: '8px 12px',
-                border: '1.5px solid #0a0a0a',
                 borderRadius: '8px',
                 fontSize: '16px',
-                fontFamily: 'inherit',
-                outline: 'none',
+                boxSizing: 'border-box',
               }}
             />
           </div>
           <div style={{ overflowY: 'auto', flex: 1 }}>
             {searching && (
-              <p style={{ padding: '12px 16px', fontSize: '13px', color: '#A3A3A3' }}>Searching...</p>
+              <p style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--text-tertiary)' }}>Searching…</p>
             )}
             {!searching && searchQuery.length >= 2 && searchResults.length === 0 && (
-              <p style={{ padding: '12px 16px', fontSize: '13px', color: '#A3A3A3' }}>No messages found</p>
+              <p style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--text-tertiary)' }}>No messages found</p>
             )}
             {searchResults.map(msg => (
               <div
                 key={msg.id}
+                className="relay-menu-row"
                 style={{
                   padding: '10px 16px',
-                  borderBottom: '1px solid #F5F5F5',
+                  borderBottom: '1px solid var(--border-light)',
+                  borderRadius: 0,
+                  display: 'block',
                   cursor: 'pointer',
                 }}
-                onMouseEnter={e => e.currentTarget.style.background = '#F9F9F9'}
-                onMouseLeave={e => e.currentTarget.style.background = '#fff'}
                 onClick={() => {
                   const el = document.getElementById(`msg-${msg.id}`)
                   if (el) {
                     el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-                    el.style.background = '#FFF8E1'
+                    el.style.background = 'var(--accent-light)'
                     setTimeout(() => el.style.background = '', 2000)
                   }
                   setShowSearch(false)
                 }}
               >
-                <p style={{ fontSize: '12px', fontWeight: '700', color: '#0a0a0a', marginBottom: '2px' }}>
+                <p style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text)', marginBottom: '2px' }}>
                   {msg.sender_name_snapshot}
                 </p>
-                <p style={{ fontSize: '13px', color: '#525252', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <p style={{ fontSize: '13px', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {msg.content}
                 </p>
-                <p style={{ fontSize: '11px', color: '#A3A3A3', marginTop: '2px' }}>
+                <p style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
                   {formatTime(msg.created_at)}
                 </p>
               </div>
@@ -1568,34 +1582,34 @@ export default function ConversationPage() {
       )}
 
       {showMentions && (
-        <div style={{
-          background: '#fff',
-          border: '1.5px solid #0a0a0a',
+        <div className="relay-popover" style={{
+          background: 'var(--surface)',
+          border: '2px solid var(--border-strong)',
           borderRadius: '12px',
           margin: '0 16px 8px',
           overflow: 'hidden',
-          boxShadow: '3px 3px 0 #0a0a0a',
+          boxShadow: 'var(--shadow-hard-sm)',
           flexShrink: 0,
+          transformOrigin: 'bottom left',
         }}>
           {mentionResults.map(member => (
             <div
               key={member.user_id || member.id}
               onClick={() => handleMentionSelect(member)}
+              className="relay-menu-row"
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '10px',
                 padding: '10px 14px',
-                cursor: 'pointer',
-                borderBottom: '1px solid #F5F5F5',
+                borderRadius: 0,
+                borderBottom: '1px solid var(--border-light)',
               }}
-              onMouseEnter={e => e.currentTarget.style.background = '#F9F9F9'}
-              onMouseLeave={e => e.currentTarget.style.background = '#fff'}
             >
               <Avatar src={member.avatar_url} name={member.display_name} size={32} userId={member.user_id || member.id} />
               <div>
-                <p style={{ fontSize: '13px', fontWeight: '700', color: '#0a0a0a' }}>{member.display_name}</p>
-                <p style={{ fontSize: '11px', color: '#A3A3A3' }}>@{member.username}</p>
+                <p style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text)' }}>{member.display_name}</p>
+                <p style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>@{member.username}</p>
               </div>
             </div>
           ))}
@@ -1609,10 +1623,10 @@ export default function ConversationPage() {
           bottom: 0,
           padding: '12px 16px',
           paddingBottom: 'calc(12px + env(safe-area-inset-bottom))',
-          borderTop: '1.5px solid #E5E5E5',
+          borderTop: '2px solid var(--border-strong)',
           display: 'flex',
           gap: '10px',
-          background: '#fff',
+          background: 'var(--surface)',
           flexShrink: 0,
         }}>
           <button
@@ -1620,51 +1634,66 @@ export default function ConversationPage() {
             disabled={!canBulkDelete}
             style={{
               flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
               padding: '12px',
               background: 'none',
               border: 'none',
-              color: canBulkDelete ? '#EF4444' : '#E5E5E5',
+              color: canBulkDelete ? 'var(--error)' : 'var(--text-tertiary)',
+              opacity: canBulkDelete ? 1 : 0.5,
               fontSize: '14px',
               fontWeight: '700',
               cursor: canBulkDelete ? 'pointer' : 'not-allowed',
               fontFamily: 'inherit',
             }}
           >
-            🗑️ Delete
+            <Trash2 size={16} {...iconProps} /> Delete
           </button>
           <button
             disabled
             title="Coming soon"
             style={{
               flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
               padding: '12px',
               background: 'none',
               border: 'none',
-              color: '#E5E5E5',
+              color: 'var(--text-tertiary)',
+              opacity: 0.5,
               fontSize: '14px',
               fontWeight: '700',
               cursor: 'not-allowed',
               fontFamily: 'inherit',
             }}
           >
-            ➡️ Forward
+            <Forward size={16} {...iconProps} /> Forward
           </button>
           <button
             onClick={handleBulkCopy}
             disabled={selectedMsgIds.size === 0}
             style={{
               flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
               padding: '12px',
               background: 'none',
               border: 'none',
-              color: selectedMsgIds.size > 0 ? '#0a0a0a' : '#E5E5E5',
+              color: selectedMsgIds.size > 0 ? 'var(--text)' : 'var(--text-tertiary)',
+              opacity: selectedMsgIds.size > 0 ? 1 : 0.5,
               fontSize: '14px',
               fontWeight: '700',
               cursor: selectedMsgIds.size > 0 ? 'pointer' : 'not-allowed',
               fontFamily: 'inherit',
             }}
           >
-            📋 Copy all
+            <Copy size={16} {...iconProps} /> Copy all
           </button>
         </div>
       ) : (
@@ -1673,14 +1702,14 @@ export default function ConversationPage() {
         bottom: 0,
         padding: '12px 16px',
         paddingBottom: 'calc(12px + env(safe-area-inset-bottom))',
-        borderTop: '1.5px solid #E5E5E5',
-        background: '#fff',
+        borderTop: '2px solid var(--border-strong)',
+        background: 'var(--surface)',
         flexShrink: 0,
       }}>
         {content.length >= 1600 && (
           <p style={{
             fontSize: '11px',
-            color: content.length >= 2000 ? '#EF4444' : '#A3A3A3',
+            color: content.length >= 2000 ? 'var(--error)' : 'var(--text-tertiary)',
             textAlign: 'right',
             marginBottom: '4px',
           }}>
@@ -1698,60 +1727,27 @@ export default function ConversationPage() {
           />
           <label
             htmlFor="media-upload"
-            style={{
-              width: '44px',
-              height: '44px',
-              background: '#fff',
-              border: '1.5px solid #0a0a0a',
-              borderRadius: '10px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              fontSize: '18px',
-              flexShrink: 0,
-            }}
+            className="relay-icon-btn"
+            style={{ borderRadius: '10px', cursor: 'pointer' }}
             title="Attach file"
           >
-            📎
+            <Paperclip size={18} {...iconProps} />
           </label>
           <button
             onClick={() => setShowCamera(true)}
-            style={{
-              width: '44px',
-              height: '44px',
-              background: '#fff',
-              border: '1.5px solid #0a0a0a',
-              borderRadius: '10px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              fontSize: '18px',
-              flexShrink: 0,
-            }}
+            className="relay-icon-btn"
+            style={{ borderRadius: '10px' }}
             title="Camera"
           >
-            📷
+            <Camera size={18} {...iconProps} />
           </button>
           <button
             onClick={() => setShowRecorder(true)}
-            style={{
-              width: '44px',
-              height: '44px',
-              background: '#fff',
-              border: '1.5px solid #0a0a0a',
-              borderRadius: '10px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              fontSize: '18px',
-              flexShrink: 0,
-            }}
+            className="relay-icon-btn"
+            style={{ borderRadius: '10px' }}
             title="Voice message"
           >
-            🎙️
+            <Mic size={18} {...iconProps} />
           </button>
         </div>
         <textarea
@@ -1783,50 +1779,35 @@ export default function ConversationPage() {
             }
           }}
           onKeyDown={handleKeyDown}
-          placeholder="Message..."
+          placeholder="Message…"
           rows={1}
           maxLength={2000}
+          className="relay-input"
           style={{
             flex: 1,
             padding: '10px 14px',
-            border: '1.5px solid #E5E5E5',
             borderRadius: '12px',
             fontSize: '16px',
-            fontFamily: 'inherit',
-            outline: 'none',
             resize: 'none',
             lineHeight: '1.5',
             maxHeight: '120px',
             overflowY: 'auto',
-            transition: 'border-color 0.15s',
           }}
-          onFocus={e => e.target.style.borderColor = '#0a0a0a'}
-          onBlur={e => e.target.style.borderColor = '#E5E5E5'}
           onInput={e => {
             e.target.style.height = 'auto'
             e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px'
           }}
         />
+        {/* The one bold accent moment on this screen, same idea as
+            ChatList's "+" button — everything else here is neutral. */}
         <button
           onClick={handleSend}
           disabled={!content.trim() || sending}
-          style={{
-            width: '44px',
-            height: '44px',
-            background: content.trim() ? '#0a0a0a' : '#E5E5E5',
-            border: '1.5px solid #0a0a0a',
-            borderRadius: '10px',
-            cursor: content.trim() ? 'pointer' : 'not-allowed',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '16px',
-            flexShrink: 0,
-            transition: 'background 0.15s',
-            boxShadow: content.trim() ? '2px 2px 0 #FFB800' : 'none',
-          }}
+          aria-label="Send"
+          className={content.trim() ? 'relay-icon-btn relay-icon-btn--accent' : 'relay-icon-btn'}
+          style={{ borderRadius: '10px', cursor: content.trim() ? 'pointer' : 'not-allowed', opacity: content.trim() ? 1 : 0.5 }}
         >
-          →
+          <Send size={18} strokeWidth={2.25} strokeLinecap="square" strokeLinejoin="miter" />
         </button>
         </div>
       </div>
@@ -1834,19 +1815,26 @@ export default function ConversationPage() {
 
       <style>{`
         .mobile-back-btn { display: flex; }
+        .desktop-close-btn { display: none; }
         @media (min-width: 769px) {
           .mobile-back-btn { display: none; }
+          .desktop-close-btn { display: flex; }
         }
-        /* Desktop hover action bar: invisible until the message row is
+        /* Desktop hover action bar: invisible until the bubble itself is
            hovered, pure CSS so hovering doesn't trigger a React re-render
            per message. Hidden entirely on mobile, which uses long-press
-           (MessageActionSheet) instead. */
+           (MessageActionSheet) instead.
+           Scoped to .message-bubble, not .message-row — the row is a flex
+           item stretched to the full width of the message list (needed so
+           row-reverse can right-align "own" messages), so triggering on
+           row-hover meant any empty space beside a short bubble, anywhere
+           along that same horizontal line, would pop the bar open. */
         .message-action-bar-wrap {
           opacity: 0;
           transition: opacity 0.12s;
           pointer-events: none;
         }
-        .message-row:hover .message-action-bar-wrap {
+        .message-bubble:hover .message-action-bar-wrap {
           opacity: 1;
           pointer-events: auto;
         }

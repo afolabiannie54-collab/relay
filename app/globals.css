@@ -340,3 +340,24 @@ a, button, input, textarea, select {
 .relay-icon-btn--accent:hover {
   background: var(--accent-hover);
 }
+
+/* Plain icon button — no border, no persistent fill, just a neutral
+   hover circle. For header actions (back, close, info) that aren't tabs
+   or primary controls and shouldn't read as a boxed button; same
+   treatment as BottomSheet's close button. */
+.relay-plain-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-pill);
+  border: none;
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+.relay-plain-icon-btn:hover {
+  background: var(--surface-hover);
+}
