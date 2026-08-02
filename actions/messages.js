@@ -626,10 +626,13 @@ export async function getHiddenConversationCount() {
 
   if (!user) return { count: 0 }
 
-  const { count, error } = await supabase
-    .from('conversation_hidden')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', user.id)
+  // A raw conversation_hidden count would also count pending message
+  // requests, which are hidden from the receiver's main list for an
+  // unrelated reason (see create_message_request) — this RPC excludes
+  // those, matching get_hidden_conversations' own exclusion.
+  const { data: count, error } = await supabase.rpc('get_hidden_conversation_count', {
+    p_user_id: user.id,
+  })
 
   if (error) return { count: 0 }
   return { count: count || 0 }

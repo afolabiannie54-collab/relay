@@ -70,12 +70,25 @@ export default function ChatList({ onSelectConversation }) {
       // also gate whether we get to show something instantly.
       const cachedConvs = cache.peek('conversations')
       const cachedMuted = cache.get('muted-ids')
+      // These three used to have no cache backing at all, unlike
+      // conversations/muted-ids above — on every remount (e.g. leaving to
+      // /requests or /chat/hidden, both outside the /chat layout, and
+      // coming back) they'd reset to 0 and stay there for the full
+      // round-trip, reading as the badges "going away and coming back."
+      // Priming from cache here keeps that gap imperceptible, same as
+      // conversations already was.
+      const cachedNotif = cache.peek('unread-notif-count')
+      const cachedRequests = cache.peek('requests-count')
+      const cachedHidden = cache.peek('hidden-count')
 
       if (cachedConvs) {
         setConversations(cachedConvs)
         setLoading(false)
       }
       if (cachedMuted) setMutedIds(cachedMuted)
+      if (cachedNotif != null) setUnreadNotifCount(cachedNotif)
+      if (cachedRequests != null) setRequestsCount(cachedRequests)
+      if (cachedHidden != null) setHiddenCount(cachedHidden)
 
       const supabase = createClient()
 
@@ -101,6 +114,9 @@ export default function ChatList({ onSelectConversation }) {
       setUnreadNotifCount(notifResult.count || 0)
       setRequestsCount(requestsResult.count || 0)
       setHiddenCount(hiddenResult.count || 0)
+      cache.set('unread-notif-count', notifResult.count || 0, 10000)
+      cache.set('requests-count', requestsResult.count || 0, 10000)
+      cache.set('hidden-count', hiddenResult.count || 0, 10000)
       setLoading(false)
     }
     load()
@@ -214,7 +230,11 @@ export default function ChatList({ onSelectConversation }) {
         table: 'notifications',
         filter: `user_id=eq.${userId}`,
       }, (payload) => {
-        setUnreadNotifCount(c => c + 1)
+        setUnreadNotifCount(c => {
+          const next = c + 1
+          cache.set('unread-notif-count', next, 10000)
+          return next
+        })
         // A DB trigger inserts this when a group the user was in gets
         // deleted, so their list updates instantly without depending on
         // conversation_participants DELETE Realtime — which never fires
@@ -238,7 +258,11 @@ export default function ChatList({ onSelectConversation }) {
         filter: `user_id=eq.${userId}`,
       }, (payload) => {
         if (payload.new.read === true && payload.old.read === false) {
-          setUnreadNotifCount(c => Math.max(0, c - 1))
+          setUnreadNotifCount(c => {
+            const next = Math.max(0, c - 1)
+            cache.set('unread-notif-count', next, 10000)
+            return next
+          })
         }
       })
       .on('postgres_changes', {
@@ -249,6 +273,7 @@ export default function ChatList({ onSelectConversation }) {
       }, async () => {
         const result = await getRequestsCount()
         setRequestsCount(result.count || 0)
+        cache.set('requests-count', result.count || 0, 10000)
       })
       .on('postgres_changes', {
         event: '*',
@@ -258,6 +283,7 @@ export default function ChatList({ onSelectConversation }) {
       }, async () => {
         const result = await getRequestsCount()
         setRequestsCount(result.count || 0)
+        cache.set('requests-count', result.count || 0, 10000)
       })
       .on('postgres_changes', {
         event: '*',
@@ -267,6 +293,7 @@ export default function ChatList({ onSelectConversation }) {
       }, async () => {
         const result = await getHiddenConversationCount()
         setHiddenCount(result.count || 0)
+        cache.set('hidden-count', result.count || 0, 10000)
       })
       // Fires whenever the current user is added as a participant to any
       // conversation — new group creation, being added to an existing
@@ -655,7 +682,13 @@ export default function ChatList({ onSelectConversation }) {
         overscrollBehaviorY: 'contain',
         WebkitOverflowScrolling: 'touch',
       }}>
-        {!bulkSelectMode && requestsCount > 0 && (
+        {/* Always accessible — this used to only render when requestsCount
+            was > 0, which meant the Requests tab (both Received and Sent)
+            had no entry point at all once nothing was pending. The icon
+            still switches to the bold accent treatment when there's
+            something to act on, same idea as Hidden Chats' always-visible
+            row below. */}
+        {!bulkSelectMode && (
           <div
             onClick={() => router.push('/requests')}
             style={{
@@ -675,34 +708,36 @@ export default function ChatList({ onSelectConversation }) {
               width: '42px',
               height: '42px',
               borderRadius: '50%',
-              background: 'var(--accent)',
-              border: '2px solid var(--border-strong)',
+              background: requestsCount > 0 ? 'var(--accent)' : 'var(--gray-100)',
+              border: requestsCount > 0 ? '2px solid var(--border-strong)' : '1px solid var(--border)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               flexShrink: 0,
-              color: 'var(--foreground)',
+              color: requestsCount > 0 ? 'var(--foreground)' : 'var(--text-secondary)',
             }}>
               <Inbox size={18} {...iconProps} />
             </div>
-            <p style={{ flex: 1, fontSize: '14px', fontWeight: '700', color: 'var(--text)' }}>
+            <p style={{ flex: 1, fontSize: '14px', fontWeight: requestsCount > 0 ? '700' : '600', color: requestsCount > 0 ? 'var(--text)' : 'var(--text-secondary)' }}>
               Message Requests
             </p>
-            <div style={{
-              minWidth: '22px',
-              height: '22px',
-              padding: '0 6px',
-              background: 'var(--text)',
-              borderRadius: '100px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '12px',
-              fontWeight: '800',
-              color: 'var(--background)',
-            }}>
-              {requestsCount > 99 ? '99+' : requestsCount}
-            </div>
+            {requestsCount > 0 && (
+              <div style={{
+                minWidth: '22px',
+                height: '22px',
+                padding: '0 6px',
+                background: 'var(--text)',
+                borderRadius: '100px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '12px',
+                fontWeight: '800',
+                color: 'var(--background)',
+              }}>
+                {requestsCount > 99 ? '99+' : requestsCount}
+              </div>
+            )}
           </div>
         )}
 
