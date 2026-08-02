@@ -356,6 +356,19 @@ export default function ConversationPage() {
       }, () => {
         reloadGroupInfo()
       })
+      // Clears the sender's "waiting for acceptance" composer state the
+      // moment the receiver actually accepts, instead of leaving it
+      // stuck until the sender manually reloads the conversation.
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'message_requests',
+        filter: `conversation_id=eq.${id}`,
+      }, (payload) => {
+        if (payload.new.status !== 'pending') {
+          setConversation(prev => prev ? { ...prev, pendingRequestAsSender: false } : prev)
+        }
+      })
       // message_reactions has no conversation_id column, so this can't
       // be filtered server-side the way the others above are — it's
       // scoped to this conversation by checking the changed row's
@@ -1731,6 +1744,19 @@ export default function ConversationPage() {
           >
             <Copy size={16} {...iconProps} /> Copy all
           </button>
+        </div>
+      ) : conversation?.pendingRequestAsSender ? (
+        <div style={{
+          padding: '16px 20px',
+          paddingBottom: 'calc(16px + env(safe-area-inset-bottom))',
+          borderTop: '2px solid var(--border-strong)',
+          background: 'var(--surface)',
+          flexShrink: 0,
+          textAlign: 'center',
+        }}>
+          <p style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-tertiary)' }}>
+            Message request sent — you can send more once it&apos;s accepted.
+          </p>
         </div>
       ) : (
       <div className="chat-input-bar" style={{

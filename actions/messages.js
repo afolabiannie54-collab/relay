@@ -44,6 +44,27 @@ async function checkDmBlock(supabase, conversationId, senderId) {
   return { blocked: !!block, type: conversationRow.type }
 }
 
+// The message-request flow's entire premise — one intro message, then
+// silence until the receiver accepts — was only ever enforced by the UI
+// happening to not offer a compose box, and by conversation_hidden
+// keeping it out of both parties' main list. Neither actually stops
+// sendMessage/uploadMedia from being called directly against the
+// conversation once you're in it (which the sender always is, right
+// after sending the request — hiding only affects list membership, not
+// the page they get redirected straight into). This is the real gate:
+// block any further message while a request on this conversation is
+// still pending, regardless of how the conversation view was reached.
+async function checkPendingRequest(supabase, conversationId) {
+  const { data } = await supabase
+    .from('message_requests')
+    .select('id')
+    .eq('conversation_id', conversationId)
+    .eq('status', 'pending')
+    .maybeSingle()
+
+  return !!data
+}
+
 export async function sendMessageRequest(receiverId, content) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -235,9 +256,9 @@ export async function getConversation(conversationId) {
 
   if (!user) return { error: 'Not authenticated' }
 
-  // These three reads don't depend on one another — fire them together
-  // instead of paying for three sequential round-trips.
-  const [participantResult, conversationResult, participantsResult] = await Promise.all([
+  // These four reads don't depend on one another — fire them together
+  // instead of paying for four sequential round-trips.
+  const [participantResult, conversationResult, participantsResult, pendingRequestResult] = await Promise.all([
     supabase
       .from('conversation_participants')
       .select('role')
@@ -258,6 +279,16 @@ export async function getConversation(conversationId) {
       `)
       .eq('conversation_id', conversationId)
       .neq('user_id', user.id),
+    // Lets the conversation page tell "waiting for them to accept" apart
+    // from a normal, already-open conversation — sendMessage/uploadMedia
+    // enforce this server-side regardless, but the composer should say
+    // so up front instead of just failing silently on the next send.
+    supabase
+      .from('message_requests')
+      .select('sender_id, receiver_id')
+      .eq('conversation_id', conversationId)
+      .eq('status', 'pending')
+      .maybeSingle(),
   ])
 
   const participant = participantResult.data
@@ -279,7 +310,16 @@ export async function getConversation(conversationId) {
     }
   }) || []
 
-  return { data: { participants: otherParticipants, role: participant.role, type: conversationRow?.type } }
+  const pendingRequest = pendingRequestResult.data
+
+  return {
+    data: {
+      participants: otherParticipants,
+      role: participant.role,
+      type: conversationRow?.type,
+      pendingRequestAsSender: pendingRequest?.sender_id === user.id,
+    },
+  }
 }
 
 export async function getMessages(conversationId, page = 0) {
@@ -367,6 +407,10 @@ export async function sendMessage(conversationId, content, replyToId = null) {
 
   const { blocked, type: conversationType } = await checkDmBlock(supabase, conversationId, user.id)
   if (blocked) return { error: 'Unable to send message' }
+
+  if (await checkPendingRequest(supabase, conversationId)) {
+    return { error: 'This message request hasn\'t been accepted yet' }
+  }
 
   // Get sender display name
   const { data: profile } = await supabase
@@ -710,6 +754,10 @@ export async function uploadMedia(conversationId, formData) {
 
   const { blocked } = await checkDmBlock(supabase, conversationId, user.id)
   if (blocked) return { error: 'Unable to send message' }
+
+  if (await checkPendingRequest(supabase, conversationId)) {
+    return { error: 'This message request hasn\'t been accepted yet' }
+  }
 
   // Get sender display name
   const { data: profile } = await supabase
