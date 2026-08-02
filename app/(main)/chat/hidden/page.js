@@ -2,12 +2,13 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, EyeOff, Image as ImageIcon, Music, Paperclip } from 'lucide-react'
+import { ChevronLeft, Image as ImageIcon, Music, Paperclip } from 'lucide-react'
 import Avatar from '@/components/shared/Avatar'
 import ChatLink from '@/components/chat/ChatLink'
 import ConversationActionSheet from '@/components/chat/ConversationActionSheet'
 import ConversationContextMenu from '@/components/chat/ConversationContextMenu'
 import { getHiddenConversations } from '@/actions/messages'
+import { createClient } from '@/lib/supabase/client'
 
 const LONG_PRESS_MS = 400
 const LONG_PRESS_MOVE_TOLERANCE = 10
@@ -17,6 +18,7 @@ export default function HiddenConversationsPage() {
   const router = useRouter()
   const [conversations, setConversations] = useState([])
   const [loading, setLoading] = useState(true)
+  const [userId, setUserId] = useState(null)
   const [actionSheetConv, setActionSheetConv] = useState(null)
   const [contextMenu, setContextMenu] = useState(null)
   const longPressTimerRef = useRef(null)
@@ -30,6 +32,9 @@ export default function HiddenConversationsPage() {
 
   useEffect(() => {
     async function load() {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      setUserId(user?.id || null)
       await refreshHidden()
       setLoading(false)
     }
@@ -153,9 +158,6 @@ export default function HiddenConversationsPage() {
             padding: '40px',
             textAlign: 'center',
           }}>
-            <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'var(--surface)', border: '2px solid var(--border-strong)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', marginBottom: '16px' }}>
-              <EyeOff size={24} {...iconProps} />
-            </div>
             <h2 style={{ fontSize: '18px', fontWeight: '800', color: 'var(--text)', marginBottom: '6px', letterSpacing: '-0.01em' }}>No hidden chats</h2>
             <p style={{ fontSize: '14px', color: 'var(--text-tertiary)' }}>
               Conversations you hide will show up here.
@@ -220,21 +222,46 @@ export default function HiddenConversationsPage() {
                         {formatTime(lastMessage?.created_at)}
                       </span>
                     </div>
-                    <p style={{
-                      fontSize: '13px',
-                      color: 'var(--text-tertiary)',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                    }}>
-                      {PreviewIcon && <PreviewIcon size={13} {...iconProps} style={{ flexShrink: 0 }} />}
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {PreviewIcon ? preview.text : preview}
-                      </span>
-                    </p>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <p style={{
+                        fontSize: '13px',
+                        color: conv.unread_count > 0 ? 'var(--text)' : 'var(--text-tertiary)',
+                        fontWeight: conv.unread_count > 0 ? '600' : '400',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        flex: 1,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                      }}>
+                        {lastMessage?.sender_id === userId ? 'You: ' : ''}
+                        {PreviewIcon && <PreviewIcon size={13} {...iconProps} style={{ flexShrink: 0 }} />}
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {PreviewIcon ? preview.text : preview}
+                        </span>
+                      </p>
+                      {conv.unread_count > 0 && (
+                        <div style={{
+                          minWidth: '19px',
+                          height: '19px',
+                          padding: '0 6px',
+                          background: 'var(--accent)',
+                          border: '1.5px solid var(--border-strong)',
+                          borderRadius: '100px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '11px',
+                          fontWeight: '800',
+                          color: 'var(--foreground)',
+                          flexShrink: 0,
+                          marginLeft: '8px',
+                        }}>
+                          {conv.unread_count > 99 ? '99+' : conv.unread_count}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </ChatLink>

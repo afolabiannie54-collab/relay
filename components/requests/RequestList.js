@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { ChevronLeft, Mail } from 'lucide-react'
+import { ChevronLeft } from 'lucide-react'
 import Avatar from '@/components/shared/Avatar'
 import ConfirmSheet from '@/components/shared/ConfirmSheet'
 import {
@@ -118,19 +118,6 @@ export default function RequestList({ initialReceived, initialSent, userId }) {
     setActing(null)
   }
 
-  const tabStyle = (active) => ({
-    flex: 1,
-    padding: '12px',
-    background: 'none',
-    border: 'none',
-    borderBottom: active ? '2.5px solid var(--border-strong)' : '2.5px solid transparent',
-    fontSize: '14px',
-    fontWeight: active ? '800' : '600',
-    color: active ? 'var(--text)' : 'var(--text-tertiary)',
-    cursor: 'pointer',
-    fontFamily: 'inherit',
-  })
-
   const list = tab === 'received' ? received : sent
 
   return (
@@ -151,11 +138,19 @@ export default function RequestList({ initialReceived, initialSent, userId }) {
           <ChevronLeft size={22} {...iconProps} />
         </button>
         <h1 className="relay-page-title" style={{ marginBottom: '14px' }}>Requests</h1>
-        <div style={{ display: 'flex' }}>
-          <button style={tabStyle(tab === 'received')} onClick={() => setTab('received')}>
+        <div style={{ display: 'flex', gap: '8px', paddingBottom: '14px' }}>
+          <button
+            onClick={() => setTab('received')}
+            className={tab === 'received' ? 'relay-btn relay-btn--filled' : 'relay-btn'}
+            style={{ borderRadius: 'var(--radius-pill)', padding: '8px 16px' }}
+          >
             Received{received.length > 0 ? ` (${received.length})` : ''}
           </button>
-          <button style={tabStyle(tab === 'sent')} onClick={() => setTab('sent')}>
+          <button
+            onClick={() => setTab('sent')}
+            className={tab === 'sent' ? 'relay-btn relay-btn--filled' : 'relay-btn'}
+            style={{ borderRadius: 'var(--radius-pill)', padding: '8px 16px' }}
+          >
             Sent{sent.length > 0 ? ` (${sent.length})` : ''}
           </button>
         </div>
@@ -172,9 +167,6 @@ export default function RequestList({ initialReceived, initialSent, userId }) {
             padding: '40px',
             textAlign: 'center',
           }}>
-            <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'var(--surface)', border: '2px solid var(--border-strong)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', marginBottom: '16px' }}>
-              <Mail size={24} {...iconProps} />
-            </div>
             <h2 style={{ fontSize: '18px', fontWeight: '800', color: 'var(--text)', marginBottom: '6px', letterSpacing: '-0.01em' }}>
               {tab === 'received' ? 'No requests' : 'No pending requests'}
             </h2>

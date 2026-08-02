@@ -119,9 +119,6 @@ export default function NotificationList({ initialNotifications }) {
             padding: '40px',
             textAlign: 'center',
           }}>
-            <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'var(--surface)', border: '2px solid var(--border-strong)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', marginBottom: '16px' }}>
-              <Bell size={24} {...iconProps} />
-            </div>
             <h2 style={{ fontSize: '18px', fontWeight: '800', color: 'var(--text)', marginBottom: '6px', letterSpacing: '-0.01em' }}>No notifications</h2>
             <p style={{ fontSize: '14px', color: 'var(--text-tertiary)' }}>
               You&apos;re all caught up.
