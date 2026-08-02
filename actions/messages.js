@@ -147,12 +147,16 @@ export async function acceptMessageRequest(requestId) {
     request.conversation_id
   )
 
-  // Remove from hidden conversations
+  // Remove from hidden conversations for BOTH sides — create_message_request
+  // hides it for the sender too (not just the receiver calling this), and
+  // nothing else ever un-hides the sender's copy once accepted. Scoped to
+  // just this conversation_id, not just `user.id`, so acceptance clears
+  // the automatic pending-hide for whoever it applied to.
   await supabase
     .from('conversation_hidden')
     .delete()
     .eq('conversation_id', request.conversation_id)
-    .eq('user_id', user.id)
+    .in('user_id', [user.id, request.sender_id])
 
   return { success: true, conversationId: request.conversation_id }
 }
@@ -285,7 +289,7 @@ export async function getConversation(conversationId) {
     // so up front instead of just failing silently on the next send.
     supabase
       .from('message_requests')
-      .select('sender_id, receiver_id')
+      .select('id, sender_id, receiver_id')
       .eq('conversation_id', conversationId)
       .eq('status', 'pending')
       .maybeSingle(),
@@ -318,6 +322,8 @@ export async function getConversation(conversationId) {
       role: participant.role,
       type: conversationRow?.type,
       pendingRequestAsSender: pendingRequest?.sender_id === user.id,
+      pendingRequestAsReceiver: pendingRequest?.receiver_id === user.id,
+      pendingRequestId: pendingRequest?.id || null,
     },
   }
 }

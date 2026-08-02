@@ -8,7 +8,7 @@ import {
 } from 'lucide-react'
 import Avatar from '@/components/shared/Avatar'
 import EllipsisDoodle from '@/components/shared/icons/EllipsisDoodle'
-import { getMessages, sendMessage, getConversation, markConversationRead, editMessage, deleteMessage, uploadMedia, getReactions, toggleReaction, getPinnedMessages, togglePin, searchMessages } from '@/actions/messages'
+import { getMessages, sendMessage, getConversation, markConversationRead, editMessage, deleteMessage, uploadMedia, getReactions, toggleReaction, getPinnedMessages, togglePin, searchMessages, acceptMessageRequest } from '@/actions/messages'
 import { getGroupInfo } from '@/actions/groups'
 import { createClient } from '@/lib/supabase/client'
 import { cache } from '@/lib/cache'
@@ -53,6 +53,7 @@ export default function ConversationPage() {
   const [content, setContent] = useState('')
   const [loading, setLoading] = useState(() => !Array.isArray(cache.peek(`messages:${id}`)))
   const [sending, setSending] = useState(false)
+  const [acceptingRequest, setAcceptingRequest] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState(null)
   const [editContent, setEditContent] = useState('')
@@ -413,7 +414,7 @@ export default function ConversationPage() {
         filter: `conversation_id=eq.${id}`,
       }, (payload) => {
         if (payload.new.status !== 'pending') {
-          setConversation(prev => prev ? { ...prev, pendingRequestAsSender: false } : prev)
+          setConversation(prev => prev ? { ...prev, pendingRequestAsSender: false, pendingRequestAsReceiver: false } : prev)
         }
       })
       // message_reactions has no conversation_id column, so this can't
@@ -516,11 +517,29 @@ export default function ConversationPage() {
       // a retry after a failed send silently posts as a plain message
       // instead of the reply the user actually composed.
       setReplyTo(pendingReply)
+      // This used to fail completely silently — the draft just bounced
+      // back into the input with no explanation, which is exactly how a
+      // still-pending message request (blocked server-side in
+      // sendMessage) would present: looks like nothing happened at all.
+      alert(result.error)
     } else {
       try { window.navigator.vibrate?.(10) } catch {}
     }
     setSending(false)
     inputRef.current?.focus()
+  }
+
+  const handleAcceptRequest = async () => {
+    if (!conversation?.pendingRequestId) return
+    setAcceptingRequest(true)
+    const result = await acceptMessageRequest(conversation.pendingRequestId)
+    if (result.error) {
+      alert(result.error)
+      setAcceptingRequest(false)
+      return
+    }
+    setConversation(prev => prev ? { ...prev, pendingRequestAsReceiver: false, pendingRequestId: null } : prev)
+    setAcceptingRequest(false)
   }
 
   const handleEdit = async (messageId) => {
@@ -1772,6 +1791,30 @@ export default function ConversationPage() {
           <p style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-tertiary)' }}>
             Message request sent — you can send more once it&apos;s accepted.
           </p>
+        </div>
+      ) : conversation?.pendingRequestAsReceiver ? (
+        <div style={{
+          padding: '16px 20px',
+          paddingBottom: 'calc(16px + env(safe-area-inset-bottom))',
+          borderTop: '2px solid var(--border-strong)',
+          background: 'var(--surface)',
+          flexShrink: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '12px',
+        }}>
+          <p style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-secondary)' }}>
+            This is a message request.
+          </p>
+          <button
+            onClick={handleAcceptRequest}
+            disabled={acceptingRequest}
+            className="relay-btn relay-btn--filled"
+            style={{ padding: '10px 18px', fontSize: '13px', flexShrink: 0 }}
+          >
+            {acceptingRequest ? 'Accepting...' : 'Accept'}
+          </button>
         </div>
       ) : (
       <div className="chat-input-bar" style={{
