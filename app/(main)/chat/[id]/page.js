@@ -340,6 +340,53 @@ export default function ConversationPage() {
         ))
         cache.invalidate(`messages:${id}`)
       })
+      .on('broadcast', { event: 'typing' }, (payload) => {
+        if (payload.payload.userId === profile?.id) return
+        setTypingUsers(prev => {
+          if (payload.payload.isTyping) {
+            if (prev.find(u => u.userId === payload.payload.userId)) return prev
+            return [...prev, payload.payload]
+          } else {
+            return prev.filter(u => u.userId !== payload.payload.userId)
+          }
+        })
+      })
+      .subscribe((status) => {
+        // A dropped connection (network blip, laptop sleep, Supabase
+        // realtime hiccup) used to leave this conversation silently
+        // stale forever — nothing here ever noticed the channel came
+        // back, so anything sent/edited while disconnected only showed
+        // up once you manually left and reopened the conversation. Once
+        // we've seen a real disconnect (TIMED_OUT/CHANNEL_ERROR/CLOSED),
+        // the next SUBSCRIBED is a reconnect, not the initial one, so
+        // refetch messages to catch up on whatever was missed.
+        if (status === 'SUBSCRIBED') {
+          if (wasDisconnectedRef.current) {
+            wasDisconnectedRef.current = false
+            getMessages(id).then(result => {
+              if (Array.isArray(result.data)) {
+                setMessages(result.data)
+                cache.set(`messages:${id}`, result.data, 20000)
+              }
+            })
+          }
+        } else if (['TIMED_OUT', 'CHANNEL_ERROR', 'CLOSED'].includes(status)) {
+          wasDisconnectedRef.current = true
+        }
+      })
+
+    // Everything that isn't message delivery lives on a SECOND channel,
+    // deliberately. Realtime validates every postgres_changes binding
+    // when a channel subscribes, and one invalid binding fails the whole
+    // channel — which is exactly how a stale pinned_messages binding
+    // (the table had never been added to the supabase_realtime
+    // publication) silently took new-message delivery down with it while
+    // push notifications, a separate server-side path, kept working.
+    // Splitting them means an auxiliary listener can never again be the
+    // reason messages stop arriving; worst case a reaction or member
+    // badge lags until reload.
+    const auxChannel = supabase
+      .channel(`conversation-aux:${id}`)
       // Member/role changes (add, remove, promote, demote, transfer
       // ownership) for THIS open conversation. Unlike the group-deletion
       // case, these are inserts/updates on rows that still exist
@@ -404,45 +451,13 @@ export default function ConversationPage() {
           setPinnedMessageIds(new Set(result.data.map(p => p.messages?.id)))
         }
       })
-      .on('broadcast', { event: 'typing' }, (payload) => {
-        if (payload.payload.userId === profile?.id) return
-        setTypingUsers(prev => {
-          if (payload.payload.isTyping) {
-            if (prev.find(u => u.userId === payload.payload.userId)) return prev
-            return [...prev, payload.payload]
-          } else {
-            return prev.filter(u => u.userId !== payload.payload.userId)
-          }
-        })
-      })
-      .subscribe((status) => {
-        // A dropped connection (network blip, laptop sleep, Supabase
-        // realtime hiccup) used to leave this conversation silently
-        // stale forever — nothing here ever noticed the channel came
-        // back, so anything sent/edited while disconnected only showed
-        // up once you manually left and reopened the conversation. Once
-        // we've seen a real disconnect (TIMED_OUT/CHANNEL_ERROR/CLOSED),
-        // the next SUBSCRIBED is a reconnect, not the initial one, so
-        // refetch messages to catch up on whatever was missed.
-        if (status === 'SUBSCRIBED') {
-          if (wasDisconnectedRef.current) {
-            wasDisconnectedRef.current = false
-            getMessages(id).then(result => {
-              if (Array.isArray(result.data)) {
-                setMessages(result.data)
-                cache.set(`messages:${id}`, result.data, 20000)
-              }
-            })
-          }
-        } else if (['TIMED_OUT', 'CHANNEL_ERROR', 'CLOSED'].includes(status)) {
-          wasDisconnectedRef.current = true
-        }
-      })
+      .subscribe()
 
     channelRef.current = channel
 
     return () => {
       supabase.removeChannel(channel)
+      supabase.removeChannel(auxChannel)
     }
   }, [id, profile?.id])
 
