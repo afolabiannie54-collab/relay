@@ -14,6 +14,7 @@ import { createGroup, uploadGroupAvatar } from '@/actions/groups'
 import { searchUsers } from '@/actions/users'
 import { blockUser, getBlockedUserIds } from '@/actions/blocks'
 import { cache } from '@/lib/cache'
+import { useProfileSheet } from '@/lib/profile-sheet-context'
 
 const GROUP_NAME_MAX = 50
 const GROUP_DESCRIPTION_MAX = 200
@@ -52,6 +53,7 @@ export default function NewConversationSheet({ isOpen, onClose, initialMode = 's
 // 1 = group step 1 (members), 2 = group step 2 (details).
 function SheetBody({ onClose, initialMode }) {
   const router = useRouter()
+  const { openProfile } = useProfileSheet()
   const [mode, setMode] = useState(initialMode === 'group' ? 'group' : 'search') // 'search' | 'group'
   const [groupStep, setGroupStep] = useState(1) // 1 | 2
   const [selectedMembers, setSelectedMembers] = useState([])
@@ -163,12 +165,12 @@ function SheetBody({ onClose, initialMode }) {
   const handleRowTap = async (user) => {
     setOpeningId(user.id)
     const conversationId = await checkExistingDM(user.id)
+    onClose?.()
     if (conversationId) {
       router.push(`/chat/${conversationId}`)
     } else {
-      router.push(`/u/${user.username}?from=search`)
+      openProfile(user.username)
     }
-    onClose?.()
   }
 
   const handleAvatarChange = (e) => {
@@ -249,20 +251,23 @@ function SheetBody({ onClose, initialMode }) {
 
   const handleMenuOpenOrRequest = () => {
     if (!menuUser) return
-    if (menuConvId) {
-      router.push(`/chat/${menuConvId}`)
-    } else {
-      router.push(`/u/${menuUser.username}?from=search`)
-    }
+    const username = menuUser.username
+    const convId = menuConvId
     closeRowMenu()
     onClose?.()
+    if (convId) {
+      router.push(`/chat/${convId}`)
+    } else {
+      openProfile(username)
+    }
   }
 
   const handleMenuViewProfile = () => {
     if (!menuUser) return
-    router.push(`/u/${menuUser.username}?from=search`)
+    const username = menuUser.username
     closeRowMenu()
     onClose?.()
+    openProfile(username)
   }
 
   const handleMenuShareProfile = async () => {

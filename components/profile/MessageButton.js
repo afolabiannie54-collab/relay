@@ -4,12 +4,13 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { sendMessageRequest, getExistingConversation } from '@/actions/messages'
 import { cache } from '@/lib/cache'
+import { useProfileSheet } from '@/lib/profile-sheet-context'
 
 const MESSAGE_MAX = 2000
 
 // Primary profile-page action: contextual "Send message" (first contact,
 // goes through the message-request flow) vs "Open chat" (a DM already
-// exists). Blocking now lives in ProfileMenu's three-dot menu, not here.
+// exists). Blocking now lives in ProfileSheet's three-dot menu, not here.
 export default function MessageButton({ receiverId, displayName }) {
   const [showCompose, setShowCompose] = useState(false)
   const [message, setMessage] = useState('')
@@ -18,6 +19,7 @@ export default function MessageButton({ receiverId, displayName }) {
   const [existingConvId, setExistingConvId] = useState(null)
   const [checking, setChecking] = useState(true)
   const router = useRouter()
+  const { closeProfile } = useProfileSheet()
 
   useEffect(() => {
     // Cached as the resolved conversationId, or `false` for "checked, no
@@ -44,6 +46,11 @@ export default function MessageButton({ receiverId, displayName }) {
     check()
   }, [receiverId])
 
+  const goToChat = (conversationId) => {
+    closeProfile()
+    router.push(`/chat/${conversationId}`)
+  }
+
   const handleSend = async () => {
     const text = message.trim()
     if (!text) return
@@ -54,7 +61,7 @@ export default function MessageButton({ receiverId, displayName }) {
 
     if (result.error) {
       if (result.conversationId) {
-        router.push(`/chat/${result.conversationId}`)
+        goToChat(result.conversationId)
         return
       }
       setError(result.error)
@@ -62,26 +69,12 @@ export default function MessageButton({ receiverId, displayName }) {
       return
     }
 
-    router.push(`/chat/${result.conversationId}`)
+    goToChat(result.conversationId)
   }
 
   if (checking) {
     return (
-      <button
-        disabled
-        style={{
-          padding: '10px 20px',
-          background: '#525252',
-          color: '#fff',
-          border: '1.5px solid #0a0a0a',
-          borderRadius: '8px',
-          fontSize: '14px',
-          fontWeight: '600',
-          cursor: 'not-allowed',
-          fontFamily: 'inherit',
-          opacity: 0.6,
-        }}
-      >
+      <button disabled className="relay-btn" style={{ padding: '10px 20px', opacity: 0.6 }}>
         ···
       </button>
     )
@@ -89,21 +82,7 @@ export default function MessageButton({ receiverId, displayName }) {
 
   if (existingConvId) {
     return (
-      <button
-        onClick={() => router.push(`/chat/${existingConvId}`)}
-        style={{
-          padding: '10px 20px',
-          background: '#0a0a0a',
-          color: '#fff',
-          border: '1.5px solid #0a0a0a',
-          borderRadius: '8px',
-          fontSize: '14px',
-          fontWeight: '600',
-          cursor: 'pointer',
-          fontFamily: 'inherit',
-          boxShadow: '3px 3px 0 #FFB800',
-        }}
-      >
+      <button onClick={() => goToChat(existingConvId)} className="relay-btn relay-btn--filled" style={{ padding: '10px 20px' }}>
         Open chat
       </button>
     )
@@ -114,13 +93,13 @@ export default function MessageButton({ receiverId, displayName }) {
       <div style={{ width: '100%' }}>
         {error && (
           <div style={{
-            background: '#FEF2F2',
-            border: '1.5px solid #EF4444',
-            borderRadius: '8px',
+            background: 'var(--error-light)',
+            border: '1.5px solid var(--error)',
+            borderRadius: 'var(--radius-sm)',
             padding: '10px 14px',
             marginBottom: '12px',
             fontSize: '13px',
-            color: '#EF4444',
+            color: 'var(--error)',
           }}>
             {error}
           </div>
@@ -132,14 +111,11 @@ export default function MessageButton({ receiverId, displayName }) {
           rows={3}
           maxLength={MESSAGE_MAX}
           autoFocus
+          className="relay-input"
           style={{
             width: '100%',
             padding: '12px 14px',
-            border: '1.5px solid #0a0a0a',
-            borderRadius: '8px',
             fontSize: '16px',
-            fontFamily: 'inherit',
-            outline: 'none',
             resize: 'none',
             lineHeight: '1.5',
             marginBottom: '4px',
@@ -149,7 +125,7 @@ export default function MessageButton({ receiverId, displayName }) {
         {message.length >= MESSAGE_MAX * 0.8 && (
           <p style={{
             fontSize: '11px',
-            color: message.length >= MESSAGE_MAX ? '#EF4444' : '#A3A3A3',
+            color: message.length >= MESSAGE_MAX ? 'var(--error)' : 'var(--text-tertiary)',
             textAlign: 'right',
             marginBottom: '6px',
           }}>
@@ -160,35 +136,15 @@ export default function MessageButton({ receiverId, displayName }) {
           <button
             onClick={handleSend}
             disabled={!message.trim() || sending}
-            style={{
-              flex: 1,
-              padding: '10px',
-              background: message.trim() ? '#0a0a0a' : '#525252',
-              color: '#fff',
-              border: '1.5px solid #0a0a0a',
-              borderRadius: '8px',
-              fontSize: '14px',
-              fontWeight: '700',
-              cursor: message.trim() ? 'pointer' : 'not-allowed',
-              fontFamily: 'inherit',
-              boxShadow: message.trim() ? '2px 2px 0 #FFB800' : 'none',
-            }}
+            className="relay-btn relay-btn--filled"
+            style={{ flex: 1, padding: '10px' }}
           >
             {sending ? 'Sending...' : 'Send request'}
           </button>
           <button
             onClick={() => { setShowCompose(false); setMessage(''); setError(null) }}
-            style={{
-              padding: '10px 16px',
-              background: '#fff',
-              color: '#525252',
-              border: '1.5px solid #E5E5E5',
-              borderRadius: '8px',
-              fontSize: '14px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-            }}
+            className="relay-btn"
+            style={{ padding: '10px 16px' }}
           >
             Cancel
           </button>
@@ -198,21 +154,7 @@ export default function MessageButton({ receiverId, displayName }) {
   }
 
   return (
-    <button
-      onClick={() => setShowCompose(true)}
-      style={{
-        padding: '10px 20px',
-        background: '#0a0a0a',
-        color: '#fff',
-        border: '1.5px solid #0a0a0a',
-        borderRadius: '8px',
-        fontSize: '14px',
-        fontWeight: '600',
-        cursor: 'pointer',
-        fontFamily: 'inherit',
-        boxShadow: '3px 3px 0 #FFB800',
-      }}
-    >
+    <button onClick={() => setShowCompose(true)} className="relay-btn relay-btn--filled" style={{ padding: '10px 20px' }}>
       Send message
     </button>
   )

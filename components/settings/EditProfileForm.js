@@ -5,8 +5,10 @@ import Link from 'next/link'
 import Avatar from '@/components/shared/Avatar'
 import { updateProfile, uploadAvatar, changeUsername } from '@/actions/users'
 import { checkUsernameAvailable } from '@/actions/auth'
+import { useProfileSheet } from '@/lib/profile-sheet-context'
 
 export default function EditProfileForm({ initialProfile }) {
+  const { openProfile } = useProfileSheet()
   const [profile, setProfile] = useState(initialProfile)
   const [saving, setSaving] = useState(false)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
@@ -597,17 +599,21 @@ export default function EditProfileForm({ initialProfile }) {
 
         {/* View public profile link */}
         <div style={{ textAlign: 'center' }}>
-          <Link
-            href={`/u/${profile?.username}?from=settings`}
+          <button
+            onClick={() => openProfile(profile?.username)}
             style={{
               fontSize: '13px',
               color: '#525252',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
               textDecoration: 'none',
               fontWeight: '500',
+              fontFamily: 'inherit',
             }}
           >
             View your public profile →
-          </Link>
+          </button>
         </div>
       </div>
     </div>

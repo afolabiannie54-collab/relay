@@ -7,6 +7,8 @@ import { MessageSquare, Search, Settings, PanelLeftClose, PanelLeftOpen } from '
 import Avatar from '@/components/shared/Avatar'
 import { getOwnProfile } from '@/actions/users'
 import { PresenceProvider } from '@/lib/presence-context'
+import { ProfileSheetProvider } from '@/lib/profile-sheet-context'
+import ProfileSheet from '@/components/profile/ProfileSheet'
 import { getUnreadChatsCount } from '@/actions/messages'
 import { createClient } from '@/lib/supabase/client'
 import { usePushNotifications } from '@/hooks/usePushNotifications'
@@ -181,6 +183,7 @@ export default function MainLayout({ children }) {
 
   return (
     <PresenceProvider userId={profile?.id}>
+    <ProfileSheetProvider>
     <div style={{
       display: 'flex',
       height: '100dvh',
@@ -491,6 +494,8 @@ export default function MainLayout({ children }) {
         }
       `}</style>
     </div>
+    <ProfileSheet />
+    </ProfileSheetProvider>
     </PresenceProvider>
   )
 }

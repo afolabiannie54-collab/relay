@@ -22,6 +22,7 @@ import ConversationSettingsSheet from '@/components/chat/ConversationSettingsShe
 import MessageActionSheet from '@/components/chat/MessageActionSheet'
 import MessageActionBar from '@/components/chat/MessageActionBar'
 import ConfirmSheet from '@/components/shared/ConfirmSheet'
+import { useProfileSheet } from '@/lib/profile-sheet-context'
 
 // Matches the nav/ChatList icon convention — square caps/miter joins
 // instead of lucide's default rounded ones.
@@ -30,6 +31,7 @@ const iconProps = { strokeWidth: 2, strokeLinecap: 'square', strokeLinejoin: 'mi
 export default function ConversationPage() {
   const { id } = useParams()
   const router = useRouter()
+  const { openProfile } = useProfileSheet()
   // Lazy-initialized straight from cache (not inside an effect) so the
   // very first render already has whatever's cached — an effect only
   // runs after that first paint has already happened, which is exactly
@@ -914,7 +916,7 @@ export default function ConversationPage() {
           </button>
         ) : otherParticipant ? (
           <button
-            onClick={() => router.push(`/u/${otherParticipant.username}?from=conversation&convId=${id}`)}
+            onClick={() => openProfile(otherParticipant.username)}
             style={{ background: 'none', border: 'none', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '10px', flex: 1, cursor: 'pointer', padding: 0, textAlign: 'left', fontFamily: 'inherit' }}
           >
             <Avatar src={otherParticipant.avatar_url} name={otherParticipant.display_name} size={38} />

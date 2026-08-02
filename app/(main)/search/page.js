@@ -2,7 +2,6 @@
 
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import Avatar from '@/components/shared/Avatar'
 import BottomSheet from '@/components/shared/BottomSheet'
 import ConfirmSheet from '@/components/shared/ConfirmSheet'
@@ -11,6 +10,7 @@ import { searchUsers } from '@/actions/users'
 import { getExistingConversation } from '@/actions/messages'
 import { blockUser } from '@/actions/blocks'
 import { cache } from '@/lib/cache'
+import { useProfileSheet } from '@/lib/profile-sheet-context'
 
 export default function SearchPage() {
   const [query, setQuery] = useState('')
@@ -25,6 +25,7 @@ export default function SearchPage() {
   const [showNewGroup, setShowNewGroup] = useState(false)
   const searchTimeout = useRef(null)
   const router = useRouter()
+  const { openProfile } = useProfileSheet()
 
   const handleSearch = (e) => {
     const value = e.target.value
@@ -84,18 +85,21 @@ export default function SearchPage() {
 
   const handleOpenOrRequest = () => {
     if (!menuUser) return
-    if (menuConvId) {
-      router.push(`/chat/${menuConvId}`)
-    } else {
-      router.push(`/u/${menuUser.username}?from=search`)
-    }
+    const username = menuUser.username
+    const convId = menuConvId
     closeMenu()
+    if (convId) {
+      router.push(`/chat/${convId}`)
+    } else {
+      openProfile(username)
+    }
   }
 
   const handleViewProfile = () => {
     if (!menuUser) return
-    router.push(`/u/${menuUser.username}?from=search`)
+    const username = menuUser.username
     closeMenu()
+    openProfile(username)
   }
 
   const handleShareProfile = async () => {
@@ -266,11 +270,11 @@ export default function SearchPage() {
             </p>
             {results.map(user => (
               <div key={user.id} style={{ display: 'flex', alignItems: 'stretch', gap: '6px' }}>
-                <Link
-                  href={`/u/${user.username}?from=search`}
-                  style={{ textDecoration: 'none', flex: 1, minWidth: 0 }}
-                >
-                  <div style={{
+                <div
+                  onClick={() => openProfile(user.username)}
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
                     background: '#fff',
                     border: '1.5px solid #0a0a0a',
                     borderRadius: '12px',
@@ -280,7 +284,6 @@ export default function SearchPage() {
                     gap: '14px',
                     transition: 'box-shadow 0.15s, transform 0.15s',
                     cursor: 'pointer',
-                    height: '100%',
                     boxSizing: 'border-box',
                   }}
                     onMouseEnter={e => {
@@ -304,7 +307,6 @@ export default function SearchPage() {
                       <p style={{ fontSize: '13px', color: '#A3A3A3' }}>@{user.username}</p>
                     </div>
                   </div>
-                </Link>
                 <button
                   onClick={() => openMenu(user)}
                   aria-label="More options"

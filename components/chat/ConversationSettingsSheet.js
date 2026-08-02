@@ -18,6 +18,7 @@ import {
   transferOwnership, updateGroupInfo, uploadGroupAvatar,
 } from '@/actions/groups'
 import { blockUser } from '@/actions/blocks'
+import { useProfileSheet } from '@/lib/profile-sheet-context'
 import { searchUsers } from '@/actions/users'
 import { cache } from '@/lib/cache'
 
@@ -73,6 +74,7 @@ export default function ConversationSettingsSheet({
   onSelectMessages,
 }) {
   const router = useRouter()
+  const { openProfile } = useProfileSheet()
   const [muteStatus, setMuteStatus] = useState({ muted: false, mutedUntil: null })
   const [showMutePicker, setShowMutePicker] = useState(false)
   const [muting, setMuting] = useState(false)
@@ -489,7 +491,7 @@ export default function ConversationSettingsSheet({
             </>
           ) : (
             <>
-              <button className="relay-menu-row" style={rowStyle} onClick={() => { onClose?.(); router.push(`/u/${otherParticipant?.username}?from=conversation-settings&convId=${conversationId}`) }}>
+              <button className="relay-menu-row" style={rowStyle} onClick={() => { onClose?.(); openProfile(otherParticipant?.username) }}>
                 <User size={17} {...iconProps} />
                 <span style={{ flex: 1 }}>View profile</span>
                 <ChevronRight size={15} {...iconProps} color="var(--text-tertiary)" />
@@ -630,7 +632,7 @@ export default function ConversationSettingsSheet({
             <button
               className="relay-menu-row"
               style={rowStyle}
-              onClick={() => { const u = memberActionUser?.username; setMemberActionUser(null); onClose?.(); router.push(`/u/${u}?from=conversation-settings&convId=${conversationId}`) }}
+              onClick={() => { const u = memberActionUser?.username; setMemberActionUser(null); onClose?.(); openProfile(u) }}
             >
               <User size={17} {...iconProps} />
               <span>View profile</span>
