@@ -197,7 +197,7 @@ export default function EditProfileForm({ initialProfile }) {
           >
             <ChevronLeft size={22} {...iconProps} />
           </Link>
-          <span style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text)' }}>Edit profile</span>
+          <h1 className="relay-page-title">Edit profile</h1>
         </div>
       </div>
 

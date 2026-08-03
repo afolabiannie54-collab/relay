@@ -51,7 +51,7 @@ export default function DeleteAccountPage() {
           >
             <ChevronLeft size={22} {...iconProps} />
           </Link>
-          <span style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text)' }}>Delete account</span>
+          <h1 className="relay-page-title">Delete account</h1>
         </div>
       </div>
 

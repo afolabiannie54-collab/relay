@@ -111,7 +111,7 @@ export default function PrivacySettingsForm({ initialSettings }) {
           >
             <ChevronLeft size={22} {...iconProps} />
           </Link>
-          <span style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text)' }}>Privacy</span>
+          <h1 className="relay-page-title">Privacy</h1>
         </div>
       </div>
 
