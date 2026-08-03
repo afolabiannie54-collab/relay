@@ -779,7 +779,7 @@ export default function ChatList({ onSelectConversation }) {
           </div>
         ) : filteredConversations.length === 0 ? (
           <div style={{ padding: '40px 20px', textAlign: 'center' }}>
-            <p style={{ fontSize: '14px', color: 'var(--text-tertiary)' }}>No conversations match "{filterQuery}"</p>
+            <p style={{ fontSize: '14px', color: 'var(--text-tertiary)' }}>No conversations match &quot;{filterQuery}&quot;</p>
           </div>
         ) : (
           filteredConversations.map(conv => {

@@ -681,7 +681,7 @@ export default function ConversationSettingsSheet({
               </button>
             )}
             {canManageGroup && memberActionUser?.role !== 'owner' && (
-              <button className="relay-menu-row" style={{ ...rowStyle, color: 'var(--error)', borderBottom: 'none' }} onClick={handleRemoveMember}>
+              <button className="relay-menu-row" style={{ ...rowStyle, color: 'var(--error)', borderBottom: 'none' }} onClick={() => setConfirmAction('remove')}>
                 <UserX size={17} {...iconProps} />
                 <span>Remove from group</span>
               </button>
@@ -707,6 +707,15 @@ export default function ConversationSettingsSheet({
         confirmLabel="Delete group"
         confirmStyle="danger"
         onConfirm={handleDeleteGroup}
+      />
+      <ConfirmSheet
+        isOpen={confirmAction === 'remove'}
+        onClose={() => setConfirmAction(null)}
+        title="Remove from group?"
+        message={`${memberActionUser?.display_name} will need to be re-invited to rejoin.`}
+        confirmLabel="Remove"
+        confirmStyle="danger"
+        onConfirm={handleRemoveMember}
       />
       <ConfirmSheet
         isOpen={confirmAction === 'block'}

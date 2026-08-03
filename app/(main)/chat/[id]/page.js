@@ -71,6 +71,8 @@ export default function ConversationPage() {
   const [content, setContent] = useState('')
   const [loading, setLoading] = useState(() => !Array.isArray(cache.peek(`messages:${id}`)))
   const [sending, setSending] = useState(false)
+  const [errorMsg, setErrorMsg] = useState(null)
+  const errorTimeoutRef = useRef(null)
   const [acceptingRequest, setAcceptingRequest] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState(null)
@@ -98,11 +100,11 @@ export default function ConversationPage() {
   const [activeMessageDropdown, setActiveMessageDropdown] = useState(null)
   const [swipeMsgId, setSwipeMsgId] = useState(null)
   const [swipeDx, setSwipeDx] = useState(0)
+  const [swipeActive, setSwipeActive] = useState(false)
   const longPressTimerRef = useRef(null)
   const longPressStartRef = useRef(null)
   const longPressFiredRef = useRef(false)
   const swipeTriggeredRef = useRef(false)
-  const swipeActiveRef = useRef(false)
   const [showScrollButton, setShowScrollButton] = useState(false)
   const [newMessageCount, setNewMessageCount] = useState(0)
   const isAtBottomRef = useRef(true)
@@ -512,6 +514,17 @@ export default function ConversationPage() {
     }, 2000)
   }
 
+  // Inline replacement for alert() — blocking browser dialogs looked
+  // unprofessional and don't fit the app's own design language. Shown as
+  // a small banner above the composer and auto-clears so it doesn't
+  // linger indefinitely; a new error resets the clear timer instead of
+  // being cut short by an earlier one still pending.
+  const showError = (msg) => {
+    setErrorMsg(msg)
+    if (errorTimeoutRef.current) clearTimeout(errorTimeoutRef.current)
+    errorTimeoutRef.current = setTimeout(() => setErrorMsg(null), 4000)
+  }
+
   const handleSend = async () => {
     if (!content.trim() || sending) return
 
@@ -540,14 +553,14 @@ export default function ConversationPage() {
         // back into the input with no explanation, which is exactly how a
         // still-pending message request (blocked server-side in
         // sendMessage) would present: looks like nothing happened at all.
-        alert(result.error)
+        showError(result.error)
       } else {
         try { window.navigator.vibrate?.(10) } catch {}
       }
     } catch (err) {
       setContent(text)
       setReplyTo(pendingReply)
-      alert('Failed to send — please try again.')
+      showError('Failed to send — please try again.')
     } finally {
       setSending(false)
       inputRef.current?.focus()
@@ -559,7 +572,7 @@ export default function ConversationPage() {
     setAcceptingRequest(true)
     const result = await acceptMessageRequest(conversation.pendingRequestId)
     if (result.error) {
-      alert(result.error)
+      showError(result.error)
       setAcceptingRequest(false)
       return
     }
@@ -633,7 +646,7 @@ export default function ConversationPage() {
     try {
       const result = await uploadMedia(id, formData)
       if (result.error) {
-        alert(result.error)
+        showError(result.error)
       } else {
         setReplyTo(null)
       }
@@ -642,7 +655,7 @@ export default function ConversationPage() {
       // connection mid-upload) used to skip straight past the cleanup
       // below, leaving the preview stuck on "Sending..." forever with
       // no error and no way out except discarding the attachment.
-      alert('Failed to send — please try again.')
+      showError('Failed to send — please try again.')
     } finally {
       if (mediaPreview.previewUrl) URL.revokeObjectURL(mediaPreview.previewUrl)
       setMediaPreview(null)
@@ -658,10 +671,10 @@ export default function ConversationPage() {
     setSending(true)
     try {
       const result = await uploadMedia(id, formData)
-      if (result.error) alert(result.error)
+      if (result.error) showError(result.error)
       else setReplyTo(null)
     } catch (err) {
-      alert('Failed to send — please try again.')
+      showError('Failed to send — please try again.')
     } finally {
       setSending(false)
     }
@@ -699,7 +712,7 @@ export default function ConversationPage() {
 
   const handleTogglePin = async (messageId) => {
     const result = await togglePin(id, messageId)
-    if (result.error) alert(result.error)
+    if (result.error) showError(result.error)
     else if (showPinnedPanel) handleLoadPinned()
     setPinnedMessageIds(prev => {
       const next = new Set(prev)
@@ -773,7 +786,7 @@ export default function ConversationPage() {
     longPressFiredRef.current = false
     longPressStartRef.current = { x: touch.clientX, y: touch.clientY }
     swipeTriggeredRef.current = false
-    swipeActiveRef.current = true
+    setSwipeActive(true)
     setSwipeMsgId(msg.id)
     setSwipeDx(0)
     longPressTimerRef.current = setTimeout(() => {
@@ -815,7 +828,7 @@ export default function ConversationPage() {
       longPressTimerRef.current = null
     }
     longPressStartRef.current = null
-    swipeActiveRef.current = false
+    setSwipeActive(false)
     setSwipeDx(0)
     // Keep swipeMsgId set through the snap-back transition, then clear
     // it so a later drag on a different message starts from a clean
@@ -1329,7 +1342,7 @@ export default function ConversationPage() {
                         )}
                         <div style={{
                           transform: `translateX(${swipeMsgId === msg.id ? swipeDx : 0}px)`,
-                          transition: (swipeActiveRef.current && swipeMsgId === msg.id) ? 'none' : 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                          transition: (swipeActive && swipeMsgId === msg.id) ? 'none' : 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
                         }}>
                           {(msg.type === 'image' || msg.type === 'audio' || msg.type === 'file') ? (
                             <MediaMessage message={msg} isOwn={isOwn} />
@@ -1887,6 +1900,15 @@ export default function ConversationPage() {
         background: 'var(--surface)',
         flexShrink: 0,
       }}>
+        {errorMsg && (
+          <p style={{
+            fontSize: '12px',
+            color: 'var(--error)',
+            marginBottom: '6px',
+          }}>
+            {errorMsg}
+          </p>
+        )}
         {content.length >= 1600 && (
           <p style={{
             fontSize: '11px',

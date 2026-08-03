@@ -11,6 +11,7 @@ export default function MediaRecorder({ onRecordingComplete, onCancel }) {
   const [duration, setDuration] = useState(0)
   const [audioUrl, setAudioUrl] = useState(null)
   const [audioBlob, setAudioBlob] = useState(null)
+  const [micError, setMicError] = useState(null)
   const mediaRecorderRef = useRef(null)
   const chunksRef = useRef([])
   const timerRef = useRef(null)
@@ -23,6 +24,7 @@ export default function MediaRecorder({ onRecordingComplete, onCancel }) {
   }, [audioUrl])
 
   const startRecording = async () => {
+    setMicError(null)
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       const recorder = new window.MediaRecorder(stream)
@@ -54,7 +56,7 @@ export default function MediaRecorder({ onRecordingComplete, onCancel }) {
         })
       }, 1000)
     } catch (err) {
-      alert('Could not access microphone. Please grant permission.')
+      setMicError('Could not access microphone. Please grant permission.')
     }
   }
 
@@ -93,6 +95,11 @@ export default function MediaRecorder({ onRecordingComplete, onCancel }) {
       borderTop: '2px solid var(--border-strong)',
       flexShrink: 0,
     }}>
+      {micError && (
+        <p style={{ fontSize: '12px', color: 'var(--error)', marginBottom: '6px' }}>
+          {micError}
+        </p>
+      )}
       <div style={{
         background: 'var(--surface)',
         border: '2px solid var(--border-strong)',
