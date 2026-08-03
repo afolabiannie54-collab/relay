@@ -131,7 +131,7 @@ export default function RequestList({ initialReceived, initialSent, userId }) {
       fontFamily: "'Inter', -apple-system, sans-serif",
     }}>
       {/* Header */}
-      <div style={{ padding: '14px 20px 0', borderBottom: '1px solid var(--border)', background: 'var(--surface)' }}>
+      <div style={{ padding: '14px 20px 0', borderBottom: '2px solid var(--border-strong)', background: 'var(--surface)' }}>
         <button
           onClick={() => router.push('/chat')}
           aria-label="Back"

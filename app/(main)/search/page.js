@@ -142,7 +142,7 @@ export default function SearchPage() {
       fontFamily: "'Inter', -apple-system, sans-serif",
     }}>
       {/* Header — search is a root tab, no back button */}
-      <div style={{ padding: '14px 20px 16px', borderBottom: '1px solid var(--border)', background: 'var(--surface)' }}>
+      <div style={{ padding: '14px 20px 16px', borderBottom: '2px solid var(--border-strong)', background: 'var(--surface)' }}>
         <h1 className="relay-page-title">Search</h1>
       </div>
 
@@ -180,9 +180,9 @@ export default function SearchPage() {
           <button
             onClick={() => setShowNewGroup(true)}
             className="relay-menu-row"
-            style={{ padding: '14px 16px', borderRadius: 'var(--radius-md)', border: '2px solid var(--border-strong)', boxShadow: 'var(--shadow-hard-sm)', marginBottom: '16px' }}
+            style={{ padding: '14px 20px', margin: '0 -20px', width: 'calc(100% + 40px)', borderRadius: 0, borderBottom: '1px solid var(--border-light)' }}
           >
-            <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: 'var(--surface)', border: '2px solid var(--border-strong)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text)', flexShrink: 0 }}>
+            <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--surface)', border: '2px solid var(--border-strong)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text)', flexShrink: 0 }}>
               <Users size={18} {...iconProps} />
             </div>
             <p style={{ fontSize: '15px', fontWeight: '700', color: 'var(--text)' }}>New Group</p>

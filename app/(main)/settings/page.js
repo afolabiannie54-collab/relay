@@ -39,7 +39,7 @@ export default function SettingsPage() {
     }}>
       <div style={{
         background: 'var(--surface)',
-        borderBottom: '1px solid var(--border)',
+        borderBottom: '2px solid var(--border-strong)',
         padding: '16px 24px',
         display: 'flex',
         alignItems: 'center',
