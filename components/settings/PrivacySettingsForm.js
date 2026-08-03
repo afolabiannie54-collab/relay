@@ -8,7 +8,7 @@ import { updatePrivacySettings } from '@/actions/users'
 const iconProps = { strokeWidth: 2, strokeLinecap: 'square', strokeLinejoin: 'miter' }
 
 // Notification preferences (push subscription + per-category toggles) live
-// on their own page now — see components/settings/NotificationSettingsForm.js
+// in their own sheet now — see components/settings/NotificationSettingsSheet.js
 // — this form is scoped to privacy only: who can message you, and what
 // others can see about you.
 export default function PrivacySettingsForm({ initialSettings }) {

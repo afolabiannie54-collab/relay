@@ -41,12 +41,16 @@ function formatRelative(timestamp) {
 export default function SessionRow({ session, isLast }) {
   const [revoking, setRevoking] = useState(false)
   const [revoked, setRevoked] = useState(false)
+  const [error, setError] = useState(null)
 
   const handleRevoke = async () => {
     setRevoking(true)
+    setError(null)
     const result = await revokeSession(session.id)
     setRevoking(false)
-    if (!result?.error) {
+    if (result?.error) {
+      setError(result.error)
+    } else {
       setRevoked(true)
     }
   }
@@ -58,11 +62,13 @@ export default function SessionRow({ session, isLast }) {
   return (
     <div style={{
       padding: '16px 20px',
+      borderBottom: isLast ? 'none' : '1px solid var(--border-light)',
+    }}>
+    <div style={{
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'space-between',
       gap: '16px',
-      borderBottom: isLast ? 'none' : '1px solid var(--border-light)',
     }}>
       <div style={{ minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
@@ -116,6 +122,10 @@ export default function SessionRow({ session, isLast }) {
           {revoking ? 'Logging out...' : 'Log out'}
         </button>
       )}
+    </div>
+    {error && (
+      <p style={{ fontSize: '12px', color: 'var(--error)', marginTop: '8px' }}>{error}</p>
+    )}
     </div>
   )
 }

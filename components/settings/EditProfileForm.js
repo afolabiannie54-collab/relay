@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react'
 import Link from 'next/link'
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft, ChevronRight, User } from 'lucide-react'
 import Avatar from '@/components/shared/Avatar'
 import { updateProfile, uploadAvatar, changeUsername } from '@/actions/users'
 import { checkUsernameAvailable } from '@/actions/auth'
@@ -383,8 +383,19 @@ export default function EditProfileForm({ initialProfile }) {
           </form>
         </div>
 
-        {/* Username section */}
-        <div style={cardStyle}>
+        {/* Account — username + email grouped into one card (previously two
+            separate cards for two small, related fields), plus a row into
+            the public profile so that link reads as part of the page
+            instead of a floating disconnected line of text below it. */}
+        <div style={{
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-lg)',
+          boxShadow: 'var(--shadow-md)',
+          overflow: 'hidden',
+          marginBottom: '20px',
+        }}>
+        <div style={{ padding: '20px 20px 16px', borderBottom: '1px solid var(--border-light)' }}>
           <h2 style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text)', marginBottom: '4px' }}>Username</h2>
           <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '16px' }}>
             Current: @{profile?.username} · Can be changed once every 30 days
@@ -494,7 +505,7 @@ export default function EditProfileForm({ initialProfile }) {
             account is actually linked, which wasn't visible anywhere
             before — easy to lose track of for a Google sign-in in
             particular, where the email is never manually typed. */}
-        <div style={cardStyle}>
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-light)' }}>
           <h2 style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text)', marginBottom: '4px' }}>Email</h2>
           <p style={{ fontSize: '13px', color: 'var(--text)', marginBottom: '4px' }}>
             {profile?.email}
@@ -504,23 +515,29 @@ export default function EditProfileForm({ initialProfile }) {
           </p>
         </div>
 
-        {/* View public profile link */}
-        <div style={{ textAlign: 'center' }}>
-          <button
-            onClick={() => openProfile(profile?.username)}
-            style={{
-              fontSize: '13px',
-              color: 'var(--text-secondary)',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              textDecoration: 'none',
-              fontWeight: '500',
-              fontFamily: 'inherit',
-            }}
-          >
-            View your public profile →
-          </button>
+        <button
+          onClick={() => openProfile(profile?.username)}
+          style={{
+            width: '100%',
+            padding: '16px 20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            border: 'none',
+            background: 'none',
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+            transition: 'background 0.12s ease',
+          }}
+          onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-hover)'}
+          onMouseLeave={e => e.currentTarget.style.background = 'none'}
+        >
+          <User size={16} {...iconProps} color="var(--text-secondary)" />
+          <span style={{ flex: 1, textAlign: 'left', fontSize: '14px', fontWeight: '600', color: 'var(--text)' }}>
+            View public profile
+          </span>
+          <ChevronRight size={16} strokeWidth={2.25} color="var(--text-tertiary)" />
+        </button>
         </div>
       </div>
     </div>

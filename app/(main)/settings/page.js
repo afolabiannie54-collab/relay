@@ -8,10 +8,14 @@ import { signOut } from '@/actions/auth'
 import Avatar from '@/components/shared/Avatar'
 import SignOutAllRow from '@/components/settings/SignOutAllRow'
 import ThemeToggle from '@/components/settings/ThemeToggle'
+import BlockedUsersSheet from '@/components/settings/BlockedUsersSheet'
+import ActiveSessionsSheet from '@/components/settings/ActiveSessionsSheet'
+import NotificationSettingsSheet from '@/components/settings/NotificationSettingsSheet'
 import { cache } from '@/lib/cache'
 
 export default function SettingsPage() {
   const [profile, setProfile] = useState(() => cache.peek('profile'))
+  const [activeSheet, setActiveSheet] = useState(null)
 
   useEffect(() => {
     async function load() {
@@ -111,19 +115,19 @@ export default function SettingsPage() {
             items: [
               { label: 'Edit profile', href: '/settings/profile' },
               { label: 'Privacy settings', href: '/settings/privacy' },
-              { label: 'Blocked users', href: '/settings/blocked' },
+              { label: 'Blocked users', action: 'openSheet', sheet: 'blocked' },
             ]
           },
           {
             title: 'Notifications',
             items: [
-              { label: 'Notification preferences', href: '/settings/notifications' },
+              { label: 'Notification preferences', action: 'openSheet', sheet: 'notifications' },
             ]
           },
           {
             title: 'Security',
             items: [
-              { label: 'Active sessions', href: '/settings/sessions' },
+              { label: 'Active sessions', action: 'openSheet', sheet: 'sessions' },
               { label: 'Sign out', action: 'signOut' },
               { label: 'Sign out all devices', action: 'signOutAll' },
             ]
@@ -175,6 +179,24 @@ export default function SettingsPage() {
                     </span>
                     <ChevronRight size={15} strokeWidth={2.25} color="var(--text-tertiary)" />
                   </div>
+                ) : item.action === 'openSheet' ? (
+                  <div
+                    key={item.sheet}
+                    onClick={() => setActiveSheet(item.sheet)}
+                    style={{
+                      padding: '16px 20px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      borderBottom: i < section.items.length - 1 ? '1px solid var(--border-light)' : 'none',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <span style={{ fontSize: '14px', fontWeight: '500', color: 'var(--text)' }}>
+                      {item.label}
+                    </span>
+                    <ChevronRight size={15} strokeWidth={2.25} color="var(--text-tertiary)" />
+                  </div>
                 ) : (
                   <Link key={item.href} href={item.href} style={{ textDecoration: 'none' }}>
                     <div style={{
@@ -201,6 +223,10 @@ export default function SettingsPage() {
           </div>
         ))}
       </div>
+
+      <BlockedUsersSheet isOpen={activeSheet === 'blocked'} onClose={() => setActiveSheet(null)} />
+      <ActiveSessionsSheet isOpen={activeSheet === 'sessions'} onClose={() => setActiveSheet(null)} />
+      <NotificationSettingsSheet isOpen={activeSheet === 'notifications'} onClose={() => setActiveSheet(null)} />
     </div>
   )
 }

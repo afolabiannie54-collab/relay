@@ -1,11 +1,7 @@
-import { createClient } from '@/lib/supabase/server'
-import { getPrivacySettings } from '@/actions/users'
-import NotificationSettingsForm from '@/components/settings/NotificationSettingsForm'
+import { redirect } from 'next/navigation'
 
-export default async function NotificationSettingsPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  const result = await getPrivacySettings()
-
-  return <NotificationSettingsForm initialSettings={result.data} userId={user?.id} />
+// Notification preferences now open as a sheet from the Settings root page
+// (see NotificationSettingsSheet.js) rather than living at their own route.
+export default function NotificationsRedirectPage() {
+  redirect('/settings')
 }
