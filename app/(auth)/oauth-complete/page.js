@@ -17,13 +17,13 @@ export default function OAuthCompletePage() {
   return (
     <div style={{
       minHeight: '100dvh',
-      background: '#F5F5F5',
+      background: 'var(--bg-subtle)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       fontFamily: "'Inter', -apple-system, sans-serif",
     }}>
-      <p style={{ color: '#A3A3A3', fontSize: '14px' }}>Signing you in...</p>
+      <p style={{ color: 'var(--text-tertiary)', fontSize: '14px' }}>Signing you in...</p>
     </div>
   )
 }

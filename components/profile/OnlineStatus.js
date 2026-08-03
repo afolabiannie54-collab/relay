@@ -29,7 +29,7 @@ export default function OnlineStatus({ userId, lastSeen, showLastSeen, showOnlin
   // effect on whether other people saw you online in real time.
   if (isOnline && showOnlineStatus) {
     return (
-      <p style={{ fontSize: '13px', color: '#22C55E', fontWeight: '600' }}>
+      <p style={{ fontSize: '13px', color: 'var(--success)', fontWeight: '600' }}>
         ● Online
       </p>
     )
@@ -37,7 +37,7 @@ export default function OnlineStatus({ userId, lastSeen, showLastSeen, showOnlin
 
   if (showLastSeen && lastSeen) {
     return (
-      <p style={{ fontSize: '13px', color: '#A3A3A3' }}>
+      <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>
         Last seen {formatLastSeen(lastSeen)}
       </p>
     )

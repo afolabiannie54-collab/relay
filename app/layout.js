@@ -24,7 +24,10 @@ export const viewport = {
   initialScale: 1,
   viewportFit: 'cover',
   interactiveWidget: 'resizes-content',
-  themeColor: '#FFB800',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#FFB800' },
+    { media: '(prefers-color-scheme: dark)', color: '#FFC933' },
+  ],
 }
 
 // suppressHydrationWarning below is scoped to just the <html> element (not

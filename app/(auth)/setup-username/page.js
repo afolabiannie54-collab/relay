@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { checkUsernameAvailable } from '@/actions/auth'
 import { storeSessionInfo } from '@/actions/sessions'
+import AuthShell from '@/components/auth/AuthShell'
 
 export default function SetupUsernamePage() {
   const [formData, setFormData] = useState({ username: '', display_name: '' })
@@ -108,189 +109,137 @@ export default function SetupUsernamePage() {
   const inputStyle = (field) => ({
     width: '100%',
     padding: '12px 14px',
-    border: `1.5px solid ${errors[field] ? '#EF4444' : '#e5e5e5'}`,
-    borderRadius: '8px',
     fontSize: '16px',
-    fontFamily: 'inherit',
-    outline: 'none',
-    background: '#fff',
-    color: '#0a0a0a',
-    transition: 'border-color 0.15s',
+    boxSizing: 'border-box',
+    borderColor: errors[field] ? 'var(--error)' : undefined,
   })
 
   return (
-    <div style={{
-      minHeight: '100dvh',
-      background: '#F5F5F5',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '24px',
-      fontFamily: "'Inter', -apple-system, sans-serif",
-    }}>
-      <div style={{ width: '100%', maxWidth: '440px' }}>
+    <AuthShell>
+      <h1 style={{ fontSize: '22px', fontWeight: '800', marginBottom: '6px', color: 'var(--text)' }}>
+        One last step
+      </h1>
+      <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '28px' }}>
+        Choose a username and display name for your Relay account.
+      </p>
+
+      {serverError && (
         <div style={{
-          background: '#fff',
-          border: '1.5px solid #0a0a0a',
-          borderRadius: '12px',
-          padding: '40px',
-          boxShadow: '4px 4px 0 #0a0a0a',
+          background: 'var(--error-light)',
+          border: '1.5px solid var(--error)',
+          borderRadius: 'var(--radius-sm)',
+          padding: '12px 14px',
+          marginBottom: '20px',
+          fontSize: '13px',
+          color: 'var(--error)',
         }}>
-          <h1 style={{
-            fontSize: '22px',
-            fontWeight: '800',
-            marginBottom: '6px',
-            color: '#0a0a0a',
-          }}>One last step</h1>
-          <p style={{
-            fontSize: '14px',
-            color: '#525252',
-            marginBottom: '28px',
-          }}>Choose a username and display name for your Relay account.</p>
+          {serverError}
+        </div>
+      )}
 
-          {serverError && (
-            <div style={{
-              background: '#FEF2F2',
-              border: '1.5px solid #EF4444',
-              borderRadius: '8px',
-              padding: '12px 14px',
-              marginBottom: '20px',
-              fontSize: '13px',
-              color: '#EF4444',
-            }}>
-              {serverError}
-            </div>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        {/* Display name */}
+        <div>
+          <label style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text)', display: 'block', marginBottom: '6px' }}>
+            Display name
+          </label>
+          <input
+            name="display_name"
+            type="text"
+            placeholder="John Doe"
+            value={formData.display_name}
+            onChange={handleChange}
+            className="relay-input"
+            style={inputStyle('display_name')}
+          />
+          {errors.display_name && (
+            <p style={{ fontSize: '12px', color: 'var(--error)', marginTop: '4px' }}>{errors.display_name}</p>
           )}
+        </div>
 
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {/* Display name */}
-            <div>
-              <label style={{ fontSize: '13px', fontWeight: '600', color: '#0a0a0a', display: 'block', marginBottom: '6px' }}>
-                Display name
-              </label>
-              <input
-                name="display_name"
-                type="text"
-                placeholder="John Doe"
-                value={formData.display_name}
-                onChange={handleChange}
-                style={inputStyle('display_name')}
-                onFocus={e => e.target.style.borderColor = '#0a0a0a'}
-                onBlur={e => e.target.style.borderColor = errors.display_name ? '#EF4444' : '#e5e5e5'}
-              />
-              {errors.display_name && (
-                <p style={{ fontSize: '12px', color: '#EF4444', marginTop: '4px' }}>{errors.display_name}</p>
-              )}
-            </div>
+        {/* Username */}
+        <div>
+          <label style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text)', display: 'block', marginBottom: '6px' }}>
+            Username
+          </label>
+          <div style={{ position: 'relative' }}>
+            <span style={{
+              position: 'absolute',
+              left: '14px',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              color: 'var(--text-tertiary)',
+              fontSize: '14px',
+              pointerEvents: 'none',
+            }}>@</span>
+            <input
+              name="username"
+              type="text"
+              placeholder="johndoe"
+              value={formData.username}
+              onChange={handleChange}
+              className="relay-input"
+              style={{ ...inputStyle('username'), paddingLeft: '28px' }}
+            />
+          </div>
 
-            {/* Username */}
-            <div>
-              <label style={{ fontSize: '13px', fontWeight: '600', color: '#0a0a0a', display: 'block', marginBottom: '6px' }}>
-                Username
-              </label>
-              <div style={{ position: 'relative' }}>
-                <span style={{
-                  position: 'absolute',
-                  left: '14px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  color: '#A3A3A3',
-                  fontSize: '14px',
-                  pointerEvents: 'none',
-                }}>@</span>
-                <input
-                  name="username"
-                  type="text"
-                  placeholder="johndoe"
-                  value={formData.username}
-                  onChange={handleChange}
-                  style={{ ...inputStyle('username'), paddingLeft: '28px' }}
-                  onFocus={e => e.target.style.borderColor = '#0a0a0a'}
-                  onBlur={e => e.target.style.borderColor = errors.username ? '#EF4444' : '#e5e5e5'}
-                />
-              </div>
-
-              {usernameState === 'checking' && (
-                <p style={{ fontSize: '12px', color: '#A3A3A3', marginTop: '4px' }}>Checking availability...</p>
-              )}
-              {usernameState === 'available' && (
-                <p style={{ fontSize: '12px', color: '#22C55E', marginTop: '4px' }}>✓ Username available</p>
-              )}
-              {usernameState === 'taken' && (
-                <div style={{ marginTop: '4px' }}>
-                  <p style={{ fontSize: '12px', color: '#EF4444' }}>✗ Username taken</p>
-                  {suggestions.length > 0 && (
-                    <div style={{ display: 'flex', gap: '6px', marginTop: '6px', flexWrap: 'wrap' }}>
-                      {suggestions.map(s => (
-                        <button
-                          key={s}
-                          type="button"
-                          onClick={() => {
-                            setFormData(prev => ({ ...prev, username: s }))
-                            setUsernameState('available')
-                            setSuggestions([])
-                          }}
-                          style={{
-                            padding: '4px 10px',
-                            border: '1.5px solid #0a0a0a',
-                            borderRadius: '100px',
-                            fontSize: '12px',
-                            background: '#fff',
-                            cursor: 'pointer',
-                            fontFamily: 'inherit',
-                            color: '#0a0a0a',
-                          }}
-                        >
-                          @{s}
-                        </button>
-                      ))}
-                    </div>
-                  )}
+          {usernameState === 'checking' && (
+            <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '4px' }}>Checking availability...</p>
+          )}
+          {usernameState === 'available' && (
+            <p style={{ fontSize: '12px', color: 'var(--success)', marginTop: '4px' }}>✓ Username available</p>
+          )}
+          {usernameState === 'taken' && (
+            <div style={{ marginTop: '4px' }}>
+              <p style={{ fontSize: '12px', color: 'var(--error)' }}>✗ Username taken</p>
+              {suggestions.length > 0 && (
+                <div style={{ display: 'flex', gap: '6px', marginTop: '6px', flexWrap: 'wrap' }}>
+                  {suggestions.map(s => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => {
+                        setFormData(prev => ({ ...prev, username: s }))
+                        setUsernameState('available')
+                        setSuggestions([])
+                      }}
+                      style={{
+                        padding: '4px 10px',
+                        border: '1.5px solid var(--border-strong)',
+                        borderRadius: 'var(--radius-pill)',
+                        fontSize: '12px',
+                        background: 'var(--surface)',
+                        color: 'var(--text)',
+                        cursor: 'pointer',
+                        fontFamily: 'inherit',
+                      }}
+                    >
+                      @{s}
+                    </button>
+                  ))}
                 </div>
               )}
-              {usernameState === 'invalid' && (
-                <p style={{ fontSize: '12px', color: '#EF4444', marginTop: '4px' }}>
-                  3-20 characters, lowercase letters, numbers and underscores only
-                </p>
-              )}
-              {errors.username && (
-                <p style={{ fontSize: '12px', color: '#EF4444', marginTop: '4px' }}>{errors.username}</p>
-              )}
             </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              style={{
-                width: '100%',
-                padding: '13px',
-                background: loading ? '#525252' : '#0a0a0a',
-                color: '#fff',
-                border: '1.5px solid #0a0a0a',
-                borderRadius: '8px',
-                fontSize: '14px',
-                fontWeight: '700',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                fontFamily: 'inherit',
-                boxShadow: loading ? 'none' : '3px 3px 0 #FFB800',
-                marginTop: '4px',
-              }}
-              onMouseEnter={e => {
-                if (!loading) {
-                  e.target.style.transform = 'translate(-1px, -1px)'
-                  e.target.style.boxShadow = '4px 4px 0 #FFB800'
-                }
-              }}
-              onMouseLeave={e => {
-                e.target.style.transform = 'translate(0, 0)'
-                e.target.style.boxShadow = loading ? 'none' : '3px 3px 0 #FFB800'
-              }}
-            >
-              {loading ? 'Setting up...' : 'Finish setup'}
-            </button>
-          </form>
+          )}
+          {usernameState === 'invalid' && (
+            <p style={{ fontSize: '12px', color: 'var(--error)', marginTop: '4px' }}>
+              3-20 characters, lowercase letters, numbers and underscores only
+            </p>
+          )}
+          {errors.username && (
+            <p style={{ fontSize: '12px', color: 'var(--error)', marginTop: '4px' }}>{errors.username}</p>
+          )}
         </div>
-      </div>
-    </div>
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="relay-btn relay-btn--filled"
+          style={{ width: '100%', padding: '13px', fontSize: '14px', marginTop: '4px', boxShadow: loading ? 'none' : 'var(--shadow-hard-accent)' }}
+        >
+          {loading ? 'Setting up...' : 'Finish setup'}
+        </button>
+      </form>
+    </AuthShell>
   )
 }

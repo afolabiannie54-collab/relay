@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { resetPasswordRequest, resetPassword } from '@/actions/auth'
+import AuthShell from '@/components/auth/AuthShell'
 
 export default function ResetPasswordPage() {
   const [step, setStep] = useState('request') // 'request' | 'sent' | 'reset'
@@ -84,206 +85,174 @@ export default function ResetPasswordPage() {
   const inputStyle = (field) => ({
     width: '100%',
     padding: '12px 14px',
-    border: `1.5px solid ${errors[field] ? '#EF4444' : '#e5e5e5'}`,
-    borderRadius: '8px',
     fontSize: '16px',
-    fontFamily: 'inherit',
-    outline: 'none',
-    background: '#fff',
-    color: '#0a0a0a',
-    transition: 'border-color 0.15s',
-  })
-
-  const buttonStyle = (isLoading) => ({
-    width: '100%',
-    padding: '13px',
-    background: isLoading ? '#525252' : '#0a0a0a',
-    color: '#fff',
-    border: '1.5px solid #0a0a0a',
-    borderRadius: '8px',
-    fontSize: '14px',
-    fontWeight: '700',
-    cursor: isLoading ? 'not-allowed' : 'pointer',
-    fontFamily: 'inherit',
-    boxShadow: isLoading ? 'none' : '3px 3px 0 #FFB800',
-    marginTop: '4px',
+    boxSizing: 'border-box',
+    borderColor: errors[field] ? 'var(--error)' : undefined,
   })
 
   return (
-    <div style={{
-      minHeight: '100dvh',
-      background: '#F5F5F5',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '24px',
-      fontFamily: "'Inter', -apple-system, sans-serif",
-    }}>
-      <div style={{ width: '100%', maxWidth: '440px' }}>
-        <div style={{
-          background: '#fff',
-          border: '1.5px solid #0a0a0a',
-          borderRadius: '12px',
-          padding: '40px',
-          boxShadow: '4px 4px 0 #0a0a0a',
-        }}>
+    <AuthShell>
+      {/* Request step */}
+      {step === 'request' && (
+        <>
+          <h1 style={{ fontSize: '22px', fontWeight: '800', marginBottom: '6px', color: 'var(--text)' }}>
+            Reset your password
+          </h1>
+          <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '28px' }}>
+            Enter your email and we&apos;ll send you a reset link.
+          </p>
 
-          {/* Request step */}
-          {step === 'request' && (
-            <>
-              <h1 style={{ fontSize: '22px', fontWeight: '800', marginBottom: '6px', color: '#0a0a0a' }}>
-                Reset your password
-              </h1>
-              <p style={{ fontSize: '14px', color: '#525252', marginBottom: '28px' }}>
-                Enter your email and we'll send you a reset link.
-              </p>
-
-              {serverError && (
-                <div style={{
-                  background: '#FEF2F2',
-                  border: '1.5px solid #EF4444',
-                  borderRadius: '8px',
-                  padding: '12px 14px',
-                  marginBottom: '20px',
-                  fontSize: '13px',
-                  color: '#EF4444',
-                }}>
-                  {serverError}
-                </div>
-              )}
-
-              <form onSubmit={handleRequest} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <div>
-                  <label style={{ fontSize: '13px', fontWeight: '600', color: '#0a0a0a', display: 'block', marginBottom: '6px' }}>
-                    Email
-                  </label>
-                  <input
-                    name="email"
-                    type="email"
-                    placeholder="you@example.com"
-                    value={formData.email}
-                    onChange={handleChange}
-                    style={inputStyle('email')}
-                    onFocus={e => e.target.style.borderColor = '#0a0a0a'}
-                    onBlur={e => e.target.style.borderColor = errors.email ? '#EF4444' : '#e5e5e5'}
-                  />
-                  {errors.email && (
-                    <p style={{ fontSize: '12px', color: '#EF4444', marginTop: '4px' }}>{errors.email}</p>
-                  )}
-                </div>
-
-                <button type="submit" disabled={loading} style={buttonStyle(loading)}>
-                  {loading ? 'Sending...' : 'Send reset link'}
-                </button>
-              </form>
-
-              <p style={{ textAlign: 'center', fontSize: '13px', color: '#525252', marginTop: '24px' }}>
-                Remember your password?{' '}
-                <Link href="/login" style={{ color: '#0a0a0a', fontWeight: '700', textDecoration: 'none' }}>
-                  Sign in
-                </Link>
-              </p>
-            </>
-          )}
-
-          {/* Sent step */}
-          {step === 'sent' && (
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ marginBottom: '24px' }}>
-                <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
-                  <circle cx="32" cy="32" r="30" stroke="#0a0a0a" strokeWidth="1.5" fill="#FFF8E1"/>
-                  <path d="M20 32 L28 40 L44 24" stroke="#0a0a0a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </div>
-              <h1 style={{ fontSize: '22px', fontWeight: '800', marginBottom: '8px', color: '#0a0a0a' }}>
-                Check your email
-              </h1>
-              <p style={{ fontSize: '14px', color: '#525252', lineHeight: '1.6', marginBottom: '24px' }}>
-                We sent a reset link to <strong>{formData.email}</strong>. It expires in 15 minutes.
-              </p>
-              <Link href="/login" style={{
-                display: 'block',
-                textAlign: 'center',
-                fontSize: '13px',
-                color: '#525252',
-                textDecoration: 'none',
-              }}>
-                Back to sign in
-              </Link>
+          {serverError && (
+            <div style={{
+              background: 'var(--error-light)',
+              border: '1.5px solid var(--error)',
+              borderRadius: 'var(--radius-sm)',
+              padding: '12px 14px',
+              marginBottom: '20px',
+              fontSize: '13px',
+              color: 'var(--error)',
+            }}>
+              {serverError}
             </div>
           )}
 
-          {/* Reset step */}
-          {step === 'reset' && (
-            <>
-              <h1 style={{ fontSize: '22px', fontWeight: '800', marginBottom: '6px', color: '#0a0a0a' }}>
-                Set new password
-              </h1>
-              <p style={{ fontSize: '14px', color: '#525252', marginBottom: '28px' }}>
-                Choose a strong password for your account.
-              </p>
-
-              {serverError && (
-                <div style={{
-                  background: '#FEF2F2',
-                  border: '1.5px solid #EF4444',
-                  borderRadius: '8px',
-                  padding: '12px 14px',
-                  marginBottom: '20px',
-                  fontSize: '13px',
-                  color: '#EF4444',
-                }}>
-                  {serverError}
-                </div>
+          <form onSubmit={handleRequest} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div>
+              <label style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text)', display: 'block', marginBottom: '6px' }}>
+                Email
+              </label>
+              <input
+                name="email"
+                type="email"
+                placeholder="you@example.com"
+                value={formData.email}
+                onChange={handleChange}
+                className="relay-input"
+                style={inputStyle('email')}
+              />
+              {errors.email && (
+                <p style={{ fontSize: '12px', color: 'var(--error)', marginTop: '4px' }}>{errors.email}</p>
               )}
+            </div>
 
-              <form onSubmit={handleReset} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <div>
-                  <label style={{ fontSize: '13px', fontWeight: '600', color: '#0a0a0a', display: 'block', marginBottom: '6px' }}>
-                    New password
-                  </label>
-                  <input
-                    name="password"
-                    type="password"
-                    placeholder="Min. 8 characters"
-                    value={formData.password}
-                    onChange={handleChange}
-                    style={inputStyle('password')}
-                    onFocus={e => e.target.style.borderColor = '#0a0a0a'}
-                    onBlur={e => e.target.style.borderColor = errors.password ? '#EF4444' : '#e5e5e5'}
-                  />
-                  {errors.password && (
-                    <p style={{ fontSize: '12px', color: '#EF4444', marginTop: '4px' }}>{errors.password}</p>
-                  )}
-                </div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="relay-btn relay-btn--filled"
+              style={{ width: '100%', padding: '13px', fontSize: '14px', marginTop: '4px', boxShadow: loading ? 'none' : 'var(--shadow-hard-accent)' }}
+            >
+              {loading ? 'Sending...' : 'Send reset link'}
+            </button>
+          </form>
 
-                <div>
-                  <label style={{ fontSize: '13px', fontWeight: '600', color: '#0a0a0a', display: 'block', marginBottom: '6px' }}>
-                    Confirm password
-                  </label>
-                  <input
-                    name="confirm"
-                    type="password"
-                    placeholder="Repeat your password"
-                    value={formData.confirm}
-                    onChange={handleChange}
-                    style={inputStyle('confirm')}
-                    onFocus={e => e.target.style.borderColor = '#0a0a0a'}
-                    onBlur={e => e.target.style.borderColor = errors.confirm ? '#EF4444' : '#e5e5e5'}
-                  />
-                  {errors.confirm && (
-                    <p style={{ fontSize: '12px', color: '#EF4444', marginTop: '4px' }}>{errors.confirm}</p>
-                  )}
-                </div>
+          <p style={{ textAlign: 'center', fontSize: '13px', color: 'var(--text-secondary)', marginTop: '24px' }}>
+            Remember your password?{' '}
+            <Link href="/login" style={{ color: 'var(--text)', fontWeight: '700', textDecoration: 'none' }}>
+              Sign in
+            </Link>
+          </p>
+        </>
+      )}
 
-                <button type="submit" disabled={loading} style={buttonStyle(loading)}>
-                  {loading ? 'Updating...' : 'Update password'}
-                </button>
-              </form>
-            </>
-          )}
+      {/* Sent step */}
+      {step === 'sent' && (
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ marginBottom: '24px' }}>
+            <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+              <circle cx="32" cy="32" r="30" stroke="var(--border-strong)" strokeWidth="1.5" fill="var(--accent-light)"/>
+              <path d="M20 32 L28 40 L44 24" stroke="var(--border-strong)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+          <h1 style={{ fontSize: '22px', fontWeight: '800', marginBottom: '8px', color: 'var(--text)' }}>
+            Check your email
+          </h1>
+          <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: '1.6', marginBottom: '24px' }}>
+            We sent a reset link to <strong>{formData.email}</strong>. It expires in 15 minutes.
+          </p>
+          <Link href="/login" style={{
+            display: 'block',
+            textAlign: 'center',
+            fontSize: '13px',
+            color: 'var(--text-secondary)',
+            textDecoration: 'none',
+          }}>
+            Back to sign in
+          </Link>
         </div>
-      </div>
-    </div>
+      )}
+
+      {/* Reset step */}
+      {step === 'reset' && (
+        <>
+          <h1 style={{ fontSize: '22px', fontWeight: '800', marginBottom: '6px', color: 'var(--text)' }}>
+            Set new password
+          </h1>
+          <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '28px' }}>
+            Choose a strong password for your account.
+          </p>
+
+          {serverError && (
+            <div style={{
+              background: 'var(--error-light)',
+              border: '1.5px solid var(--error)',
+              borderRadius: 'var(--radius-sm)',
+              padding: '12px 14px',
+              marginBottom: '20px',
+              fontSize: '13px',
+              color: 'var(--error)',
+            }}>
+              {serverError}
+            </div>
+          )}
+
+          <form onSubmit={handleReset} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div>
+              <label style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text)', display: 'block', marginBottom: '6px' }}>
+                New password
+              </label>
+              <input
+                name="password"
+                type="password"
+                placeholder="Min. 8 characters"
+                value={formData.password}
+                onChange={handleChange}
+                className="relay-input"
+                style={inputStyle('password')}
+              />
+              {errors.password && (
+                <p style={{ fontSize: '12px', color: 'var(--error)', marginTop: '4px' }}>{errors.password}</p>
+              )}
+            </div>
+
+            <div>
+              <label style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text)', display: 'block', marginBottom: '6px' }}>
+                Confirm password
+              </label>
+              <input
+                name="confirm"
+                type="password"
+                placeholder="Repeat your password"
+                value={formData.confirm}
+                onChange={handleChange}
+                className="relay-input"
+                style={inputStyle('confirm')}
+              />
+              {errors.confirm && (
+                <p style={{ fontSize: '12px', color: 'var(--error)', marginTop: '4px' }}>{errors.confirm}</p>
+              )}
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="relay-btn relay-btn--filled"
+              style={{ width: '100%', padding: '13px', fontSize: '14px', marginTop: '4px', boxShadow: loading ? 'none' : 'var(--shadow-hard-accent)' }}
+            >
+              {loading ? 'Updating...' : 'Update password'}
+            </button>
+          </form>
+        </>
+      )}
+    </AuthShell>
   )
 }
