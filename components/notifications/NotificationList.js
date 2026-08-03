@@ -87,7 +87,7 @@ export default function NotificationList({ initialNotifications }) {
       fontFamily: "'Inter', -apple-system, sans-serif",
     }}>
       {/* Header */}
-      <div style={{ padding: '14px 20px 16px', borderBottom: '2px solid var(--border-strong)', background: 'var(--surface)' }}>
+      <div className="relay-page-header" style={{ borderBottom: '2px solid var(--border-strong)', background: 'var(--surface)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
           <button
             onClick={() => router.push('/chat')}

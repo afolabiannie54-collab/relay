@@ -137,7 +137,7 @@ export default function HiddenConversationsPage() {
       fontFamily: "'Inter', -apple-system, sans-serif",
     }}>
       {/* Header */}
-      <div style={{ padding: '14px 20px 16px', borderBottom: '2px solid var(--border-strong)', background: 'var(--surface)' }}>
+      <div className="relay-page-header" style={{ borderBottom: '2px solid var(--border-strong)', background: 'var(--surface)' }}>
         <button
           onClick={() => router.push('/chat')}
           aria-label="Back"

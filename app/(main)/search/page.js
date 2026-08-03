@@ -142,7 +142,7 @@ export default function SearchPage() {
       fontFamily: "'Inter', -apple-system, sans-serif",
     }}>
       {/* Header — search is a root tab, no back button */}
-      <div style={{ padding: '14px 20px 16px', borderBottom: '2px solid var(--border-strong)', background: 'var(--surface)' }}>
+      <div className="relay-page-header" style={{ borderBottom: '2px solid var(--border-strong)', background: 'var(--surface)' }}>
         <h1 className="relay-page-title">Search</h1>
       </div>
 

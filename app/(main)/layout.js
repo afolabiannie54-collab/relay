@@ -207,8 +207,14 @@ export default function MainLayout({ children }) {
       >
         {/* Collapse toggle — the logo mark was tried here but at 34px its
             detailed sketch linework just disappeared into noise, so it's
-            been dropped rather than kept as dead weight. */}
+            been dropped rather than kept as dead weight. Fixed at 118px
+            (not padding-driven) to match every page header's own total
+            height exactly, so this border-bottom and each page's own
+            line up into one continuous rule across the full app width
+            instead of the two only coincidentally lining up. */}
         <div style={{
+          height: '118px',
+          boxSizing: 'border-box',
           padding: sidebarCollapsed ? '14px 12px' : '14px 16px',
           borderBottom: '2px solid var(--border-strong)',
           display: 'flex',
