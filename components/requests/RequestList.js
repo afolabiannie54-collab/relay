@@ -131,7 +131,7 @@ export default function RequestList({ initialReceived, initialSent, userId }) {
       fontFamily: "'Inter', -apple-system, sans-serif",
     }}>
       {/* Header */}
-      <div style={{ padding: '14px 20px 0', borderBottom: '2px solid var(--border-strong)', background: 'var(--surface)' }}>
+      <div style={{ padding: '14px 20px 0', background: 'var(--surface)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '14px' }}>
           <button
             onClick={() => router.push('/chat')}

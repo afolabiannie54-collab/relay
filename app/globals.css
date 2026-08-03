@@ -420,6 +420,22 @@ a, button, input, textarea, select {
    .relay-sheet-title's smaller 16px/700 instead — that size difference
    is a deliberate hierarchy cue: root screen vs. something you drilled
    into). Big and bold on purpose, but only for a screen's one title. */
+/* Forces a header's actual content row to the exact same 34px height as
+   the nav sidebar's own collapse-toggle button, regardless of what's
+   inside (a button, a text label, an icon+text group) or that
+   element's own natural line-height/font-metrics — hand-computing
+   whether e.g. a 16px-font span or a 40px icon button nets out to the
+   same rendered height as a 34px button was the actual source of every
+   previous misalignment, not the surrounding padding. Pair with
+   padding: 14px on the outer header container (matching the toggle
+   section's own 14px top/bottom) and the two are guaranteed identical
+   by construction. */
+.relay-page-header-row {
+  height: 34px;
+  display: flex;
+  align-items: center;
+}
+
 .relay-page-title {
   font-size: 28px;
   font-weight: 800;

@@ -40,15 +40,14 @@ export default function SettingsPage() {
       <div style={{
         background: 'var(--surface)',
         borderBottom: '2px solid var(--border-strong)',
-        padding: '16px 24px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '16px',
+        padding: '14px 24px',
         position: 'sticky',
         top: 0,
         zIndex: 10,
       }}>
-        <span style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text)' }}>Settings</span>
+        <div className="relay-page-header-row">
+          <span style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text)' }}>Settings</span>
+        </div>
       </div>
 
       <div style={{ maxWidth: '600px', margin: '0 auto', padding: '32px 24px' }}>
