@@ -114,80 +114,90 @@ export default function ProfileSheet() {
               </p>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '8px 24px 28px', position: 'relative' }}>
-              {!isOwnProfile && (
-                <div style={{ position: 'absolute', top: '0', right: '20px' }}>
+            <div style={{ padding: '18px 24px 32px' }}>
+              {/* Reserves the row's height whether or not the menu button
+                  renders, so the identity block below always starts at
+                  the same vertical position instead of the "..." button
+                  eating into the top padding on someone else's profile. */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', minHeight: '32px' }}>
+                {!isOwnProfile && (
                   <button
                     onClick={() => setShowMenu(true)}
                     aria-label="More options"
                     className="relay-plain-icon-btn"
+                    style={{ marginRight: '-8px', marginTop: '-6px' }}
                   >
                     <MoreHorizontal size={20} {...iconProps} />
                   </button>
-                </div>
-              )}
-
-              <Avatar src={profile.avatar_url} name={profile.display_name} size={88} />
-              <h1 style={{ fontSize: '20px', fontWeight: '800', color: 'var(--text)', marginTop: '14px', marginBottom: '4px', letterSpacing: '-0.01em' }}>
-                {profile.display_name}
-              </h1>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '6px' }}>
-                <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>@{profile.username}</p>
-                <CopyUsernameButton username={profile.username} />
+                )}
               </div>
 
-              <OnlineStatus
-                userId={profile.id}
-                lastSeen={profile.last_seen}
-                showLastSeen={profile.show_last_seen}
-                showOnlineStatus={profile.show_online_status}
-              />
-
-              {isOwnProfile && (
-                <p style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '4px' }}>
-                  This is how others see you
-                </p>
-              )}
-
-              {profile.bio && (
-                <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: '1.6', marginTop: '16px', whiteSpace: 'pre-wrap' }}>
-                  {profile.bio}
-                </p>
-              )}
-
-              {socialLinks.length > 0 && (
-                <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
-                  {socialLinks.map(({ key, Icon, href }) => (
-                    <a
-                      key={key}
-                      href={href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="relay-plain-icon-btn"
-                      style={{ width: '36px', height: '36px', border: '2px solid var(--border-strong)', color: 'var(--text-secondary)' }}
-                    >
-                      <Icon size={15} {...iconProps} />
-                    </a>
-                  ))}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+                <Avatar src={profile.avatar_url} name={profile.display_name} size={96} />
+                <h1 style={{ fontSize: '21px', fontWeight: '800', color: 'var(--text)', marginTop: '16px', marginBottom: '4px', letterSpacing: '-0.01em' }}>
+                  {profile.display_name}
+                </h1>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '2px', marginBottom: '6px' }}>
+                  <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>@{profile.username}</p>
+                  <CopyUsernameButton username={profile.username} />
                 </div>
-              )}
 
-              <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '20px' }}>
-                Member since {new Date(profile.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-              </p>
+                <OnlineStatus
+                  userId={profile.id}
+                  lastSeen={profile.last_seen}
+                  showLastSeen={profile.show_last_seen}
+                  showOnlineStatus={profile.show_online_status}
+                />
 
-              <div style={{ marginTop: '20px', width: '100%', display: 'flex', justifyContent: 'center' }}>
-                {isOwnProfile ? (
-                  <button
-                    onClick={() => { closeProfile(); router.push('/settings/profile') }}
-                    className="relay-btn relay-btn--filled"
-                    style={{ padding: '10px 20px' }}
-                  >
-                    Edit profile
-                  </button>
-                ) : (
-                  <MessageButton receiverId={profile.id} displayName={profile.display_name} />
+                {isOwnProfile && (
+                  <p style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '4px' }}>
+                    This is how others see you
+                  </p>
                 )}
+
+                {profile.bio && (
+                  <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: '1.6', marginTop: '18px', whiteSpace: 'pre-wrap' }}>
+                    {profile.bio}
+                  </p>
+                )}
+
+                {socialLinks.length > 0 && (
+                  <div style={{ display: 'flex', gap: '10px', marginTop: '18px' }}>
+                    {socialLinks.map(({ key, Icon, href }) => (
+                      <a
+                        key={key}
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="relay-plain-icon-btn"
+                        style={{ width: '36px', height: '36px', border: '2px solid var(--border-strong)', color: 'var(--text-secondary)' }}
+                      >
+                        <Icon size={15} {...iconProps} />
+                      </a>
+                    ))}
+                  </div>
+                )}
+
+                <p style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '24px' }}>
+                  Member since {new Date(profile.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                </p>
+
+                {/* The one accent moment on this screen — same hard-shadow
+                    CTA treatment as Send in the composer, since this is the
+                    single primary action a profile sheet offers. */}
+                <div style={{ marginTop: '28px', width: '100%', display: 'flex', justifyContent: 'center' }}>
+                  {isOwnProfile ? (
+                    <button
+                      onClick={() => { closeProfile(); router.push('/settings/profile') }}
+                      className="relay-btn relay-btn--filled"
+                      style={{ padding: '11px 22px', boxShadow: 'var(--shadow-hard-accent)' }}
+                    >
+                      Edit profile
+                    </button>
+                  ) : (
+                    <MessageButton receiverId={profile.id} displayName={profile.display_name} />
+                  )}
+                </div>
               </div>
             </div>
           )}

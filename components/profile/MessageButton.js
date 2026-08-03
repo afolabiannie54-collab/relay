@@ -82,7 +82,7 @@ export default function MessageButton({ receiverId, displayName }) {
 
   if (existingConvId) {
     return (
-      <button onClick={() => goToChat(existingConvId)} className="relay-btn relay-btn--filled" style={{ padding: '10px 20px' }}>
+      <button onClick={() => goToChat(existingConvId)} className="relay-btn relay-btn--filled" style={{ padding: '11px 22px', boxShadow: 'var(--shadow-hard-accent)' }}>
         Open chat
       </button>
     )
@@ -137,7 +137,7 @@ export default function MessageButton({ receiverId, displayName }) {
             onClick={handleSend}
             disabled={!message.trim() || sending}
             className="relay-btn relay-btn--filled"
-            style={{ flex: 1, padding: '10px' }}
+            style={{ flex: 1, padding: '10px', boxShadow: 'var(--shadow-hard-accent)' }}
           >
             {sending ? 'Sending...' : 'Send request'}
           </button>
@@ -154,7 +154,7 @@ export default function MessageButton({ receiverId, displayName }) {
   }
 
   return (
-    <button onClick={() => setShowCompose(true)} className="relay-btn relay-btn--filled" style={{ padding: '10px 20px' }}>
+    <button onClick={() => setShowCompose(true)} className="relay-btn relay-btn--filled" style={{ padding: '11px 22px', boxShadow: 'var(--shadow-hard-accent)' }}>
       Send message
     </button>
   )
