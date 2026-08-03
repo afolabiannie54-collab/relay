@@ -138,15 +138,17 @@ export default function HiddenConversationsPage() {
     }}>
       {/* Header */}
       <div style={{ padding: '14px 20px 16px', borderBottom: '2px solid var(--border-strong)', background: 'var(--surface)' }}>
-        <button
-          onClick={() => router.push('/chat')}
-          aria-label="Back"
-          className="relay-plain-icon-btn"
-          style={{ marginLeft: '-10px', marginBottom: '10px' }}
-        >
-          <ChevronLeft size={22} {...iconProps} />
-        </button>
-        <h1 className="relay-page-title">Hidden chats</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <button
+            onClick={() => router.push('/chat')}
+            aria-label="Back"
+            className="relay-plain-icon-btn"
+            style={{ width: '34px', height: '34px', marginLeft: '-8px', flexShrink: 0 }}
+          >
+            <ChevronLeft size={22} {...iconProps} />
+          </button>
+          <h1 className="relay-page-title">Hidden chats</h1>
+        </div>
       </div>
 
       {/* Conversation list */}

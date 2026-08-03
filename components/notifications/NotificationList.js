@@ -88,27 +88,29 @@ export default function NotificationList({ initialNotifications }) {
     }}>
       {/* Header */}
       <div style={{ padding: '14px 20px 16px', borderBottom: '2px solid var(--border-strong)', background: 'var(--surface)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-          <button
-            onClick={() => router.push('/chat')}
-            aria-label="Back"
-            className="relay-plain-icon-btn"
-            style={{ marginLeft: '-10px' }}
-          >
-            <ChevronLeft size={22} {...iconProps} />
-          </button>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+            <button
+              onClick={() => router.push('/chat')}
+              aria-label="Back"
+              className="relay-plain-icon-btn"
+              style={{ width: '34px', height: '34px', marginLeft: '-8px', flexShrink: 0 }}
+            >
+              <ChevronLeft size={22} {...iconProps} />
+            </button>
+            <h1 className="relay-page-title" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Notifications</h1>
+            {unreadCount > 0 && (
+              <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-tertiary)', flexShrink: 0 }}>
+                {unreadCount} unread
+              </span>
+            )}
+          </div>
           {unreadCount > 0 && (
-            <button onClick={handleMarkAllRead} className="relay-btn">
+            <button onClick={handleMarkAllRead} className="relay-btn" style={{ flexShrink: 0 }}>
               <Check size={15} {...iconProps} /> Mark all read
             </button>
           )}
         </div>
-        <h1 className="relay-page-title">Notifications</h1>
-        {unreadCount > 0 && (
-          <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginTop: '4px' }}>
-            {unreadCount} unread
-          </p>
-        )}
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto' }}>

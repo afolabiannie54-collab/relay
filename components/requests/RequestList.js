@@ -132,15 +132,17 @@ export default function RequestList({ initialReceived, initialSent, userId }) {
     }}>
       {/* Header */}
       <div style={{ padding: '14px 20px 0', borderBottom: '2px solid var(--border-strong)', background: 'var(--surface)' }}>
-        <button
-          onClick={() => router.push('/chat')}
-          aria-label="Back"
-          className="relay-plain-icon-btn"
-          style={{ marginLeft: '-10px', marginBottom: '10px' }}
-        >
-          <ChevronLeft size={22} {...iconProps} />
-        </button>
-        <h1 className="relay-page-title" style={{ marginBottom: '14px' }}>Requests</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '14px' }}>
+          <button
+            onClick={() => router.push('/chat')}
+            aria-label="Back"
+            className="relay-plain-icon-btn"
+            style={{ width: '34px', height: '34px', marginLeft: '-8px', flexShrink: 0 }}
+          >
+            <ChevronLeft size={22} {...iconProps} />
+          </button>
+          <h1 className="relay-page-title">Requests</h1>
+        </div>
         <div style={{ display: 'flex', gap: '8px', paddingBottom: '14px' }}>
           <button
             onClick={() => setTab('received')}
