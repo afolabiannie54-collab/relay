@@ -37,16 +37,18 @@ export default function SettingsPage() {
       background: 'var(--bg-subtle)',
       fontFamily: "'Inter', -apple-system, sans-serif",
     }}>
-      <div className="relay-page-header" style={{
+      <div style={{
         background: 'var(--surface)',
         borderBottom: '2px solid var(--border-strong)',
+        padding: '16px 24px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '16px',
         position: 'sticky',
         top: 0,
         zIndex: 10,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <span style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text)' }}>Settings</span>
-        </div>
+        <span style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text)' }}>Settings</span>
       </div>
 
       <div style={{ maxWidth: '600px', margin: '0 auto', padding: '32px 24px' }}>

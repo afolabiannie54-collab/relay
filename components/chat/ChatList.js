@@ -548,7 +548,6 @@ export default function ChatList({ onSelectConversation }) {
       ) : (
       <div style={{
         padding: '14px 20px 16px',
-        borderBottom: '2px solid var(--border-strong)',
         background: 'var(--surface)',
       }}>
         {/* Icon toolbar — its own row, not sharing space with the title,

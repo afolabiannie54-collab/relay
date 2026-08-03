@@ -428,23 +428,6 @@ a, button, input, textarea, select {
   color: var(--text);
 }
 
-/* Pins every root-tab header to the exact same total height as
-   ChatList's own (icon toolbar row + 14px gap + this title, 40+14+34px
-   inside 14px/16px top/bottom padding = 118px) — Messages itself isn't
-   built with this class since its extra icon row already reaches that
-   height naturally, but every single-line-title page (Search, Hidden
-   Chats, Notifications, Settings) uses it so the nav sidebar's own
-   internal divider lines up with every page's header border, instead
-   of only matching whichever page happens to be a coincidental height. */
-.relay-page-header {
-  height: 118px;
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  padding: 0 20px 16px;
-}
-
 /* Plain icon button — no border, no persistent fill, just a neutral
    hover circle. For header actions (back, close, info) that aren't tabs
    or primary controls and shouldn't read as a boxed button; same
