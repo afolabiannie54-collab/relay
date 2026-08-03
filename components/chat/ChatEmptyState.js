@@ -13,7 +13,7 @@ export default function ChatEmptyState() {
       padding: '40px',
     }}>
       <div style={{ marginBottom: '12px' }}>
-        <ChatServiceIllustration />
+        <ChatServiceIllustration size={300} />
       </div>
       <p style={{ fontSize: '15px', color: 'var(--text-tertiary)', fontWeight: '500' }}>
         Select a conversation to start messaging
