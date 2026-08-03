@@ -1,6 +1,9 @@
 'use client'
 
 import { useState } from 'react'
+import { Copy, Check } from 'lucide-react'
+
+const iconProps = { strokeWidth: 2, strokeLinecap: 'square', strokeLinejoin: 'miter' }
 
 export default function CopyUsernameButton({ username }) {
   const [copied, setCopied] = useState(false)
@@ -18,19 +21,20 @@ export default function CopyUsernameButton({ username }) {
   return (
     <button
       onClick={handleCopy}
+      aria-label={copied ? 'Copied' : 'Copy username'}
+      title={copied ? 'Copied' : 'Copy username'}
       style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
         background: 'none',
         border: 'none',
         cursor: 'pointer',
-        fontSize: '11px',
         color: copied ? 'var(--success)' : 'var(--text-tertiary)',
-        fontFamily: 'inherit',
-        fontWeight: '600',
-        padding: '2px 6px',
-        borderRadius: '4px',
+        padding: '3px',
       }}
     >
-      {copied ? 'Copied!' : 'Copy'}
+      {copied ? <Check size={12} {...iconProps} /> : <Copy size={12} {...iconProps} />}
     </button>
   )
 }
