@@ -86,7 +86,7 @@ export default function SessionRow({ session, isLast }) {
             <span style={{
               fontSize: '11px',
               fontWeight: '700',
-              color: 'var(--foreground)',
+              color: 'var(--on-accent)',
               background: 'var(--accent)',
               border: '1.5px solid var(--border-strong)',
               borderRadius: 'var(--radius-pill)',

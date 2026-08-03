@@ -330,7 +330,7 @@ export default function ConversationSettingsSheet({
   }
 
   const getRoleBadge = (role) => {
-    if (role === 'owner') return <span style={{ display: 'flex', alignItems: 'center', gap: '3px', padding: '2px 8px', background: 'var(--accent)', border: '1.5px solid var(--border-strong)', borderRadius: 'var(--radius-pill)', fontSize: '10px', fontWeight: '700', color: 'var(--foreground)' }}><Crown size={10} {...iconProps} /> Owner</span>
+    if (role === 'owner') return <span style={{ display: 'flex', alignItems: 'center', gap: '3px', padding: '2px 8px', background: 'var(--accent)', border: '1.5px solid var(--border-strong)', borderRadius: 'var(--radius-pill)', fontSize: '10px', fontWeight: '700', color: 'var(--on-accent)' }}><Crown size={10} {...iconProps} /> Owner</span>
     if (role === 'admin') return <span style={{ padding: '2px 8px', background: 'var(--gray-100)', border: '1.5px solid var(--border-strong)', borderRadius: 'var(--radius-pill)', fontSize: '10px', fontWeight: '700', color: 'var(--text)' }}>Admin</span>
     return null
   }

@@ -196,7 +196,7 @@ export default function CameraCapture({ onCapture, onCancel }) {
               background: 'var(--accent)',
               border: '1.5px solid var(--border-strong)',
               borderRadius: '10px',
-              color: 'var(--foreground)',
+              color: 'var(--on-accent)',
               fontSize: '15px',
               fontWeight: '700',
               cursor: 'pointer',

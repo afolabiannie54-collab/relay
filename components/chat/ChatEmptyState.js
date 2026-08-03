@@ -1,3 +1,5 @@
+import ChatServiceIllustration from '@/components/shared/illustrations/ChatServiceIllustration'
+
 export default function ChatEmptyState() {
   return (
     <div style={{
@@ -10,12 +12,8 @@ export default function ChatEmptyState() {
       textAlign: 'center',
       padding: '40px',
     }}>
-      {/* Temporary: the real freebie-pack asset, unedited, for review
-          against the hand-built EmptyChatsIllustration before deciding
-          which one sticks. */}
       <div style={{ marginBottom: '12px' }}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/illustrations/ec-chat-service-circle.svg" alt="" width={220} height={241} />
+        <ChatServiceIllustration />
       </div>
       <p style={{ fontSize: '15px', color: 'var(--text-tertiary)', fontWeight: '500' }}>
         Select a conversation to start messaging

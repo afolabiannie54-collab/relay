@@ -624,7 +624,7 @@ export default function ChatList({ onSelectConversation }) {
                   justifyContent: 'center',
                   fontSize: '9px',
                   fontWeight: '800',
-                  color: 'var(--foreground)',
+                  color: 'var(--on-accent)',
                 }}>
                   {unreadNotifCount > 99 ? '99+' : unreadNotifCount}
                 </div>
@@ -714,7 +714,7 @@ export default function ChatList({ onSelectConversation }) {
               alignItems: 'center',
               justifyContent: 'center',
               flexShrink: 0,
-              color: requestsCount > 0 ? 'var(--foreground)' : 'var(--text-secondary)',
+              color: requestsCount > 0 ? 'var(--on-accent)' : 'var(--text-secondary)',
             }}>
               <Inbox size={18} {...iconProps} />
             </div>
@@ -840,7 +840,7 @@ export default function ChatList({ onSelectConversation }) {
                         borderRadius: '50%',
                         border: isSelected ? 'none' : '1.5px solid var(--border-strong)',
                         background: isSelected ? 'var(--accent)' : 'transparent',
-                        color: 'var(--foreground)',
+                        color: 'var(--on-accent)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -913,7 +913,7 @@ export default function ChatList({ onSelectConversation }) {
                           justifyContent: 'center',
                           fontSize: '11px',
                           fontWeight: '800',
-                          color: 'var(--foreground)',
+                          color: 'var(--on-accent)',
                           flexShrink: 0,
                           marginLeft: '8px',
                         }}>

@@ -262,7 +262,7 @@ export default function HiddenConversationsPage() {
                           justifyContent: 'center',
                           fontSize: '11px',
                           fontWeight: '800',
-                          color: 'var(--foreground)',
+                          color: 'var(--on-accent)',
                           flexShrink: 0,
                           marginLeft: '8px',
                         }}>

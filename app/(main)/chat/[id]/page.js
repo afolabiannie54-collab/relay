@@ -1495,7 +1495,7 @@ export default function ConversationPage() {
               justifyContent: 'center',
               fontSize: '10px',
               fontWeight: '800',
-              color: 'var(--foreground)',
+              color: 'var(--on-accent)',
             }}>
               {newMessageCount > 99 ? '99+' : newMessageCount}
             </div>

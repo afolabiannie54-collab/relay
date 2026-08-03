@@ -168,7 +168,7 @@ export default function NotificationList({ initialNotifications }) {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: notification.read ? 'var(--text-secondary)' : 'var(--foreground)',
+                  color: notification.read ? 'var(--text-secondary)' : 'var(--on-accent)',
                   flexShrink: 0,
                 }}>
                   <NotifIcon size={17} {...iconProps} />

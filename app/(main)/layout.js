@@ -290,9 +290,9 @@ export default function MainLayout({ children }) {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
+                        color: 'var(--on-accent)',
                         fontSize: '9.5px',
                         fontWeight: '800',
-                        color: 'var(--foreground)',
                         padding: '0 3px',
                       }}>
                         {item.badge > 99 ? '99+' : item.badge}
@@ -432,9 +432,9 @@ export default function MainLayout({ children }) {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
+                        color: 'var(--on-accent)',
                         fontSize: '9px',
                         fontWeight: '800',
-                        color: 'var(--foreground)',
                         padding: '0 3px',
                       }}>
                         {item.badge > 99 ? '99+' : item.badge}
