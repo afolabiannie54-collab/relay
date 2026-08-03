@@ -185,7 +185,7 @@ export default function SearchPage() {
           <button
             onClick={() => setShowNewGroup(true)}
             className="relay-menu-row"
-            style={{ padding: '14px 20px', margin: '0 -20px', width: 'calc(100% + 40px)', borderRadius: 0, borderBottom: '1px solid var(--border-light)', boxShadow: 'var(--shadow-hard-accent)', flexShrink: 0 }}
+            style={{ padding: '14px 20px', margin: '0 -20px', width: 'calc(100% + 40px)', borderRadius: 0, borderBottom: '1px solid var(--border-light)', flexShrink: 0 }}
           >
             <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--accent)', border: '2px solid var(--border-strong)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--foreground)', flexShrink: 0 }}>
               <Users size={18} {...iconProps} />
