@@ -130,9 +130,11 @@ export default function RequestList({ initialReceived, initialSent, userId }) {
       flexDirection: 'column',
       fontFamily: "'Inter', -apple-system, sans-serif",
     }}>
-      {/* Header */}
-      <div style={{ padding: '14px 20px 0', background: 'var(--surface)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '14px' }}>
+      {/* Header — same border-bottom every other page uses now that the
+          pill toggle below has its own separate row/divider, instead of
+          being the reason this header used to skip the border entirely. */}
+      <div style={{ padding: '14px 20px', borderBottom: '2px solid var(--border-strong)', background: 'var(--surface)' }}>
+        <div className="relay-page-header-row" style={{ gap: '6px' }}>
           <button
             onClick={() => router.push('/chat')}
             aria-label="Back"
@@ -143,22 +145,24 @@ export default function RequestList({ initialReceived, initialSent, userId }) {
           </button>
           <h1 className="relay-page-title">Requests</h1>
         </div>
-        <div style={{ display: 'flex', gap: '8px', paddingBottom: '14px' }}>
-          <button
-            onClick={() => setTab('received')}
-            className={tab === 'received' ? 'relay-btn relay-btn--filled' : 'relay-btn'}
-            style={{ borderRadius: 'var(--radius-pill)', padding: '8px 16px' }}
-          >
-            Received{received.length > 0 ? ` (${received.length})` : ''}
-          </button>
-          <button
-            onClick={() => setTab('sent')}
-            className={tab === 'sent' ? 'relay-btn relay-btn--filled' : 'relay-btn'}
-            style={{ borderRadius: 'var(--radius-pill)', padding: '8px 16px' }}
-          >
-            Sent{sent.length > 0 ? ` (${sent.length})` : ''}
-          </button>
-        </div>
+      </div>
+
+      {/* Pill toggle — its own row now, lighter divider than the header's */}
+      <div style={{ display: 'flex', gap: '8px', padding: '12px 20px', borderBottom: '1px solid var(--border-light)', background: 'var(--surface)' }}>
+        <button
+          onClick={() => setTab('received')}
+          className={tab === 'received' ? 'relay-btn relay-btn--filled' : 'relay-btn'}
+          style={{ borderRadius: 'var(--radius-pill)', padding: '8px 16px' }}
+        >
+          Received{received.length > 0 ? ` (${received.length})` : ''}
+        </button>
+        <button
+          onClick={() => setTab('sent')}
+          className={tab === 'sent' ? 'relay-btn relay-btn--filled' : 'relay-btn'}
+          style={{ borderRadius: 'var(--radius-pill)', padding: '8px 16px' }}
+        >
+          Sent{sent.length > 0 ? ` (${sent.length})` : ''}
+        </button>
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto' }}>
