@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Download, X, Mic, FileText } from 'lucide-react'
+import AudioPlayer from '@/components/chat/AudioPlayer'
 
 const iconProps = { strokeWidth: 2, strokeLinecap: 'square', strokeLinejoin: 'miter' }
 
@@ -178,11 +179,7 @@ export default function MediaMessage({ message, isOwn }) {
         }}>
           <Mic size={12} {...iconProps} /> {media.filename.startsWith('voice-') ? 'Voice message' : media.filename}
         </p>
-        <audio
-          controls
-          src={media.url}
-          style={{ width: '100%', height: '32px' }}
-        />
+        <AudioPlayer src={media.url} light={isOwn} />
       </div>
     )
   }

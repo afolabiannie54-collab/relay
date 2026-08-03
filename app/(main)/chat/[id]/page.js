@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import {
   ChevronLeft, Pin, X, ArrowDown, Paperclip, Camera, Mic, Send,
-  Trash2, Forward, Copy, FileText, Reply,
+  Trash2, Forward, Copy, FileText, Reply, Image as ImageIcon,
 } from 'lucide-react'
 import Avatar from '@/components/shared/Avatar'
 import EllipsisDoodle from '@/components/shared/icons/EllipsisDoodle'
@@ -27,6 +27,22 @@ import { useProfileSheet } from '@/lib/profile-sheet-context'
 // Matches the nav/ChatList icon convention — square caps/miter joins
 // instead of lucide's default rounded ones.
 const iconProps = { strokeWidth: 2, strokeLinecap: 'square', strokeLinejoin: 'miter' }
+
+// A reply quoting a media message previously showed that message's raw
+// `content` — for images/files that's often empty or a caption, but for
+// a voice note it's the literal generated filename ("voice-<timestamp>.
+// webm"), which read as a technical glitch rather than a reply preview.
+// Same {icon, text} shape as ChatList's own getLastMessagePreview, kept
+// separate since this one also needs the "Original message was deleted"
+// case ChatList's list-row preview never has to handle.
+function getReplyPreview(reply) {
+  if (!reply) return { icon: null, text: '' }
+  if (reply.type === 'deleted') return { icon: null, text: 'Original message was deleted' }
+  if (reply.type === 'image') return { icon: ImageIcon, text: 'Photo' }
+  if (reply.type === 'audio') return { icon: Mic, text: 'Voice message' }
+  if (reply.type === 'file') return { icon: Paperclip, text: 'File' }
+  return { icon: null, text: reply.content }
+}
 
 export default function ConversationPage() {
   const { id } = useParams()
@@ -1189,11 +1205,22 @@ export default function ConversationPage() {
                           {msg.reply.sender_name_snapshot === profile?.display_name ? 'You' : msg.reply.sender_name_snapshot}
                         </p>
                         <p style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
                           whiteSpace: 'nowrap',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
                         }}>
-                          {msg.reply.type === 'deleted' ? 'Original message was deleted' : msg.reply.content}
+                          {(() => {
+                            const { icon: ReplyIcon, text } = getReplyPreview(msg.reply)
+                            return (
+                              <>
+                                {ReplyIcon && <ReplyIcon size={12} {...iconProps} style={{ flexShrink: 0 }} />}
+                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{text}</span>
+                              </>
+                            )
+                          })()}
                         </p>
                       </div>
                     )}
@@ -1477,11 +1504,22 @@ export default function ConversationPage() {
             <p style={{
               fontSize: '12px',
               color: 'var(--text-secondary)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
               whiteSpace: 'nowrap',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
             }}>
-              {replyTo.content}
+              {(() => {
+                const { icon: ReplyIcon, text } = getReplyPreview(replyTo)
+                return (
+                  <>
+                    {ReplyIcon && <ReplyIcon size={12} {...iconProps} style={{ flexShrink: 0 }} />}
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{text}</span>
+                  </>
+                )
+              })()}
             </p>
           </div>
           <button

@@ -1,6 +1,10 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { Mic, Square, X, Send } from 'lucide-react'
+import AudioPlayer from '@/components/chat/AudioPlayer'
+
+const iconProps = { strokeWidth: 2, strokeLinecap: 'square', strokeLinejoin: 'miter' }
 
 export default function MediaRecorder({ onRecordingComplete, onCancel }) {
   const [recording, setRecording] = useState(false)
@@ -85,14 +89,14 @@ export default function MediaRecorder({ onRecordingComplete, onCancel }) {
   return (
     <div style={{
       padding: '12px 16px',
-      background: '#F5F5F5',
-      borderTop: '1px solid #E5E5E5',
+      background: 'var(--surface)',
+      borderTop: '2px solid var(--border-strong)',
       flexShrink: 0,
     }}>
       <div style={{
-        background: '#fff',
-        border: '1.5px solid #0a0a0a',
-        borderRadius: '12px',
+        background: 'var(--surface)',
+        border: '2px solid var(--border-strong)',
+        borderRadius: 'var(--radius-md)',
         padding: '12px 16px',
         display: 'flex',
         alignItems: 'center',
@@ -100,111 +104,50 @@ export default function MediaRecorder({ onRecordingComplete, onCancel }) {
       }}>
         {!audioUrl ? (
           <>
-            <div style={{
-              width: '10px',
-              height: '10px',
-              borderRadius: '50%',
-              background: recording ? '#EF4444' : '#A3A3A3',
-              animation: recording ? 'pulse 1s infinite' : 'none',
-              flexShrink: 0,
-            }} />
-            <span style={{
-              fontSize: '16px',
-              fontWeight: '700',
-              fontVariantNumeric: 'tabular-nums',
-              color: recording ? '#EF4444' : '#0a0a0a',
-              flex: 1,
-            }}>
-              {formatDuration(duration)}
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
+              {recording ? (
+                <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: 'var(--error)', animation: 'relay-recorder-pulse 1s infinite', flexShrink: 0 }} />
+              ) : (
+                <Mic size={16} {...iconProps} color="var(--text-tertiary)" />
+              )}
+              <span style={{
+                fontSize: '16px',
+                fontWeight: '700',
+                fontVariantNumeric: 'tabular-nums',
+                color: recording ? 'var(--error)' : 'var(--text)',
+              }}>
+                {formatDuration(duration)}
+              </span>
+            </div>
             {!recording ? (
-              <button
-                onClick={startRecording}
-                style={{
-                  padding: '8px 16px',
-                  background: '#EF4444',
-                  color: '#fff',
-                  border: '1.5px solid #0a0a0a',
-                  borderRadius: '8px',
-                  fontSize: '13px',
-                  fontWeight: '700',
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
-                }}
-              >
-                Record
+              <button onClick={startRecording} className="relay-btn" style={{ padding: '8px 16px', color: 'var(--error)', borderColor: 'var(--error)' }}>
+                <Mic size={15} {...iconProps} /> Record
               </button>
             ) : (
-              <button
-                onClick={stopRecording}
-                style={{
-                  padding: '8px 16px',
-                  background: '#0a0a0a',
-                  color: '#fff',
-                  border: '1.5px solid #0a0a0a',
-                  borderRadius: '8px',
-                  fontSize: '13px',
-                  fontWeight: '700',
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
-                }}
-              >
-                Stop
+              <button onClick={stopRecording} className="relay-btn relay-btn--filled" style={{ padding: '8px 16px' }}>
+                <Square size={13} {...iconProps} fill="currentColor" /> Stop
               </button>
             )}
-            <button
-              onClick={handleDiscard}
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: '20px',
-                color: '#A3A3A3',
-                padding: '4px',
-              }}
-            >
-              ×
+            <button onClick={handleDiscard} aria-label="Cancel" className="relay-plain-icon-btn" style={{ width: '32px', height: '32px' }}>
+              <X size={18} {...iconProps} />
             </button>
           </>
         ) : (
           <>
-            <audio controls src={audioUrl} style={{ flex: 1, height: '32px' }} />
-            <button
-              onClick={handleSend}
-              style={{
-                padding: '8px 16px',
-                background: '#0a0a0a',
-                color: '#fff',
-                border: '1.5px solid #0a0a0a',
-                borderRadius: '8px',
-                fontSize: '13px',
-                fontWeight: '700',
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-                boxShadow: '2px 2px 0 #FFB800',
-                flexShrink: 0,
-              }}
-            >
-              Send
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <AudioPlayer src={audioUrl} />
+            </div>
+            <button onClick={handleSend} className="relay-icon-btn relay-icon-btn--accent" style={{ width: 'auto', padding: '8px 16px' }} aria-label="Send voice message">
+              <Send size={16} {...iconProps} />
             </button>
-            <button
-              onClick={handleDiscard}
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: '20px',
-                color: '#A3A3A3',
-                padding: '4px',
-              }}
-            >
-              ×
+            <button onClick={handleDiscard} aria-label="Discard" className="relay-plain-icon-btn" style={{ width: '32px', height: '32px' }}>
+              <X size={18} {...iconProps} />
             </button>
           </>
         )}
       </div>
       <style>{`
-        @keyframes pulse {
+        @keyframes relay-recorder-pulse {
           0%, 100% { opacity: 1; }
           50% { opacity: 0.3; }
         }
