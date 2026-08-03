@@ -97,7 +97,7 @@ export default function PrivacySettingsForm({ initialSettings }) {
       <div style={{
         background: 'var(--surface)',
         borderBottom: '2px solid var(--border-strong)',
-        padding: '14px 24px',
+        padding: '14px 20px',
         position: 'sticky',
         top: 0,
         zIndex: 10,

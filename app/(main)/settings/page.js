@@ -44,13 +44,13 @@ export default function SettingsPage() {
       <div style={{
         background: 'var(--surface)',
         borderBottom: '2px solid var(--border-strong)',
-        padding: '14px 24px',
+        padding: '14px 20px',
         position: 'sticky',
         top: 0,
         zIndex: 10,
       }}>
         <div className="relay-page-header-row">
-          <span style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text)' }}>Settings</span>
+          <h1 className="relay-page-title">Settings</h1>
         </div>
       </div>
 
