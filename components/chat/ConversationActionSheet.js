@@ -209,7 +209,7 @@ export default function ConversationActionSheet({ conversation, isMuted, isOpen,
     <>
       <BottomSheet isOpen={isOpen && mode === 'menu'} onClose={close}>
         <div style={{ fontFamily: "'Inter', -apple-system, sans-serif" }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '4px 20px 16px', borderBottom: '1px solid var(--border-light)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 20px 16px', borderBottom: '1px solid var(--border-light)' }}>
             <Avatar src={avatarUrl} name={name} size={40} />
             <p style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</p>
           </div>

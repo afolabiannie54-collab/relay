@@ -624,7 +624,7 @@ export default function ConversationSettingsSheet({
       {/* Per-member action sheet */}
       <BottomSheet isOpen={!!memberActionUser} onClose={() => setMemberActionUser(null)}>
         <div style={{ fontFamily: "'Inter', -apple-system, sans-serif" }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '4px 20px 16px', borderBottom: '1px solid var(--border-light)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 20px 16px', borderBottom: '1px solid var(--border-light)' }}>
             <Avatar src={memberActionUser?.avatar_url} name={memberActionUser?.display_name} size={40} />
             <p style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text)' }}>{memberActionUser?.display_name}</p>
           </div>

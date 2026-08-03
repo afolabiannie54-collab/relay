@@ -311,7 +311,7 @@ export default function SearchPage() {
 
       <BottomSheet isOpen={!!menuUser} onClose={closeMenu}>
         <div style={{ fontFamily: "'Inter', -apple-system, sans-serif" }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '4px 20px 16px', borderBottom: '1px solid var(--border-light)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 20px 16px', borderBottom: '1px solid var(--border-light)' }}>
             <Avatar src={menuUser?.avatar_url} name={menuUser?.display_name} size={40} />
             <div style={{ minWidth: 0 }}>
               <p style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text)' }}>{menuUser?.display_name}</p>
