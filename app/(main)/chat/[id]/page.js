@@ -528,23 +528,30 @@ export default function ConversationPage() {
       payload: { userId: profile?.id, displayName: profile?.display_name, isTyping: false },
     })
 
-    const result = await sendMessage(id, text, pendingReply?.id || null)
-    if (result.error) {
+    try {
+      const result = await sendMessage(id, text, pendingReply?.id || null)
+      if (result.error) {
+        setContent(text)
+        // Restore the reply target too, not just the draft text — otherwise
+        // a retry after a failed send silently posts as a plain message
+        // instead of the reply the user actually composed.
+        setReplyTo(pendingReply)
+        // This used to fail completely silently — the draft just bounced
+        // back into the input with no explanation, which is exactly how a
+        // still-pending message request (blocked server-side in
+        // sendMessage) would present: looks like nothing happened at all.
+        alert(result.error)
+      } else {
+        try { window.navigator.vibrate?.(10) } catch {}
+      }
+    } catch (err) {
       setContent(text)
-      // Restore the reply target too, not just the draft text — otherwise
-      // a retry after a failed send silently posts as a plain message
-      // instead of the reply the user actually composed.
       setReplyTo(pendingReply)
-      // This used to fail completely silently — the draft just bounced
-      // back into the input with no explanation, which is exactly how a
-      // still-pending message request (blocked server-side in
-      // sendMessage) would present: looks like nothing happened at all.
-      alert(result.error)
-    } else {
-      try { window.navigator.vibrate?.(10) } catch {}
+      alert('Failed to send — please try again.')
+    } finally {
+      setSending(false)
+      inputRef.current?.focus()
     }
-    setSending(false)
-    inputRef.current?.focus()
   }
 
   const handleAcceptRequest = async () => {
@@ -623,15 +630,24 @@ export default function ConversationPage() {
     formData.append('file', mediaPreview.file)
     if (replyTo?.id) formData.append('replyToId', replyTo.id)
     setSending(true)
-    const result = await uploadMedia(id, formData)
-    if (result.error) {
-      alert(result.error)
-    } else {
-      setReplyTo(null)
+    try {
+      const result = await uploadMedia(id, formData)
+      if (result.error) {
+        alert(result.error)
+      } else {
+        setReplyTo(null)
+      }
+    } catch (err) {
+      // A rejected/thrown call here (a request-size limit, a dropped
+      // connection mid-upload) used to skip straight past the cleanup
+      // below, leaving the preview stuck on "Sending..." forever with
+      // no error and no way out except discarding the attachment.
+      alert('Failed to send — please try again.')
+    } finally {
+      if (mediaPreview.previewUrl) URL.revokeObjectURL(mediaPreview.previewUrl)
+      setMediaPreview(null)
+      setSending(false)
     }
-    if (mediaPreview.previewUrl) URL.revokeObjectURL(mediaPreview.previewUrl)
-    setMediaPreview(null)
-    setSending(false)
   }
 
   const handleRecordingComplete = async (file) => {
@@ -640,10 +656,15 @@ export default function ConversationPage() {
     formData.append('file', file)
     if (replyTo?.id) formData.append('replyToId', replyTo.id)
     setSending(true)
-    const result = await uploadMedia(id, formData)
-    if (result.error) alert(result.error)
-    else setReplyTo(null)
-    setSending(false)
+    try {
+      const result = await uploadMedia(id, formData)
+      if (result.error) alert(result.error)
+      else setReplyTo(null)
+    } catch (err) {
+      alert('Failed to send — please try again.')
+    } finally {
+      setSending(false)
+    }
   }
 
   const handleCameraCapture = async (file) => {
