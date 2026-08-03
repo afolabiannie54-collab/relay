@@ -29,38 +29,27 @@ export default function BlockedUserRow({ user, isLast }) {
       display: 'flex',
       alignItems: 'center',
       gap: '12px',
-      borderBottom: isLast ? 'none' : '1px solid #F5F5F5',
+      borderBottom: isLast ? 'none' : '1px solid var(--border-light)',
     }}>
       <Avatar src={user.avatar_url} name={user.display_name} size={44} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <p style={{
           fontSize: '14px',
           fontWeight: '700',
-          color: '#0a0a0a',
+          color: 'var(--text)',
           whiteSpace: 'nowrap',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
         }}>
           {user.display_name}
         </p>
-        <p style={{ fontSize: '12px', color: '#A3A3A3' }}>@{user.username}</p>
+        <p style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>@{user.username}</p>
       </div>
       <button
         onClick={handleUnblock}
         disabled={unblocking}
-        style={{
-          padding: '8px 16px',
-          background: '#0a0a0a',
-          color: '#fff',
-          border: '1.5px solid #0a0a0a',
-          borderRadius: '8px',
-          fontSize: '13px',
-          fontWeight: '600',
-          cursor: unblocking ? 'not-allowed' : 'pointer',
-          fontFamily: 'inherit',
-          boxShadow: unblocking ? 'none' : '2px 2px 0 #FFB800',
-          flexShrink: 0,
-        }}
+        className="relay-btn"
+        style={{ flexShrink: 0 }}
       >
         {unblocking ? 'Unblocking...' : 'Unblock'}
       </button>

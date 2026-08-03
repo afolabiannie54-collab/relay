@@ -21,14 +21,14 @@ export default function SignOutAllRow({ isLast }) {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          borderBottom: isLast ? 'none' : '1px solid #F5F5F5',
+          borderBottom: isLast ? 'none' : '1px solid var(--border-light)',
           cursor: 'pointer',
         }}
       >
-        <span style={{ fontSize: '14px', fontWeight: '500', color: '#0a0a0a' }}>
+        <span style={{ fontSize: '14px', fontWeight: '500', color: 'var(--text)' }}>
           Sign out all devices
         </span>
-        <span style={{ color: '#A3A3A3', fontSize: '14px' }}>→</span>
+        <span style={{ color: 'var(--text-tertiary)', fontSize: '14px' }}>→</span>
       </div>
 
       <ConfirmSheet

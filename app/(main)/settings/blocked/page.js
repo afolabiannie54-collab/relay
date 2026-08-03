@@ -1,6 +1,9 @@
 import Link from 'next/link'
+import { ChevronLeft } from 'lucide-react'
 import { getBlockedUsers } from '@/actions/blocks'
 import BlockedUserRow from '@/components/settings/BlockedUserRow'
+
+const iconProps = { strokeWidth: 2, strokeLinecap: 'square', strokeLinejoin: 'miter' }
 
 export default async function BlockedUsersPage() {
   const result = await getBlockedUsers()
@@ -9,50 +12,49 @@ export default async function BlockedUsersPage() {
   return (
     <div style={{
       minHeight: '100dvh',
-      background: '#F5F5F5',
+      background: 'var(--bg-subtle)',
       fontFamily: "'Inter', -apple-system, sans-serif",
     }}>
       <div style={{
-        background: '#fff',
-        borderBottom: '1.5px solid #0a0a0a',
-        padding: '16px 24px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '16px',
+        background: 'var(--surface)',
+        borderBottom: '2px solid var(--border-strong)',
+        padding: '14px 24px',
         position: 'sticky',
         top: 0,
         zIndex: 10,
       }}>
-        <Link href="/settings" style={{
-          textDecoration: 'none',
-          color: '#0a0a0a',
-          fontSize: '14px',
-          fontWeight: '600',
-        }}>
-          ← Back
-        </Link>
-        <span style={{ fontSize: '16px', fontWeight: '700' }}>Blocked users</span>
+        <div className="relay-page-header-row" style={{ gap: '6px' }}>
+          <Link
+            href="/settings"
+            aria-label="Back"
+            className="relay-plain-icon-btn"
+            style={{ width: '34px', height: '34px', marginLeft: '-8px', flexShrink: 0 }}
+          >
+            <ChevronLeft size={22} {...iconProps} />
+          </Link>
+          <span style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text)' }}>Blocked users</span>
+        </div>
       </div>
 
       <div style={{ maxWidth: '600px', margin: '0 auto', padding: '32px 24px' }}>
         {users.length === 0 ? (
           <div style={{
-            background: '#fff',
-            border: '1.5px solid #0a0a0a',
-            borderRadius: '16px',
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-lg)',
             padding: '40px 20px',
             textAlign: 'center',
-            boxShadow: '4px 4px 0 #0a0a0a',
+            boxShadow: 'var(--shadow-md)',
           }}>
-            <p style={{ fontSize: '14px', color: '#A3A3A3' }}>You haven&apos;t blocked anyone</p>
+            <p style={{ fontSize: '14px', color: 'var(--text-tertiary)' }}>You haven&apos;t blocked anyone</p>
           </div>
         ) : (
           <div style={{
-            background: '#fff',
-            border: '1.5px solid #0a0a0a',
-            borderRadius: '16px',
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-lg)',
             overflow: 'hidden',
-            boxShadow: '4px 4px 0 #0a0a0a',
+            boxShadow: 'var(--shadow-md)',
           }}>
             {users.map((u, i) => (
               <BlockedUserRow key={u.id} user={u} isLast={i === users.length - 1} />

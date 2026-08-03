@@ -2,10 +2,13 @@
 
 import { useState, useRef } from 'react'
 import Link from 'next/link'
+import { ChevronLeft } from 'lucide-react'
 import Avatar from '@/components/shared/Avatar'
 import { updateProfile, uploadAvatar, changeUsername } from '@/actions/users'
 import { checkUsernameAvailable } from '@/actions/auth'
 import { useProfileSheet } from '@/lib/profile-sheet-context'
+
+const iconProps = { strokeWidth: 2, strokeLinecap: 'square', strokeLinejoin: 'miter' }
 
 export default function EditProfileForm({ initialProfile }) {
   const { openProfile } = useProfileSheet()
@@ -153,7 +156,7 @@ export default function EditProfileForm({ initialProfile }) {
     return (
       <p style={{
         fontSize: '11px',
-        color: value.length >= max ? '#EF4444' : '#A3A3A3',
+        color: value.length >= max ? 'var(--error)' : 'var(--text-tertiary)',
         textAlign: 'right',
         marginTop: '4px',
       }}>
@@ -162,59 +165,53 @@ export default function EditProfileForm({ initialProfile }) {
     )
   }
 
-  const inputStyle = {
-    width: '100%',
-    padding: '12px 14px',
-    border: '1.5px solid #e5e5e5',
-    borderRadius: '8px',
-    fontSize: '16px',
-    fontFamily: 'inherit',
-    outline: 'none',
-    background: '#fff',
-    color: '#0a0a0a',
-    transition: 'border-color 0.15s',
+  const cardStyle = {
+    background: 'var(--surface)',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--radius-lg)',
+    padding: '24px',
+    boxShadow: 'var(--shadow-md)',
+    marginBottom: '20px',
   }
 
   return (
     <div style={{
       minHeight: '100dvh',
-      background: '#F5F5F5',
+      background: 'var(--bg-subtle)',
       fontFamily: "'Inter', -apple-system, sans-serif",
     }}>
-      {/* Top nav */}
       <div style={{
-        background: '#fff',
-        borderBottom: '1.5px solid #0a0a0a',
-        padding: '16px 24px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '16px',
+        background: 'var(--surface)',
+        borderBottom: '2px solid var(--border-strong)',
+        padding: '14px 24px',
         position: 'sticky',
         top: 0,
         zIndex: 10,
       }}>
-        <Link href="/settings" style={{
-          textDecoration: 'none',
-          color: '#0a0a0a',
-          fontSize: '14px',
-          fontWeight: '600',
-        }}>
-          ← Back
-        </Link>
-        <span style={{ fontSize: '16px', fontWeight: '700' }}>Edit Profile</span>
+        <div className="relay-page-header-row" style={{ gap: '6px' }}>
+          <Link
+            href="/settings"
+            aria-label="Back"
+            className="relay-plain-icon-btn"
+            style={{ width: '34px', height: '34px', marginLeft: '-8px', flexShrink: 0 }}
+          >
+            <ChevronLeft size={22} {...iconProps} />
+          </Link>
+          <span style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text)' }}>Edit profile</span>
+        </div>
       </div>
 
       <div style={{ maxWidth: '600px', margin: '0 auto', padding: '32px 24px' }}>
 
         {success && (
           <div style={{
-            background: '#F0FDF4',
-            border: '1.5px solid #22C55E',
-            borderRadius: '8px',
+            background: 'var(--success-light)',
+            border: '1.5px solid var(--success)',
+            borderRadius: 'var(--radius-sm)',
             padding: '12px 14px',
             marginBottom: '20px',
             fontSize: '13px',
-            color: '#22C55E',
+            color: 'var(--success)',
           }}>
             {success}
           </div>
@@ -222,28 +219,21 @@ export default function EditProfileForm({ initialProfile }) {
 
         {error && (
           <div style={{
-            background: '#FEF2F2',
-            border: '1.5px solid #EF4444',
-            borderRadius: '8px',
+            background: 'var(--error-light)',
+            border: '1.5px solid var(--error)',
+            borderRadius: 'var(--radius-sm)',
             padding: '12px 14px',
             marginBottom: '20px',
             fontSize: '13px',
-            color: '#EF4444',
+            color: 'var(--error)',
           }}>
             {error}
           </div>
         )}
 
         {/* Avatar section */}
-        <div style={{
-          background: '#fff',
-          border: '1.5px solid #0a0a0a',
-          borderRadius: '16px',
-          padding: '24px',
-          boxShadow: '4px 4px 0 #0a0a0a',
-          marginBottom: '20px',
-        }}>
-          <h2 style={{ fontSize: '16px', fontWeight: '700', marginBottom: '16px' }}>Profile picture</h2>
+        <div style={cardStyle}>
+          <h2 style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text)', marginBottom: '16px' }}>Profile picture</h2>
           <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
             <div style={{ position: 'relative' }}>
               <Avatar src={profile?.avatar_url} name={profile?.display_name} size={72} />
@@ -268,24 +258,12 @@ export default function EditProfileForm({ initialProfile }) {
               <button
                 onClick={handleAvatarClick}
                 disabled={uploadingAvatar}
-                style={{
-                  padding: '9px 18px',
-                  background: '#0a0a0a',
-                  color: '#fff',
-                  border: '1.5px solid #0a0a0a',
-                  borderRadius: '8px',
-                  fontSize: '13px',
-                  fontWeight: '600',
-                  cursor: uploadingAvatar ? 'not-allowed' : 'pointer',
-                  fontFamily: 'inherit',
-                  boxShadow: '2px 2px 0 #FFB800',
-                  display: 'block',
-                  marginBottom: '8px',
-                }}
+                className="relay-btn relay-btn--filled"
+                style={{ boxShadow: 'var(--shadow-hard-accent)', display: 'block', marginBottom: '8px' }}
               >
                 {uploadingAvatar ? 'Uploading...' : 'Change photo'}
               </button>
-              <p style={{ fontSize: '12px', color: '#A3A3A3' }}>JPEG, PNG, WebP or GIF. Max 5MB.</p>
+              <p style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>JPEG, PNG, WebP or GIF. Max 5MB.</p>
             </div>
           </div>
           <input
@@ -298,18 +276,11 @@ export default function EditProfileForm({ initialProfile }) {
         </div>
 
         {/* Profile info */}
-        <div style={{
-          background: '#fff',
-          border: '1.5px solid #0a0a0a',
-          borderRadius: '16px',
-          padding: '24px',
-          boxShadow: '4px 4px 0 #0a0a0a',
-          marginBottom: '20px',
-        }}>
-          <h2 style={{ fontSize: '16px', fontWeight: '700', marginBottom: '16px' }}>Profile info</h2>
+        <div style={cardStyle}>
+          <h2 style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text)', marginBottom: '16px' }}>Profile info</h2>
           <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div>
-              <label style={{ fontSize: '13px', fontWeight: '600', color: '#0a0a0a', display: 'block', marginBottom: '6px' }}>
+              <label style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text)', display: 'block', marginBottom: '6px' }}>
                 Display name
               </label>
               <input
@@ -318,15 +289,14 @@ export default function EditProfileForm({ initialProfile }) {
                 value={formData.display_name}
                 onChange={handleChange}
                 maxLength={50}
-                style={inputStyle}
-                onFocus={e => e.target.style.borderColor = '#0a0a0a'}
-                onBlur={e => e.target.style.borderColor = '#e5e5e5'}
+                className="relay-input"
+                style={{ width: '100%', padding: '12px 14px', fontSize: '16px', boxSizing: 'border-box' }}
               />
               <CharCount value={formData.display_name} max={50} />
             </div>
 
             <div>
-              <label style={{ fontSize: '13px', fontWeight: '600', color: '#0a0a0a', display: 'block', marginBottom: '6px' }}>
+              <label style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text)', display: 'block', marginBottom: '6px' }}>
                 Bio
               </label>
               <textarea
@@ -336,19 +306,14 @@ export default function EditProfileForm({ initialProfile }) {
                 placeholder="Tell people a little about yourself..."
                 rows={3}
                 maxLength={160}
-                style={{
-                  ...inputStyle,
-                  resize: 'vertical',
-                  lineHeight: '1.5',
-                }}
-                onFocus={e => e.target.style.borderColor = '#0a0a0a'}
-                onBlur={e => e.target.style.borderColor = '#e5e5e5'}
+                className="relay-input"
+                style={{ width: '100%', padding: '12px 14px', fontSize: '16px', resize: 'vertical', lineHeight: '1.5', boxSizing: 'border-box' }}
               />
               <CharCount value={formData.bio} max={160} />
             </div>
 
             <div>
-              <label style={{ fontSize: '13px', fontWeight: '700', color: '#0a0a0a', display: 'block', marginBottom: '10px' }}>
+              <label style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text)', display: 'block', marginBottom: '10px' }}>
                 Social links
               </label>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -360,9 +325,8 @@ export default function EditProfileForm({ initialProfile }) {
                     onChange={handleChange}
                     placeholder="https://yoursite.com"
                     maxLength={100}
-                    style={inputStyle}
-                    onFocus={e => e.target.style.borderColor = '#0a0a0a'}
-                    onBlur={e => e.target.style.borderColor = '#e5e5e5'}
+                    className="relay-input"
+                    style={{ width: '100%', padding: '12px 14px', fontSize: '16px', boxSizing: 'border-box' }}
                   />
                   <CharCount value={formData.website} max={100} />
                 </div>
@@ -374,9 +338,8 @@ export default function EditProfileForm({ initialProfile }) {
                     onChange={handleChange}
                     placeholder="@username (Twitter/X)"
                     maxLength={100}
-                    style={inputStyle}
-                    onFocus={e => e.target.style.borderColor = '#0a0a0a'}
-                    onBlur={e => e.target.style.borderColor = '#e5e5e5'}
+                    className="relay-input"
+                    style={{ width: '100%', padding: '12px 14px', fontSize: '16px', boxSizing: 'border-box' }}
                   />
                   <CharCount value={formData.twitter} max={100} />
                 </div>
@@ -388,9 +351,8 @@ export default function EditProfileForm({ initialProfile }) {
                     onChange={handleChange}
                     placeholder="@username (Instagram)"
                     maxLength={100}
-                    style={inputStyle}
-                    onFocus={e => e.target.style.borderColor = '#0a0a0a'}
-                    onBlur={e => e.target.style.borderColor = '#e5e5e5'}
+                    className="relay-input"
+                    style={{ width: '100%', padding: '12px 14px', fontSize: '16px', boxSizing: 'border-box' }}
                   />
                   <CharCount value={formData.instagram} max={100} />
                 </div>
@@ -402,9 +364,8 @@ export default function EditProfileForm({ initialProfile }) {
                     onChange={handleChange}
                     placeholder="linkedin.com/in/username"
                     maxLength={100}
-                    style={inputStyle}
-                    onFocus={e => e.target.style.borderColor = '#0a0a0a'}
-                    onBlur={e => e.target.style.borderColor = '#e5e5e5'}
+                    className="relay-input"
+                    style={{ width: '100%', padding: '12px 14px', fontSize: '16px', boxSizing: 'border-box' }}
                   />
                   <CharCount value={formData.linkedin} max={100} />
                 </div>
@@ -414,18 +375,8 @@ export default function EditProfileForm({ initialProfile }) {
             <button
               type="submit"
               disabled={saving}
-              style={{
-                padding: '12px',
-                background: saving ? '#525252' : '#0a0a0a',
-                color: '#fff',
-                border: '1.5px solid #0a0a0a',
-                borderRadius: '8px',
-                fontSize: '14px',
-                fontWeight: '700',
-                cursor: saving ? 'not-allowed' : 'pointer',
-                fontFamily: 'inherit',
-                boxShadow: saving ? 'none' : '3px 3px 0 #FFB800',
-              }}
+              className="relay-btn relay-btn--filled"
+              style={{ padding: '12px', boxShadow: 'var(--shadow-hard-accent)' }}
             >
               {saving ? 'Saving...' : 'Save changes'}
             </button>
@@ -433,40 +384,23 @@ export default function EditProfileForm({ initialProfile }) {
         </div>
 
         {/* Username section */}
-        <div style={{
-          background: '#fff',
-          border: '1.5px solid #0a0a0a',
-          borderRadius: '16px',
-          padding: '24px',
-          boxShadow: '4px 4px 0 #0a0a0a',
-          marginBottom: '20px',
-        }}>
-          <h2 style={{ fontSize: '16px', fontWeight: '700', marginBottom: '4px' }}>Username</h2>
-          <p style={{ fontSize: '13px', color: '#A3A3A3', marginBottom: '16px' }}>
+        <div style={cardStyle}>
+          <h2 style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text)', marginBottom: '4px' }}>Username</h2>
+          <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '16px' }}>
             Current: @{profile?.username} · Can be changed once every 30 days
           </p>
 
           {!showUsernameChange ? (
             <button
               onClick={() => setShowUsernameChange(true)}
-              style={{
-                padding: '9px 18px',
-                background: '#fff',
-                color: '#0a0a0a',
-                border: '1.5px solid #0a0a0a',
-                borderRadius: '8px',
-                fontSize: '13px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-              }}
+              className="relay-btn"
             >
               Change username
             </button>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {usernameError && (
-                <p style={{ fontSize: '12px', color: '#EF4444' }}>{usernameError}</p>
+                <p style={{ fontSize: '12px', color: 'var(--error)' }}>{usernameError}</p>
               )}
               <div style={{ position: 'relative' }}>
                 <span style={{
@@ -474,7 +408,7 @@ export default function EditProfileForm({ initialProfile }) {
                   left: '14px',
                   top: '50%',
                   transform: 'translateY(-50%)',
-                  color: '#A3A3A3',
+                  color: 'var(--text-tertiary)',
                   fontSize: '14px',
                   pointerEvents: 'none',
                 }}>@</span>
@@ -484,22 +418,21 @@ export default function EditProfileForm({ initialProfile }) {
                   onChange={handleUsernameChange}
                   placeholder={profile?.username}
                   maxLength={20}
-                  style={{ ...inputStyle, paddingLeft: '28px' }}
-                  onFocus={e => e.target.style.borderColor = '#0a0a0a'}
-                  onBlur={e => e.target.style.borderColor = '#e5e5e5'}
+                  className="relay-input"
+                  style={{ width: '100%', padding: '12px 14px', paddingLeft: '28px', fontSize: '16px', boxSizing: 'border-box' }}
                 />
               </div>
               <CharCount value={newUsername} max={20} />
 
               {usernameState === 'checking' && (
-                <p style={{ fontSize: '12px', color: '#A3A3A3' }}>Checking availability...</p>
+                <p style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>Checking availability...</p>
               )}
               {usernameState === 'available' && (
-                <p style={{ fontSize: '12px', color: '#22C55E' }}>✓ Username available</p>
+                <p style={{ fontSize: '12px', color: 'var(--success)' }}>✓ Username available</p>
               )}
               {usernameState === 'taken' && (
                 <div>
-                  <p style={{ fontSize: '12px', color: '#EF4444' }}>✗ Username taken</p>
+                  <p style={{ fontSize: '12px', color: 'var(--error)' }}>✗ Username taken</p>
                   {usernameSuggestions.length > 0 && (
                     <div style={{ display: 'flex', gap: '6px', marginTop: '6px', flexWrap: 'wrap' }}>
                       {usernameSuggestions.map(s => (
@@ -513,10 +446,11 @@ export default function EditProfileForm({ initialProfile }) {
                           }}
                           style={{
                             padding: '4px 10px',
-                            border: '1.5px solid #0a0a0a',
-                            borderRadius: '100px',
+                            border: '1.5px solid var(--border-strong)',
+                            borderRadius: 'var(--radius-pill)',
                             fontSize: '12px',
-                            background: '#fff',
+                            background: 'var(--surface)',
+                            color: 'var(--text)',
                             cursor: 'pointer',
                             fontFamily: 'inherit',
                           }}
@@ -533,18 +467,8 @@ export default function EditProfileForm({ initialProfile }) {
                 <button
                   onClick={handleSaveUsername}
                   disabled={savingUsername || usernameState !== 'available'}
-                  style={{
-                    padding: '9px 18px',
-                    background: usernameState === 'available' ? '#0a0a0a' : '#525252',
-                    color: '#fff',
-                    border: '1.5px solid #0a0a0a',
-                    borderRadius: '8px',
-                    fontSize: '13px',
-                    fontWeight: '600',
-                    cursor: usernameState === 'available' ? 'pointer' : 'not-allowed',
-                    fontFamily: 'inherit',
-                    boxShadow: usernameState === 'available' ? '2px 2px 0 #FFB800' : 'none',
-                  }}
+                  className="relay-btn relay-btn--filled"
+                  style={{ boxShadow: usernameState === 'available' ? 'var(--shadow-hard-accent)' : 'none' }}
                 >
                   {savingUsername ? 'Saving...' : 'Save username'}
                 </button>
@@ -555,17 +479,7 @@ export default function EditProfileForm({ initialProfile }) {
                     setUsernameState(null)
                     setUsernameError(null)
                   }}
-                  style={{
-                    padding: '9px 18px',
-                    background: '#fff',
-                    color: '#525252',
-                    border: '1.5px solid #e5e5e5',
-                    borderRadius: '8px',
-                    fontSize: '13px',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    fontFamily: 'inherit',
-                  }}
+                  className="relay-btn"
                 >
                   Cancel
                 </button>
@@ -580,19 +494,12 @@ export default function EditProfileForm({ initialProfile }) {
             account is actually linked, which wasn't visible anywhere
             before — easy to lose track of for a Google sign-in in
             particular, where the email is never manually typed. */}
-        <div style={{
-          background: '#fff',
-          border: '1.5px solid #0a0a0a',
-          borderRadius: '16px',
-          padding: '24px',
-          boxShadow: '4px 4px 0 #0a0a0a',
-          marginBottom: '20px',
-        }}>
-          <h2 style={{ fontSize: '16px', fontWeight: '700', marginBottom: '4px' }}>Email</h2>
-          <p style={{ fontSize: '13px', color: '#0a0a0a', marginBottom: '4px' }}>
+        <div style={cardStyle}>
+          <h2 style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text)', marginBottom: '4px' }}>Email</h2>
+          <p style={{ fontSize: '13px', color: 'var(--text)', marginBottom: '4px' }}>
             {profile?.email}
           </p>
-          <p style={{ fontSize: '12px', color: '#A3A3A3' }}>
+          <p style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>
             Contact support to change the email on your account.
           </p>
         </div>
@@ -603,7 +510,7 @@ export default function EditProfileForm({ initialProfile }) {
             onClick={() => openProfile(profile?.username)}
             style={{
               fontSize: '13px',
-              color: '#525252',
+              color: 'var(--text-secondary)',
               background: 'none',
               border: 'none',
               cursor: 'pointer',

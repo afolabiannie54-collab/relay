@@ -2,7 +2,10 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { ChevronLeft } from 'lucide-react'
 import { deleteAccount } from '@/actions/blocks'
+
+const iconProps = { strokeWidth: 2, strokeLinecap: 'square', strokeLinejoin: 'miter' }
 
 export default function DeleteAccountPage() {
   const [confirmText, setConfirmText] = useState('')
@@ -28,69 +31,68 @@ export default function DeleteAccountPage() {
   return (
     <div style={{
       minHeight: '100dvh',
-      background: '#F5F5F5',
+      background: 'var(--bg-subtle)',
       fontFamily: "'Inter', -apple-system, sans-serif",
     }}>
       <div style={{
-        background: '#fff',
-        borderBottom: '1.5px solid #0a0a0a',
-        padding: '16px 24px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '16px',
+        background: 'var(--surface)',
+        borderBottom: '2px solid var(--border-strong)',
+        padding: '14px 24px',
         position: 'sticky',
         top: 0,
         zIndex: 10,
       }}>
-        <Link href="/settings" style={{
-          textDecoration: 'none',
-          color: '#0a0a0a',
-          fontSize: '14px',
-          fontWeight: '600',
-        }}>
-          ← Back
-        </Link>
-        <span style={{ fontSize: '16px', fontWeight: '700' }}>Delete account</span>
+        <div className="relay-page-header-row" style={{ gap: '6px' }}>
+          <Link
+            href="/settings"
+            aria-label="Back"
+            className="relay-plain-icon-btn"
+            style={{ width: '34px', height: '34px', marginLeft: '-8px', flexShrink: 0 }}
+          >
+            <ChevronLeft size={22} {...iconProps} />
+          </Link>
+          <span style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text)' }}>Delete account</span>
+        </div>
       </div>
 
       <div style={{ maxWidth: '600px', margin: '0 auto', padding: '32px 24px' }}>
         <div style={{
-          background: '#FEF2F2',
-          border: '1.5px solid #EF4444',
-          borderRadius: '16px',
+          background: 'var(--error-light)',
+          border: '1px solid var(--error)',
+          borderRadius: 'var(--radius-lg)',
           padding: '24px',
           marginBottom: '20px',
         }}>
-          <p style={{ fontSize: '16px', fontWeight: '800', color: '#EF4444', marginBottom: '8px' }}>
+          <p style={{ fontSize: '16px', fontWeight: '800', color: 'var(--error)', marginBottom: '8px' }}>
             This action is permanent
           </p>
-          <p style={{ fontSize: '14px', color: '#7F1D1D', lineHeight: '1.6' }}>
+          <p style={{ fontSize: '14px', color: 'var(--error)', lineHeight: '1.6' }}>
             Deleting your account will permanently remove your profile, messages, groups, and all associated data. This cannot be undone.
           </p>
         </div>
 
         {error && (
           <div style={{
-            background: '#FEF2F2',
-            border: '1.5px solid #EF4444',
-            borderRadius: '8px',
+            background: 'var(--error-light)',
+            border: '1px solid var(--error)',
+            borderRadius: 'var(--radius-sm)',
             padding: '12px 14px',
             marginBottom: '20px',
             fontSize: '13px',
-            color: '#EF4444',
+            color: 'var(--error)',
           }}>
             {error}
           </div>
         )}
 
         <div style={{
-          background: '#fff',
-          border: '1.5px solid #0a0a0a',
-          borderRadius: '16px',
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-lg)',
           padding: '24px',
-          boxShadow: '4px 4px 0 #0a0a0a',
+          boxShadow: 'var(--shadow-md)',
         }}>
-          <label style={{ fontSize: '13px', fontWeight: '600', color: '#0a0a0a', display: 'block', marginBottom: '8px' }}>
+          <label style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text)', display: 'block', marginBottom: '8px' }}>
             Type DELETE to confirm
           </label>
           <input
@@ -98,14 +100,11 @@ export default function DeleteAccountPage() {
             value={confirmText}
             onChange={e => setConfirmText(e.target.value)}
             placeholder="DELETE"
+            className="relay-input"
             style={{
               width: '100%',
               padding: '12px 14px',
-              border: '1.5px solid #0a0a0a',
-              borderRadius: '8px',
               fontSize: '16px',
-              fontFamily: 'inherit',
-              outline: 'none',
               marginBottom: '16px',
               boxSizing: 'border-box',
             }}
@@ -116,10 +115,10 @@ export default function DeleteAccountPage() {
             style={{
               width: '100%',
               padding: '14px',
-              background: confirmText === 'DELETE' ? '#EF4444' : '#F5F5F5',
-              color: confirmText === 'DELETE' ? '#fff' : '#A3A3A3',
-              border: `1.5px solid ${confirmText === 'DELETE' ? '#EF4444' : '#E5E5E5'}`,
-              borderRadius: '8px',
+              background: confirmText === 'DELETE' ? 'var(--error)' : 'var(--gray-100)',
+              color: confirmText === 'DELETE' ? '#fff' : 'var(--text-tertiary)',
+              border: `1.5px solid ${confirmText === 'DELETE' ? 'var(--error)' : 'var(--border)'}`,
+              borderRadius: 'var(--radius-sm)',
               fontSize: '14px',
               fontWeight: '700',
               cursor: confirmText === 'DELETE' && !deleting ? 'pointer' : 'not-allowed',

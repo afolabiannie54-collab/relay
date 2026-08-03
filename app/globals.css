@@ -21,6 +21,7 @@
   --accent-text: #8A5A00;
 
   --success: #22C55E;
+  --success-light: #F0FDF4;
   --error: #EF4444;
   --error-light: #FEECEC;
   --warning: #F59E0B;
@@ -103,6 +104,7 @@
     --accent-wash-strong: #3D3117;
     --accent-text: #FFC933;
 
+    --success-light: rgba(34, 197, 94, 0.14);
     --error-light: rgba(239, 68, 68, 0.14);
 
     --gray-100: #1F1F1D;

@@ -62,14 +62,14 @@ export default function SessionRow({ session, isLast }) {
       alignItems: 'center',
       justifyContent: 'space-between',
       gap: '16px',
-      borderBottom: isLast ? 'none' : '1px solid #F5F5F5',
+      borderBottom: isLast ? 'none' : '1px solid var(--border-light)',
     }}>
       <div style={{ minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
           <p style={{
             fontSize: '14px',
             fontWeight: '700',
-            color: '#0a0a0a',
+            color: 'var(--text)',
             whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
@@ -80,10 +80,10 @@ export default function SessionRow({ session, isLast }) {
             <span style={{
               fontSize: '11px',
               fontWeight: '700',
-              color: '#0a0a0a',
-              background: '#FFB800',
-              border: '1.5px solid #0a0a0a',
-              borderRadius: '100px',
+              color: 'var(--foreground)',
+              background: 'var(--accent)',
+              border: '1.5px solid var(--border-strong)',
+              borderRadius: 'var(--radius-pill)',
               padding: '1px 8px',
               flexShrink: 0,
             }}>
@@ -91,7 +91,7 @@ export default function SessionRow({ session, isLast }) {
             </span>
           )}
         </div>
-        <p style={{ fontSize: '12px', color: '#A3A3A3' }}>
+        <p style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>
           {session.ip || 'Unknown IP'} · {formatRelative(session.created_at)}
         </p>
       </div>
@@ -101,15 +101,16 @@ export default function SessionRow({ session, isLast }) {
           disabled={revoking}
           style={{
             padding: '8px 16px',
-            background: '#fff',
-            color: '#EF4444',
-            border: '1.5px solid #EF4444',
-            borderRadius: '8px',
+            background: 'var(--surface)',
+            color: 'var(--error)',
+            border: '1.5px solid var(--error)',
+            borderRadius: 'var(--radius-sm)',
             fontSize: '13px',
             fontWeight: '600',
             cursor: revoking ? 'not-allowed' : 'pointer',
             fontFamily: 'inherit',
             flexShrink: 0,
+            opacity: revoking ? 0.6 : 1,
           }}
         >
           {revoking ? 'Logging out...' : 'Log out'}

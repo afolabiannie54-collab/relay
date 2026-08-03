@@ -2,8 +2,11 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { ChevronLeft } from 'lucide-react'
 import { updatePrivacySettings } from '@/actions/users'
 import { usePushNotifications } from '@/hooks/usePushNotifications'
+
+const iconProps = { strokeWidth: 2, strokeLinecap: 'square', strokeLinejoin: 'miter' }
 
 // Notification preferences (push subscription + per-category toggles).
 // These fields live in the same privacy_settings row as PrivacySettingsForm
@@ -39,9 +42,9 @@ export default function NotificationSettingsForm({ initialSettings, userId }) {
       style={{
         width: '44px',
         height: '24px',
-        background: value ? '#0a0a0a' : '#E5E5E5',
-        borderRadius: '100px',
-        border: '1.5px solid #0a0a0a',
+        background: value ? 'var(--border-strong)' : 'var(--border)',
+        borderRadius: 'var(--radius-pill)',
+        border: '1.5px solid var(--border-strong)',
         cursor: 'pointer',
         position: 'relative',
         transition: 'background 0.2s',
@@ -54,9 +57,9 @@ export default function NotificationSettingsForm({ initialSettings, userId }) {
         left: value ? '22px' : '2px',
         width: '16px',
         height: '16px',
-        background: value ? '#FFB800' : '#fff',
+        background: value ? 'var(--accent)' : 'var(--surface)',
         borderRadius: '50%',
-        border: '1px solid #0a0a0a',
+        border: '1px solid var(--border-strong)',
         transition: 'left 0.2s, background 0.2s',
       }} />
     </div>
@@ -69,9 +72,9 @@ export default function NotificationSettingsForm({ initialSettings, userId }) {
       alignItems: 'center',
       justifyContent: 'space-between',
       gap: '16px',
-      borderBottom: '1px solid #F5F5F5',
+      borderBottom: '1px solid var(--border-light)',
     }}>
-      <p style={{ fontSize: '14px', fontWeight: '600', color: '#0a0a0a' }}>{label}</p>
+      <p style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text)' }}>{label}</p>
       {children}
     </div>
   )
@@ -79,42 +82,41 @@ export default function NotificationSettingsForm({ initialSettings, userId }) {
   return (
     <div style={{
       minHeight: '100dvh',
-      background: '#F5F5F5',
+      background: 'var(--bg-subtle)',
       fontFamily: "'Inter', -apple-system, sans-serif",
     }}>
       <div style={{
-        background: '#fff',
-        borderBottom: '1.5px solid #0a0a0a',
-        padding: '16px 24px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '16px',
+        background: 'var(--surface)',
+        borderBottom: '2px solid var(--border-strong)',
+        padding: '14px 24px',
         position: 'sticky',
         top: 0,
         zIndex: 10,
       }}>
-        <Link href="/settings" style={{
-          textDecoration: 'none',
-          color: '#0a0a0a',
-          fontSize: '14px',
-          fontWeight: '600',
-        }}>
-          ← Back
-        </Link>
-        <span style={{ fontSize: '16px', fontWeight: '700' }}>Notifications</span>
+        <div className="relay-page-header-row" style={{ gap: '6px' }}>
+          <Link
+            href="/settings"
+            aria-label="Back"
+            className="relay-plain-icon-btn"
+            style={{ width: '34px', height: '34px', marginLeft: '-8px', flexShrink: 0 }}
+          >
+            <ChevronLeft size={22} {...iconProps} />
+          </Link>
+          <span style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text)' }}>Notifications</span>
+        </div>
       </div>
 
       <div style={{ maxWidth: '600px', margin: '0 auto', padding: '32px 24px' }}>
 
         {success && (
           <div style={{
-            background: '#F0FDF4',
-            border: '1.5px solid #22C55E',
-            borderRadius: '8px',
+            background: 'var(--success-light)',
+            border: '1.5px solid var(--success)',
+            borderRadius: 'var(--radius-sm)',
             padding: '12px 14px',
             marginBottom: '20px',
             fontSize: '13px',
-            color: '#22C55E',
+            color: 'var(--success)',
           }}>
             Settings saved successfully.
           </div>
@@ -122,29 +124,29 @@ export default function NotificationSettingsForm({ initialSettings, userId }) {
 
         {error && (
           <div style={{
-            background: '#FEF2F2',
-            border: '1.5px solid #EF4444',
-            borderRadius: '8px',
+            background: 'var(--error-light)',
+            border: '1.5px solid var(--error)',
+            borderRadius: 'var(--radius-sm)',
             padding: '12px 14px',
             marginBottom: '20px',
             fontSize: '13px',
-            color: '#EF4444',
+            color: 'var(--error)',
           }}>
             {error}
           </div>
         )}
 
         <div style={{
-          background: '#fff',
-          border: '1.5px solid #0a0a0a',
-          borderRadius: '16px',
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-lg)',
           overflow: 'hidden',
-          boxShadow: '4px 4px 0 #0a0a0a',
+          boxShadow: 'var(--shadow-md)',
           marginBottom: '20px',
         }}>
-          <div style={{ padding: '16px 20px', borderBottom: '1px solid #F5F5F5' }}>
-            <p style={{ fontSize: '15px', fontWeight: '700', marginBottom: '4px' }}>Push notifications</p>
-            <p style={{ fontSize: '13px', color: '#A3A3A3' }}>
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-light)' }}>
+            <p style={{ fontSize: '15px', fontWeight: '700', color: 'var(--text)', marginBottom: '4px' }}>Push notifications</p>
+            <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>
               {permission === 'denied'
                 ? 'Notifications blocked. Enable them in your browser settings.'
                 : subscribed
@@ -154,7 +156,7 @@ export default function NotificationSettingsForm({ initialSettings, userId }) {
           </div>
           <div style={{ padding: '16px 20px' }}>
             {permission === 'denied' ? (
-              <p style={{ fontSize: '13px', color: '#EF4444' }}>
+              <p style={{ fontSize: '13px', color: 'var(--error)' }}>
                 Go to browser settings → Site settings → Notifications → Allow relaymsg.vercel.app
               </p>
             ) : subscribed ? (
@@ -162,15 +164,16 @@ export default function NotificationSettingsForm({ initialSettings, userId }) {
                 onClick={unsubscribe}
                 disabled={pushLoading}
                 style={{
-                  padding: '9px 18px',
-                  background: '#fff',
-                  color: '#EF4444',
-                  border: '1.5px solid #EF4444',
-                  borderRadius: '8px',
+                  padding: '8px 16px',
+                  background: 'var(--surface)',
+                  color: 'var(--error)',
+                  border: '1.5px solid var(--error)',
+                  borderRadius: 'var(--radius-sm)',
                   fontSize: '13px',
                   fontWeight: '600',
-                  cursor: 'pointer',
+                  cursor: pushLoading ? 'not-allowed' : 'pointer',
                   fontFamily: 'inherit',
+                  opacity: pushLoading ? 0.6 : 1,
                 }}
               >
                 {pushLoading ? 'Disabling...' : 'Disable on this device'}
@@ -179,18 +182,8 @@ export default function NotificationSettingsForm({ initialSettings, userId }) {
               <button
                 onClick={subscribe}
                 disabled={pushLoading}
-                style={{
-                  padding: '9px 18px',
-                  background: '#0a0a0a',
-                  color: '#fff',
-                  border: '1.5px solid #0a0a0a',
-                  borderRadius: '8px',
-                  fontSize: '13px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
-                  boxShadow: '2px 2px 0 #FFB800',
-                }}
+                className="relay-btn relay-btn--filled"
+                style={{ boxShadow: 'var(--shadow-hard-accent)' }}
               >
                 {pushLoading ? 'Enabling...' : 'Enable on this device'}
               </button>
@@ -201,7 +194,7 @@ export default function NotificationSettingsForm({ initialSettings, userId }) {
         <p style={{
           fontSize: '11px',
           fontWeight: '700',
-          color: '#A3A3A3',
+          color: 'var(--text-tertiary)',
           letterSpacing: '1px',
           textTransform: 'uppercase',
           marginBottom: '8px',
@@ -209,11 +202,11 @@ export default function NotificationSettingsForm({ initialSettings, userId }) {
         }}>Notify me about</p>
 
         <div style={{
-          background: '#fff',
-          border: '1.5px solid #0a0a0a',
-          borderRadius: '16px',
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-lg)',
           overflow: 'hidden',
-          boxShadow: '4px 4px 0 #0a0a0a',
+          boxShadow: 'var(--shadow-md)',
           marginBottom: '20px',
         }}>
           <SettingRow label="Direct messages">
@@ -235,7 +228,7 @@ export default function NotificationSettingsForm({ initialSettings, userId }) {
             />
           </SettingRow>
           <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
-            <p style={{ fontSize: '14px', fontWeight: '600', color: '#0a0a0a' }}>Reactions</p>
+            <p style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text)' }}>Reactions</p>
             <Toggle
               value={settings?.reaction_notifications}
               onChange={() => handleToggle('reaction_notifications')}
