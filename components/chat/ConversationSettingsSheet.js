@@ -84,6 +84,7 @@ export default function ConversationSettingsSheet({
   const [memberQuery, setMemberQuery] = useState('')
   const [memberResults, setMemberResults] = useState([])
   const [searching, setSearching] = useState(false)
+  const [addMemberFeedback, setAddMemberFeedback] = useState(null)
   const [acting, setActing] = useState(null)
   // Locally reflects role changes the instant an action succeeds, ahead
   // of onGroupChanged's server refetch — keyed by user_id, only ever
@@ -259,12 +260,23 @@ export default function ConversationSettingsSheet({
 
   const handleAddMember = async (userId) => {
     setActing(userId)
-    await addMember(conversationId, userId)
+    setAddMemberFeedback(null)
+    const result = await addMember(conversationId, userId)
     setActing(null)
+
+    if (result.error) {
+      setAddMemberFeedback({ type: 'error', text: result.error })
+      return
+    }
+
     setMemberQuery('')
     setMemberResults([])
-    setShowAddMember(false)
-    onGroupChanged?.()
+    if (result.invited) {
+      setAddMemberFeedback({ type: 'invited', text: 'Invite sent — they\'ll join once they accept it.' })
+    } else {
+      setShowAddMember(false)
+      onGroupChanged?.()
+    }
   }
 
   const handleRemoveMember = async () => {
@@ -585,8 +597,21 @@ export default function ConversationSettingsSheet({
       </BottomSheet>
 
       {/* Add member */}
-      <BottomSheet isOpen={showAddMember} onClose={() => setShowAddMember(false)} title="Add member">
+      <BottomSheet isOpen={showAddMember} onClose={() => { setShowAddMember(false); setAddMemberFeedback(null) }} title="Add member">
         <div style={{ padding: '12px 20px 20px', fontFamily: "'Inter', -apple-system, sans-serif" }}>
+          {addMemberFeedback && (
+            <div style={{
+              padding: '10px 14px',
+              marginBottom: '12px',
+              borderRadius: 'var(--radius-sm)',
+              fontSize: '13px',
+              background: addMemberFeedback.type === 'error' ? 'var(--error-light)' : 'var(--success-light)',
+              border: `1.5px solid ${addMemberFeedback.type === 'error' ? 'var(--error)' : 'var(--success)'}`,
+              color: addMemberFeedback.type === 'error' ? 'var(--error)' : 'var(--success)',
+            }}>
+              {addMemberFeedback.text}
+            </div>
+          )}
           <input
             type="text"
             value={memberQuery}

@@ -10,6 +10,7 @@ import {
   acceptMessageRequest,
   cancelMessageRequest,
 } from '@/actions/messages'
+import { getGroupInvites, acceptGroupInvite, declineGroupInvite } from '@/actions/groups'
 import { blockUser } from '@/actions/blocks'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -47,16 +48,18 @@ function Spinner({ size = 14 }) {
   )
 }
 
-export default function RequestList({ initialReceived, initialSent, userId }) {
+export default function RequestList({ initialReceived, initialSent, initialInvites, userId }) {
   const [tab, setTab] = useState('received')
   const [received, setReceived] = useState(initialReceived)
   const [sent, setSent] = useState(initialSent)
+  const [invites, setInvites] = useState(initialInvites || [])
   const [acting, setActing] = useState(null)
   const [blockTarget, setBlockTarget] = useState(null)
   const router = useRouter()
 
-  // Live-refresh both lists — a new request coming in affects Received,
-  // an existing one being cancelled from another device affects Sent.
+  // Live-refresh all three lists — a new request/invite coming in affects
+  // Received/Invites, an existing one being cancelled from another device
+  // affects Sent.
   useEffect(() => {
     if (!userId) return
 
@@ -67,6 +70,10 @@ export default function RequestList({ initialReceived, initialSent, userId }) {
     const refreshSent = async () => {
       const result = await getSentMessageRequests()
       if (result.data) setSent(result.data)
+    }
+    const refreshInvites = async () => {
+      const result = await getGroupInvites()
+      if (result.data) setInvites(result.data)
     }
 
     const supabase = createClient()
@@ -84,6 +91,12 @@ export default function RequestList({ initialReceived, initialSent, userId }) {
         table: 'message_requests',
         filter: `sender_id=eq.${userId}`,
       }, refreshSent)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'group_invites',
+        filter: `invitee_id=eq.${userId}`,
+      }, refreshInvites)
       .subscribe()
 
     return () => {
@@ -121,7 +134,27 @@ export default function RequestList({ initialReceived, initialSent, userId }) {
     setActing(null)
   }
 
-  const list = tab === 'received' ? received : sent
+  const handleAcceptInvite = async (inviteId) => {
+    setActing(inviteId)
+    const result = await acceptGroupInvite(inviteId)
+    if (result.success) {
+      setInvites(prev => prev.filter(i => i.id !== inviteId))
+      router.push(`/chat/${result.conversationId}`)
+      return
+    }
+    setActing(null)
+  }
+
+  const handleDeclineInvite = async (inviteId) => {
+    setActing(inviteId)
+    const result = await declineGroupInvite(inviteId)
+    if (result.success) {
+      setInvites(prev => prev.filter(i => i.id !== inviteId))
+    }
+    setActing(null)
+  }
+
+  const list = tab === 'received' ? received : tab === 'sent' ? sent : invites
 
   return (
     <div style={{
@@ -163,6 +196,13 @@ export default function RequestList({ initialReceived, initialSent, userId }) {
         >
           Sent{sent.length > 0 ? ` (${sent.length})` : ''}
         </button>
+        <button
+          onClick={() => setTab('invites')}
+          className={tab === 'invites' ? 'relay-btn relay-btn--filled' : 'relay-btn'}
+          style={{ borderRadius: 'var(--radius-pill)', padding: '8px 16px' }}
+        >
+          Group invites{invites.length > 0 ? ` (${invites.length})` : ''}
+        </button>
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -180,12 +220,14 @@ export default function RequestList({ initialReceived, initialSent, userId }) {
               <NotionDoodle d={INBOX_PATH} />
             </div>
             <h2 style={{ fontSize: '18px', fontWeight: '800', color: 'var(--text)', marginBottom: '6px', letterSpacing: '-0.01em' }}>
-              {tab === 'received' ? 'No requests' : 'No pending requests'}
+              {tab === 'received' ? 'No requests' : tab === 'sent' ? 'No pending requests' : 'No group invites'}
             </h2>
             <p style={{ fontSize: '14px', color: 'var(--text-tertiary)', maxWidth: '260px' }}>
               {tab === 'received'
                 ? 'When someone wants to message you for the first time, it will appear here.'
-                : "Message requests you've sent that haven't been accepted yet will appear here."}
+                : tab === 'sent'
+                ? "Message requests you've sent that haven't been accepted yet will appear here."
+                : "Invites to join a group from someone you haven't messaged before will appear here."}
             </p>
           </div>
         ) : (
@@ -249,7 +291,7 @@ export default function RequestList({ initialReceived, initialSent, userId }) {
                   </button>
                 </div>
               </div>
-            )) : sent.map(request => (
+            )) : tab === 'sent' ? sent.map(request => (
               <div
                 key={request.id}
                 style={{
@@ -292,6 +334,52 @@ export default function RequestList({ initialReceived, initialSent, userId }) {
                     style={{ padding: '8px 14px', fontSize: '13px' }}
                   >
                     {acting === request.id ? 'Cancelling...' : 'Cancel'}
+                  </button>
+                </div>
+              </div>
+            )) : invites.map(invite => (
+              <div
+                key={invite.id}
+                style={{
+                  background: 'var(--surface)',
+                  border: '2px solid var(--border-strong)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '16px',
+                  boxShadow: 'var(--shadow-hard-sm)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                  <Avatar src={invite.groups?.avatar_url} name={invite.groups?.name} size={44} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: '15px', fontWeight: '700', color: 'var(--text)' }}>
+                      {invite.groups?.name}
+                    </p>
+                    <p style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>
+                      Invited by @{invite.inviter?.username}
+                    </p>
+                  </div>
+                  <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', flexShrink: 0 }}>
+                    {formatTime(invite.created_at)}
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    onClick={() => handleAcceptInvite(invite.id)}
+                    disabled={acting === invite.id}
+                    className="relay-btn relay-btn--filled"
+                    style={{ flex: 1, padding: '10px', fontSize: '14px' }}
+                  >
+                    {acting === invite.id && <Spinner />}
+                    {acting === invite.id ? 'Joining...' : 'Accept'}
+                  </button>
+                  <button
+                    onClick={() => handleDeclineInvite(invite.id)}
+                    disabled={acting === invite.id}
+                    className="relay-btn"
+                    style={{ padding: '10px 16px', fontSize: '14px' }}
+                  >
+                    Decline
                   </button>
                 </div>
               </div>

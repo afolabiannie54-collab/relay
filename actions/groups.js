@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { sanitizeText } from '@/lib/utils/sanitize'
+import { sendPushNotification } from '@/lib/utils/sendPushNotification'
 
 export async function createGroup(formData) {
   const supabase = await createClient()
@@ -211,6 +212,57 @@ export async function addMember(conversationId, userId) {
     .select('display_name')
     .eq('id', userId)
     .single()
+
+  // Only add directly if the two of you are actual contacts (an accepted
+  // message request exists between you, either direction) — otherwise
+  // this needs to go through a group invite the invitee accepts, same as
+  // any other first-contact-through-a-stranger case in the app. Checked
+  // against message_requests directly rather than "does a DM conversation
+  // exist", since a conversation row is created the moment a request is
+  // SENT (still pending, unaccepted) — that shouldn't count as contact.
+  const { data: acceptedRequest } = await supabase
+    .from('message_requests')
+    .select('id')
+    .or(`and(sender_id.eq.${user.id},receiver_id.eq.${userId}),and(sender_id.eq.${userId},receiver_id.eq.${user.id})`)
+    .eq('status', 'accepted')
+    .maybeSingle()
+
+  if (!acceptedRequest) {
+    const { data: group } = await supabase
+      .from('groups')
+      .select('id, name')
+      .eq('conversation_id', conversationId)
+      .single()
+
+    if (!group) return { error: 'Group not found' }
+
+    const { data: existingInvite } = await supabase
+      .from('group_invites')
+      .select('id')
+      .eq('group_id', group.id)
+      .eq('invitee_id', userId)
+      .eq('status', 'pending')
+      .maybeSingle()
+
+    if (existingInvite) return { error: 'An invite is already pending for this user' }
+
+    const { error: inviteError } = await supabase
+      .from('group_invites')
+      .insert({ group_id: group.id, inviter_id: user.id, invitee_id: userId, status: 'pending' })
+
+    if (inviteError) return { error: inviteError.message }
+
+    sendPushNotification(
+      userId,
+      'Group invite',
+      `${senderName.display_name} invited you to join "${group.name}"`,
+      '/requests',
+      null,
+      'group_invite'
+    )
+
+    return { success: true, invited: true }
+  }
 
   await supabase
     .from('conversation_participants')
@@ -621,4 +673,21 @@ export async function acceptGroupInvite(inviteId) {
   })
 
   return { success: true, conversationId: invite.groups.conversation_id }
+}
+
+export async function declineGroupInvite(inviteId) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) return { error: 'Not authenticated' }
+
+  const { error } = await supabase
+    .from('group_invites')
+    .update({ status: 'declined', updated_at: new Date().toISOString() })
+    .eq('id', inviteId)
+    .eq('invitee_id', user.id)
+    .eq('status', 'pending')
+
+  if (error) return { error: error.message }
+  return { success: true }
 }
