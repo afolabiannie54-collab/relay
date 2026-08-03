@@ -78,41 +78,53 @@ export default function SignupPage() {
 
     setLoading(true)
 
-    const emailCheck = await checkEmailExists(formData.email)
-    if (emailCheck.exists) {
-      setErrors(prev => ({ ...prev, email: 'An account with this email already exists.' }))
+    try {
+      const emailCheck = await checkEmailExists(formData.email)
+      if (emailCheck.exists) {
+        setErrors(prev => ({ ...prev, email: 'An account with this email already exists.' }))
+        setLoading(false)
+        return
+      }
+
+      const data = new FormData()
+      data.append('display_name', formData.display_name)
+      data.append('username', formData.username)
+      data.append('email', formData.email)
+      data.append('password', formData.password)
+
+      const result = await signUpWithEmail(data)
+
+      if (result?.error) {
+        setServerError(result.error.message || 'Something went wrong. Please try again.')
+        setLoading(false)
+        return
+      }
+
+      sessionStorage.setItem('verifyEmail', formData.email)
+      window.location.href = '/verify'
+    } catch {
+      setServerError('Something went wrong. Please try again.')
       setLoading(false)
-      return
     }
-
-    const data = new FormData()
-    data.append('display_name', formData.display_name)
-    data.append('username', formData.username)
-    data.append('email', formData.email)
-    data.append('password', formData.password)
-
-    const result = await signUpWithEmail(data)
-
-    if (result?.error) {
-      setServerError(result.error.message || 'Something went wrong. Please try again.')
-      setLoading(false)
-      return
-    }
-
-    sessionStorage.setItem('verifyEmail', formData.email)
-    window.location.href = '/verify'
   }
 
   const handleGoogle = async () => {
     setGoogleLoading(true)
-    const result = await signInWithGoogle()
-    if (result?.error) {
-      setServerError(result.error.message || 'Google sign in failed.')
+    try {
+      const result = await signInWithGoogle()
+      if (result?.error) {
+        setServerError(result.error.message || 'Google sign in failed.')
+        setGoogleLoading(false)
+        return
+      }
+      if (result?.url) {
+        window.location.href = result.url
+      } else {
+        setGoogleLoading(false)
+      }
+    } catch {
+      setServerError('Google sign in failed. Please try again.')
       setGoogleLoading(false)
-      return
-    }
-    if (result?.url) {
-      window.location.href = result.url
     }
   }
 

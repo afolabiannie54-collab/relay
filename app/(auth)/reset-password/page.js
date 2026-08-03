@@ -38,19 +38,25 @@ export default function ResetPasswordPage() {
     }
 
     setLoading(true)
-    const data = new FormData()
-    data.append('email', formData.email)
 
-    const result = await resetPasswordRequest(data)
+    try {
+      const data = new FormData()
+      data.append('email', formData.email)
 
-    if (result?.error) {
-      setServerError(result.error.message)
+      const result = await resetPasswordRequest(data)
+
+      if (result?.error) {
+        setServerError(result.error.message)
+        setLoading(false)
+        return
+      }
+
+      setStep('sent')
+    } catch {
+      setServerError('Something went wrong. Please try again.')
+    } finally {
       setLoading(false)
-      return
     }
-
-    setStep('sent')
-    setLoading(false)
   }
 
   const handleReset = async (e) => {
@@ -68,18 +74,24 @@ export default function ResetPasswordPage() {
     }
 
     setLoading(true)
-    const data = new FormData()
-    data.append('password', formData.password)
 
-    const result = await resetPassword(data)
+    try {
+      const data = new FormData()
+      data.append('password', formData.password)
 
-    if (result?.error) {
-      setServerError(result.error.message)
+      const result = await resetPassword(data)
+
+      if (result?.error) {
+        setServerError(result.error.message)
+        setLoading(false)
+        return
+      }
+
+      window.location.href = '/chat'
+    } catch {
+      setServerError('Something went wrong. Please try again.')
       setLoading(false)
-      return
     }
-
-    window.location.href = '/chat'
   }
 
   const inputStyle = (field) => ({

@@ -75,35 +75,40 @@ export default function SetupUsernamePage() {
 
     setLoading(true)
 
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
 
-    if (!user) {
-      setServerError('Session expired. Please sign in again.')
-      setLoading(false)
-      return
-    }
+      if (!user) {
+        setServerError('Session expired. Please sign in again.')
+        setLoading(false)
+        return
+      }
 
-    const { error } = await supabase
-      .from('users')
-      .update({
-        username: formData.username,
-        display_name: formData.display_name,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', user.id)
+      const { error } = await supabase
+        .from('users')
+        .update({
+          username: formData.username,
+          display_name: formData.display_name,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', user.id)
 
-    if (error) {
+      if (error) {
+        setServerError('Something went wrong. Please try again.')
+        setLoading(false)
+        return
+      }
+
+      const next = new URLSearchParams(window.location.search).get('next')
+      // Only ever follow a same-origin relative path — an absolute or
+      // protocol-relative (//host) value here would be an open redirect.
+      const safeNext = next && next.startsWith('/') && !next.startsWith('//') ? next : '/chat'
+      window.location.href = safeNext
+    } catch {
       setServerError('Something went wrong. Please try again.')
       setLoading(false)
-      return
     }
-
-    const next = new URLSearchParams(window.location.search).get('next')
-    // Only ever follow a same-origin relative path — an absolute or
-    // protocol-relative (//host) value here would be an open redirect.
-    const safeNext = next && next.startsWith('/') && !next.startsWith('//') ? next : '/chat'
-    window.location.href = safeNext
   }
 
   const inputStyle = (field) => ({

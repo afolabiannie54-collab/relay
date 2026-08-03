@@ -49,7 +49,10 @@ export async function signInWithEmail(formData) {
 export async function signOut() {
   const supabase = await createClient()
 
-  const { error } = await supabase.auth.signOut()
+  // supabase-js defaults signOut() to { scope: 'global' } when no options
+  // are passed — silently signing out every device, not just this one.
+  // Must be explicit to get "this session only" behavior.
+  const { error } = await supabase.auth.signOut({ scope: 'local' })
 
   if (error) {
     return { error }

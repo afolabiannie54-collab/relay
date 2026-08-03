@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { ChevronRight } from 'lucide-react'
 import { getOwnProfile } from '@/actions/users'
-import { signOut } from '@/actions/auth'
 import Avatar from '@/components/shared/Avatar'
+import SignOutRow from '@/components/settings/SignOutRow'
 import SignOutAllRow from '@/components/settings/SignOutAllRow'
 import ThemeToggle from '@/components/settings/ThemeToggle'
 import BlockedUsersSheet from '@/components/settings/BlockedUsersSheet'
@@ -27,11 +27,6 @@ export default function SettingsPage() {
     }
     load()
   }, [])
-
-  const handleSignOut = async () => {
-    await signOut()
-    window.location.href = '/login'
-  }
 
   if (!profile) return null
 
@@ -162,23 +157,7 @@ export default function SettingsPage() {
                 item.action === 'signOutAll' ? (
                   <SignOutAllRow key="signOutAll" isLast={i === section.items.length - 1} />
                 ) : item.action === 'signOut' ? (
-                  <div
-                    key="signOut"
-                    onClick={handleSignOut}
-                    style={{
-                      padding: '16px 20px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      borderBottom: i < section.items.length - 1 ? '1px solid var(--border-light)' : 'none',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <span style={{ fontSize: '14px', fontWeight: '500', color: 'var(--text)' }}>
-                      Sign out
-                    </span>
-                    <ChevronRight size={15} strokeWidth={2.25} color="var(--text-tertiary)" />
-                  </div>
+                  <SignOutRow key="signOut" isLast={i === section.items.length - 1} />
                 ) : item.action === 'openSheet' ? (
                   <div
                     key={item.sheet}

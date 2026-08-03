@@ -38,37 +38,55 @@ export default function LoginPage() {
 
     setLoading(true)
 
-    const data = new FormData()
-    data.append('email', formData.email)
-    data.append('password', formData.password)
+    try {
+      const data = new FormData()
+      data.append('email', formData.email)
+      data.append('password', formData.password)
 
-    const result = await signInWithEmail(data)
+      const result = await signInWithEmail(data)
 
-    if (result?.error) {
-      setServerError('Invalid email or password. Please try again.')
+      if (result?.error) {
+        setServerError('Invalid email or password. Please try again.')
+        setLoading(false)
+        return
+      }
+
+      // Best-effort device/session bookkeeping (powers Settings > Active
+      // sessions) — must never block the redirect below. Sign-in itself
+      // already succeeded by this point; if this hangs or fails, the user
+      // shouldn't be stuck staring at "Signing in..." over it.
+      try {
+        await storeSessionInfo(navigator.userAgent)
+      } catch {}
+
+      const next = new URLSearchParams(window.location.search).get('next')
+      // Only ever follow a same-origin relative path — an absolute or
+      // protocol-relative (//host) value here would be an open redirect.
+      const safeNext = next && next.startsWith('/') && !next.startsWith('//') ? next : '/chat'
+      window.location.href = safeNext
+    } catch {
+      setServerError('Something went wrong. Please try again.')
       setLoading(false)
-      return
     }
-
-    await storeSessionInfo(navigator.userAgent)
-
-    const next = new URLSearchParams(window.location.search).get('next')
-    // Only ever follow a same-origin relative path — an absolute or
-    // protocol-relative (//host) value here would be an open redirect.
-    const safeNext = next && next.startsWith('/') && !next.startsWith('//') ? next : '/chat'
-    window.location.href = safeNext
   }
 
   const handleGoogle = async () => {
     setGoogleLoading(true)
-    const result = await signInWithGoogle()
-    if (result?.error) {
-      setServerError(result.error.message || 'Google sign in failed.')
+    try {
+      const result = await signInWithGoogle()
+      if (result?.error) {
+        setServerError(result.error.message || 'Google sign in failed.')
+        setGoogleLoading(false)
+        return
+      }
+      if (result?.url) {
+        window.location.href = result.url
+      } else {
+        setGoogleLoading(false)
+      }
+    } catch {
+      setServerError('Google sign in failed. Please try again.')
       setGoogleLoading(false)
-      return
-    }
-    if (result?.url) {
-      window.location.href = result.url
     }
   }
 

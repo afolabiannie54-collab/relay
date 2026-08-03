@@ -22,36 +22,46 @@ export default function VerifyPage() {
     }
 
     setLoading(true)
-    const supabase = createClient()
-    const email = sessionStorage.getItem('verifyEmail')
 
-    if (!email) {
-      setError('Session expired. Please sign up again.')
+    try {
+      const supabase = createClient()
+      const email = sessionStorage.getItem('verifyEmail')
+
+      if (!email) {
+        setError('Session expired. Please sign up again.')
+        setLoading(false)
+        return
+      }
+
+      const { error } = await supabase.auth.verifyOtp({
+        email,
+        token: code,
+        type: 'signup',
+      })
+
+      if (error) {
+        setError('Invalid or expired code. Please try again.')
+        setLoading(false)
+        return
+      }
+
+      sessionStorage.removeItem('verifyEmail')
+
+      // Best-effort device/session bookkeeping — must never block the
+      // redirect. Verification itself already succeeded by this point.
+      try {
+        await storeSessionInfo(navigator.userAgent)
+      } catch {}
+
+      const next = new URLSearchParams(window.location.search).get('next')
+      // Only ever follow a same-origin relative path — an absolute or
+      // protocol-relative (//host) value here would be an open redirect.
+      const safeNext = next && next.startsWith('/') && !next.startsWith('//') ? next : '/chat'
+      window.location.href = safeNext
+    } catch {
+      setError('Something went wrong. Please try again.')
       setLoading(false)
-      return
     }
-
-    const { error } = await supabase.auth.verifyOtp({
-      email,
-      token: code,
-      type: 'signup',
-    })
-
-    if (error) {
-      setError('Invalid or expired code. Please try again.')
-      setLoading(false)
-      return
-    }
-
-    sessionStorage.removeItem('verifyEmail')
-
-    await storeSessionInfo(navigator.userAgent)
-
-    const next = new URLSearchParams(window.location.search).get('next')
-    // Only ever follow a same-origin relative path — an absolute or
-    // protocol-relative (//host) value here would be an open redirect.
-    const safeNext = next && next.startsWith('/') && !next.startsWith('//') ? next : '/chat'
-    window.location.href = safeNext
   }
 
   const handleResend = async () => {
@@ -59,27 +69,31 @@ export default function VerifyPage() {
     setError(null)
     setResent(false)
 
-    const email = sessionStorage.getItem('verifyEmail')
+    try {
+      const email = sessionStorage.getItem('verifyEmail')
 
-    if (!email) {
-      setError('Session expired. Please sign up again.')
+      if (!email) {
+        setError('Session expired. Please sign up again.')
+        return
+      }
+
+      const supabase = createClient()
+
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email,
+      })
+
+      if (error) {
+        setError(error.message)
+      } else {
+        setResent(true)
+      }
+    } catch {
+      setError('Something went wrong. Please try again.')
+    } finally {
       setResending(false)
-      return
     }
-
-    const supabase = createClient()
-
-    const { error } = await supabase.auth.resend({
-      type: 'signup',
-      email,
-    })
-
-    if (error) {
-      setError(error.message)
-    } else {
-      setResent(true)
-    }
-    setResending(false)
   }
 
   return (
