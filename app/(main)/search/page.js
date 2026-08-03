@@ -149,7 +149,7 @@ export default function SearchPage() {
       </div>
 
       {/* Search bar */}
-      <div style={{ padding: '10px 20px', borderBottom: '1px solid var(--border-light)', background: 'var(--surface)' }}>
+      <div style={{ padding: '10px 20px', borderBottom: '2px solid var(--border-strong)', background: 'var(--surface)' }}>
         <div style={{ position: 'relative' }}>
           <SearchIcon
             size={15}
@@ -174,17 +174,20 @@ export default function SearchPage() {
         </div>
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column' }}>
         {/* New Group — always the first row above search results, only
             in the default (not-yet-typed) state, same as
-            NewConversationSheet's own Mode 1 default view. */}
+            NewConversationSheet's own Mode 1 default view. Pinned at the
+            top rather than joining the centered group below it, since
+            it's a persistent action, not part of the "nothing here yet"
+            messaging. */}
         {!loading && !searched && (
           <button
             onClick={() => setShowNewGroup(true)}
             className="relay-menu-row"
-            style={{ padding: '14px 20px', margin: '0 -20px', width: 'calc(100% + 40px)', borderRadius: 0, borderBottom: '1px solid var(--border-light)' }}
+            style={{ padding: '14px 20px', margin: '0 -20px', width: 'calc(100% + 40px)', borderRadius: 0, borderBottom: '1px solid var(--border-light)', boxShadow: 'var(--shadow-hard-accent)', flexShrink: 0 }}
           >
-            <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--surface)', border: '2px solid var(--border-strong)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text)', flexShrink: 0 }}>
+            <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--accent)', border: '2px solid var(--border-strong)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--foreground)', flexShrink: 0 }}>
               <Users size={18} {...iconProps} />
             </div>
             <p style={{ fontSize: '15px', fontWeight: '700', color: 'var(--text)' }}>New Group</p>
@@ -212,9 +215,10 @@ export default function SearchPage() {
           </div>
         )}
 
-        {/* No results */}
+        {/* No results — fills and centers in whatever space is left,
+            rather than sitting at a fixed distance below the search bar. */}
         {!loading && searched && results.length === 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '60px 24px' }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '24px' }}>
             <div style={{ marginBottom: '16px' }}>
               <NotionDoodle d={USER_SLASH_PATH} />
             </div>
@@ -225,9 +229,10 @@ export default function SearchPage() {
           </div>
         )}
 
-        {/* Empty state */}
+        {/* Empty state — same centering, in the remaining space below
+            the pinned New Group row. */}
         {!loading && !searched && (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '60px 24px' }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '24px' }}>
             <div style={{ marginBottom: '16px' }}>
               <NotionDoodle d={USERS_PATH} />
             </div>
