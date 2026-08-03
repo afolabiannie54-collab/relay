@@ -547,7 +547,7 @@ export default function ChatList({ onSelectConversation }) {
         </div>
       ) : (
       <div style={{
-        padding: '14px 20px 16px',
+        padding: '14px 24px 16px',
         background: 'var(--surface)',
       }}>
         {/* Icon toolbar — its own row, not sharing space with the title,
@@ -648,7 +648,7 @@ export default function ChatList({ onSelectConversation }) {
 
       {/* Filter bar */}
       {!bulkSelectMode && (
-        <div style={{ padding: '10px 20px', borderBottom: '1px solid var(--border-light)', background: 'var(--surface)' }}>
+        <div style={{ padding: '10px 24px', borderBottom: '1px solid var(--border-light)', background: 'var(--surface)' }}>
           <div style={{ position: 'relative' }}>
             <Search
               size={15}

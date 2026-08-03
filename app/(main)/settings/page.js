@@ -44,7 +44,7 @@ export default function SettingsPage() {
       <div style={{
         background: 'var(--surface)',
         borderBottom: '2px solid var(--border-strong)',
-        padding: '14px 20px',
+        padding: '14px 24px',
         position: 'sticky',
         top: 0,
         zIndex: 10,

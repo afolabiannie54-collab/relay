@@ -133,7 +133,7 @@ export default function RequestList({ initialReceived, initialSent, userId }) {
       {/* Header — same border-bottom every other page uses now that the
           pill toggle below has its own separate row/divider, instead of
           being the reason this header used to skip the border entirely. */}
-      <div style={{ padding: '14px 20px', borderBottom: '2px solid var(--border-strong)', background: 'var(--surface)' }}>
+      <div style={{ padding: '14px 24px', borderBottom: '2px solid var(--border-strong)', background: 'var(--surface)' }}>
         <div className="relay-page-header-row" style={{ gap: '6px' }}>
           <button
             onClick={() => router.push('/chat')}
@@ -147,8 +147,8 @@ export default function RequestList({ initialReceived, initialSent, userId }) {
         </div>
       </div>
 
-      {/* Pill toggle — its own row now, lighter divider than the header's */}
-      <div style={{ display: 'flex', gap: '8px', padding: '12px 20px', borderBottom: '1px solid var(--border-light)', background: 'var(--surface)' }}>
+      {/* Pill toggle — its own row now, same bold divider as the header */}
+      <div style={{ display: 'flex', gap: '8px', padding: '12px 24px', borderBottom: '2px solid var(--border-strong)', background: 'var(--surface)' }}>
         <button
           onClick={() => setTab('received')}
           className={tab === 'received' ? 'relay-btn relay-btn--filled' : 'relay-btn'}

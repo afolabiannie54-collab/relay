@@ -87,7 +87,7 @@ export default function NotificationList({ initialNotifications }) {
       fontFamily: "'Inter', -apple-system, sans-serif",
     }}>
       {/* Header */}
-      <div style={{ padding: '14px 20px', borderBottom: '2px solid var(--border-strong)', background: 'var(--surface)' }}>
+      <div style={{ padding: '14px 24px', borderBottom: '2px solid var(--border-strong)', background: 'var(--surface)' }}>
         <div className="relay-page-header-row" style={{ justifyContent: 'space-between', gap: '12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
             <button
