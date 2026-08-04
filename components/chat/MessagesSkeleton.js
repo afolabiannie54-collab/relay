@@ -34,13 +34,20 @@ const BUBBLES = [
 // Shown in chat/[id]/page.js during a true cold load, before messages
 // arrive (a cache hit shows the cached messages instantly instead — this
 // never flashes on a warm conversation reopen).
+//
+// justifyContent is flex-start (top-anchored, natural stacking), not
+// flex-end — the real messages-scroll-area container lays bubbles out
+// the same way (flex-start, growing downward, then auto-scrolled to the
+// bottom), so anchoring the skeleton there instead of packing it up from
+// the bottom is what actually matches where real content appears, rather
+// than just adding more bubbles to disguise a bottom anchor.
 export default function MessagesSkeleton() {
   return (
     <div style={{
       flex: 1,
       display: 'flex',
       flexDirection: 'column',
-      justifyContent: 'flex-end',
+      justifyContent: 'flex-start',
       gap: '10px',
       padding: '16px',
       overflow: 'hidden',

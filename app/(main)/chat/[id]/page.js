@@ -11,6 +11,7 @@ import Avatar from '@/components/shared/Avatar'
 import EllipsisDoodle from '@/components/shared/icons/EllipsisDoodle'
 import { getMessages, sendMessage, getConversation, markConversationRead, editMessage, deleteMessage, uploadMedia, getReactions, toggleReaction, getPinnedMessages, togglePin, searchMessages, acceptMessageRequest, getReadReceipts } from '@/actions/messages'
 import { getGroupInfo } from '@/actions/groups'
+import { getPrivacySettings } from '@/actions/users'
 import { createClient } from '@/lib/supabase/client'
 import { cache } from '@/lib/cache'
 import { useReadReceipts } from '@/hooks/useReadReceipts'
@@ -171,6 +172,13 @@ export default function ConversationPage() {
   // separately by useReadReceipts writing into message_reads, not by
   // reading this map.
   const [readReceipts, setReadReceipts] = useState({})
+  // WhatsApp-style reciprocity: this is the CURRENT user's own toggle,
+  // not the other participant's — turning it off both stops sending read
+  // receipts (useReadReceipts below skips the message_reads write) and
+  // stops seeing them (getMessageStatus caps the viewer's own sent
+  // messages at "delivered", never "read"), regardless of what the other
+  // side's setting is or what message_reads actually contains.
+  const [showReadReceipts, setShowReadReceipts] = useState(true)
   const [showPinnedPanel, setShowPinnedPanel] = useState(false)
   const [pinnedMessages, setPinnedMessages] = useState([])
   const [showSearch, setShowSearch] = useState(false)
@@ -252,7 +260,7 @@ export default function ConversationPage() {
     return () => document.removeEventListener('visibilitychange', handleVisibility)
   }, [markReadIfVisible])
 
-  useReadReceipts(id, profile?.id, messages)
+  useReadReceipts(id, profile?.id, messages, showReadReceipts)
 
   useEffect(() => {
     messagesRef.current = messages
@@ -362,6 +370,9 @@ export default function ConversationPage() {
       setLoading(false)
 
       markReadIfVisible()
+
+      const privacyResult = await getPrivacySettings()
+      if (privacyResult.data) setShowReadReceipts(privacyResult.data.show_read_receipts ?? true)
 
       const pinnedResult = await getPinnedMessages(id)
       if (pinnedResult.data) {
@@ -957,7 +968,12 @@ export default function ConversationPage() {
 
     if (!otherParticipant) return 'sent'
     const readers = readReceipts[msg.id]
-    if (readers?.has(otherParticipant.id)) return 'read'
+    // Reciprocal, like WhatsApp: turning off your own read-receipts
+    // setting also stops you from seeing others' — this caps display at
+    // "delivered" for the viewer regardless of what message_reads
+    // actually contains, rather than checking the other participant's
+    // setting (theirs governs what THEY see of yours, independently).
+    if (showReadReceipts && readers?.has(otherParticipant.id)) return 'read'
     if (onlineUsers.includes(otherParticipant.id)) return 'delivered'
     return 'sent'
   }

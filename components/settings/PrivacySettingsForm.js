@@ -222,6 +222,17 @@ export default function PrivacySettingsForm({ initialSettings }) {
             />
           </SettingRow>
 
+          <SettingRow
+            label="Read receipts"
+            description="Turn off and you won't see read receipts either"
+          >
+            <Toggle
+              value={settings?.show_read_receipts}
+              onChange={() => handleToggle('show_read_receipts')}
+              saving={savingKey === 'show_read_receipts'}
+            />
+          </SettingRow>
+
           <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
             <div>
               <p style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text)', marginBottom: '2px' }}>Discoverable</p>
