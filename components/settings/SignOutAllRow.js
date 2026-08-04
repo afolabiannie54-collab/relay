@@ -8,8 +8,10 @@ export default function SignOutAllRow({ isLast }) {
   const [showConfirm, setShowConfirm] = useState(false)
 
   const handleConfirm = async () => {
-    await signOutAllSessions()
+    const result = await signOutAllSessions()
+    if (result?.error) return result
     window.location.href = '/login'
+    return result
   }
 
   return (

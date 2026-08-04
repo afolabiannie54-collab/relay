@@ -129,9 +129,11 @@ export default function SearchPage() {
 
   const confirmBlock = async () => {
     if (!blockTarget) return
-    await blockUser(blockTarget.id)
+    const result = await blockUser(blockTarget.id)
+    if (result?.error) return result
     setResults(prev => prev.filter(u => u.id !== blockTarget.id))
     setBlockTarget(null)
+    return result
   }
 
   return (

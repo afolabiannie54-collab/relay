@@ -46,7 +46,7 @@ export default function ResetPasswordPage() {
       const result = await resetPasswordRequest(data)
 
       if (result?.error) {
-        setServerError(result.error.message)
+        setServerError(result.error)
         setLoading(false)
         return
       }
@@ -82,7 +82,7 @@ export default function ResetPasswordPage() {
       const result = await resetPassword(data)
 
       if (result?.error) {
-        setServerError(result.error.message)
+        setServerError(result.error)
         setLoading(false)
         return
       }

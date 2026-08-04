@@ -187,7 +187,8 @@ export default function ConversationSettingsSheet({
 
   const handleBlock = async () => {
     if (!otherParticipant) return
-    await blockUser(otherParticipant.id)
+    const result = await blockUser(otherParticipant.id)
+    if (result?.error) return result
     // Same signal ConversationActionSheet/ConversationContextMenu's own
     // block handlers already fire — without it, ChatList (which stays
     // mounted across this navigation) wouldn't know to drop the now-
@@ -196,6 +197,7 @@ export default function ConversationSettingsSheet({
     window.dispatchEvent(new Event('relay:conversations-changed'))
     onClose?.()
     router.replace('/chat')
+    return result
   }
 
   const handleShareProfile = async () => {
@@ -207,17 +209,21 @@ export default function ConversationSettingsSheet({
   }
 
   const handleLeaveGroup = async () => {
-    await leaveGroup(conversationId)
+    const result = await leaveGroup(conversationId)
+    if (result?.error) return result
     window.dispatchEvent(new Event('relay:conversations-changed'))
     onClose?.()
     router.replace('/chat')
+    return result
   }
 
   const handleDeleteGroup = async () => {
-    await deleteGroup(conversationId)
+    const result = await deleteGroup(conversationId)
+    if (result?.error) return result
     window.dispatchEvent(new Event('relay:conversations-changed'))
     onClose?.()
     router.replace('/chat')
+    return result
   }
 
   const handleMemberSearch = async (q) => {
@@ -282,10 +288,12 @@ export default function ConversationSettingsSheet({
   const handleRemoveMember = async () => {
     if (!memberActionUser) return
     setActing(memberActionUser.user_id)
-    await removeMember(conversationId, memberActionUser.user_id)
+    const result = await removeMember(conversationId, memberActionUser.user_id)
     setActing(null)
+    if (result?.error) return result
     setMemberActionUser(null)
     onGroupChanged?.()
+    return result
   }
 
   const handlePromote = async (userId) => {

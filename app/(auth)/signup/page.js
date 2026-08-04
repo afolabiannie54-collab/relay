@@ -95,7 +95,7 @@ export default function SignupPage() {
       const result = await signUpWithEmail(data)
 
       if (result?.error) {
-        setServerError(result.error.message || 'Something went wrong. Please try again.')
+        setServerError(result.error || 'Something went wrong. Please try again.')
         setLoading(false)
         return
       }
@@ -113,7 +113,7 @@ export default function SignupPage() {
     try {
       const result = await signInWithGoogle()
       if (result?.error) {
-        setServerError(result.error.message || 'Google sign in failed.')
+        setServerError(result.error || 'Google sign in failed.')
         setGoogleLoading(false)
         return
       }

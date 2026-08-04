@@ -119,10 +119,12 @@ export default function RequestList({ initialReceived, initialSent, initialInvit
     if (!blockTarget) return
     const { requestId, userId: blockedUserId } = blockTarget
     setActing(requestId)
-    await blockUser(blockedUserId)
-    setReceived(prev => prev.filter(r => r.id !== requestId))
+    const result = await blockUser(blockedUserId)
     setActing(null)
+    if (result?.error) return result
+    setReceived(prev => prev.filter(r => r.id !== requestId))
     setBlockTarget(null)
+    return result
   }
 
   const handleCancel = async (requestId) => {

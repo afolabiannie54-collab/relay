@@ -582,10 +582,16 @@ export default function ConversationPage() {
 
   const handleEdit = async (messageId) => {
     if (!editContent.trim()) return
-    const result = await editMessage(messageId, editContent)
-    if (!result.error) {
+    try {
+      const result = await editMessage(messageId, editContent)
+      if (result.error) {
+        showError(result.error)
+        return
+      }
       setEditingId(null)
       setEditContent('')
+    } catch {
+      showError('Failed to save edit — please try again.')
     }
   }
 
@@ -595,8 +601,10 @@ export default function ConversationPage() {
 
   const confirmDeleteMessage = async () => {
     if (!confirmDeleteId) return
-    await deleteMessage(confirmDeleteId)
+    const result = await deleteMessage(confirmDeleteId)
+    if (result.error) return result
     setConfirmDeleteId(null)
+    return result
   }
 
   const handleKeyDown = (e) => {

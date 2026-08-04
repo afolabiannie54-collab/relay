@@ -86,7 +86,8 @@ export default function ConversationContextMenu({ conversation, isMuted, positio
   }
 
   const handleDelete = async () => {
-    await deleteConversationForUser(conversation.conversation_id)
+    const result = await deleteConversationForUser(conversation.conversation_id)
+    if (result?.error) return result
     // A stale cached page of messages (from before the deletion cutoff)
     // would otherwise serve the full unfiltered history on next open,
     // since getMessages()'s deleted_at filter only ever runs on an
@@ -95,20 +96,25 @@ export default function ConversationContextMenu({ conversation, isMuted, positio
     onChanged?.()
     if (isCurrentlyOpen) router.replace('/chat')
     onClose?.()
+    return result
   }
 
   const handleLeaveGroup = async () => {
-    await leaveGroup(conversation.conversation_id)
+    const result = await leaveGroup(conversation.conversation_id)
+    if (result?.error) return result
     onChanged?.()
     if (isCurrentlyOpen) router.replace('/chat')
     onClose?.()
+    return result
   }
 
   const handleBlock = async () => {
     if (!otherUser) return
-    await blockUser(otherUser.user_id)
+    const result = await blockUser(otherUser.user_id)
+    if (result?.error) return result
     onChanged?.()
     onClose?.()
+    return result
   }
 
   const handleMemberSearch = async (q) => {

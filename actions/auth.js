@@ -22,7 +22,7 @@ export async function signUpWithEmail(formData) {
   })
 
   if (error) {
-    return { error }
+    return { error: error.message }
   }
 
   return { success: true }
@@ -40,7 +40,7 @@ export async function signInWithEmail(formData) {
   })
 
   if (error) {
-    return { error }
+    return { error: error.message }
   }
 
   return { success: true }
@@ -55,7 +55,7 @@ export async function signOut() {
   const { error } = await supabase.auth.signOut({ scope: 'local' })
 
   if (error) {
-    return { error }
+    return { error: error.message }
   }
 }
 
@@ -65,7 +65,7 @@ export async function signOutAllSessions() {
   const { error } = await supabase.auth.signOut({ scope: 'global' })
 
   if (error) {
-    return { error }
+    return { error: error.message }
   }
 
   return { success: true }
@@ -81,7 +81,7 @@ export async function resetPasswordRequest(formData) {
   })
 
   if (error) {
-    return { error }
+    return { error: error.message }
   }
 
   return { success: true }
@@ -97,7 +97,7 @@ export async function resetPassword(formData) {
   })
 
   if (error) {
-    return { error }
+    return { error: error.message }
   }
 
   return { success: true }
@@ -122,7 +122,7 @@ export async function signInWithGoogle() {
   })
 
   if (error) {
-    return { error }
+    return { error: error.message }
   }
 
   return { url: data.url }

@@ -165,7 +165,8 @@ export default function ConversationActionSheet({ conversation, isMuted, isOpen,
   // duplicate it here since this sheet's own menu is covered by that
   // point anyway.
   const handleDelete = async () => {
-    await deleteConversationForUser(conversation.conversation_id)
+    const result = await deleteConversationForUser(conversation.conversation_id)
+    if (result?.error) return result
     // A stale cached page of messages (from before the deletion cutoff)
     // would otherwise serve the full unfiltered history on next open,
     // since getMessages()'s deleted_at filter only ever runs on an
@@ -174,20 +175,25 @@ export default function ConversationActionSheet({ conversation, isMuted, isOpen,
     onChanged?.()
     if (isCurrentlyOpen) router.replace('/chat')
     close()
+    return result
   }
 
   const handleLeaveGroup = async () => {
-    await leaveGroup(conversation.conversation_id)
+    const result = await leaveGroup(conversation.conversation_id)
+    if (result?.error) return result
     onChanged?.()
     if (isCurrentlyOpen) router.replace('/chat')
     close()
+    return result
   }
 
   const handleBlock = async () => {
     if (!otherUser) return
-    await blockUser(otherUser.user_id)
+    const result = await blockUser(otherUser.user_id)
+    if (result?.error) return result
     onChanged?.()
     close()
+    return result
   }
 
   const handleMemberSearch = async (q) => {

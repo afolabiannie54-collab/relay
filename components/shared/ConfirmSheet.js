@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import BottomSheet from '@/components/shared/BottomSheet'
 
 // Replaces browser confirm() everywhere in the app. confirmStyle:
@@ -16,6 +16,13 @@ export default function ConfirmSheet({
   onConfirm,
 }) {
   const [confirming, setConfirming] = useState(false)
+  const [error, setError] = useState(null)
+
+  // Stale error from a previous open shouldn't flash before the next
+  // attempt's own result comes back.
+  useEffect(() => {
+    if (isOpen) setError(null)
+  }, [isOpen])
 
   // onConfirm (e.g. deleteGroup, a ~10-round-trip server action) used to
   // fire without being awaited, so this closed immediately while the real
@@ -24,13 +31,27 @@ export default function ConfirmSheet({
   // second or two later, after the user had already moved on, reading as
   // an unexplained extra navigation. Awaiting it here means onClose only
   // fires once the action has actually finished.
+  //
+  // Callers are expected to `return` whatever their server action
+  // returns. If that comes back as { error }, or the call throws outright,
+  // this sheet now stays open and shows why instead of closing exactly
+  // like a success would — previously neither case was distinguishable
+  // from the user's side, so a failed delete/leave/block/remove looked
+  // identical to one that worked.
   const handleConfirm = async () => {
     setConfirming(true)
+    setError(null)
     try {
-      await onConfirm?.()
+      const result = await onConfirm?.()
+      if (result?.error) {
+        setError(result.error)
+        return
+      }
+      onClose?.()
+    } catch {
+      setError('Something went wrong. Please try again.')
     } finally {
       setConfirming(false)
-      onClose?.()
     }
   }
 
@@ -46,6 +67,19 @@ export default function ConfirmSheet({
           }}>
             {message}
           </p>
+        )}
+        {error && (
+          <div style={{
+            background: 'var(--error-light)',
+            border: '1.5px solid var(--error)',
+            borderRadius: 'var(--radius-sm)',
+            padding: '10px 14px',
+            marginBottom: '16px',
+            fontSize: '13px',
+            color: 'var(--error)',
+          }}>
+            {error}
+          </div>
         )}
         <div style={{ display: 'flex', gap: '10px' }}>
           <button

@@ -75,7 +75,7 @@ export default function LoginPage() {
     try {
       const result = await signInWithGoogle()
       if (result?.error) {
-        setServerError(result.error.message || 'Google sign in failed.')
+        setServerError(result.error || 'Google sign in failed.')
         setGoogleLoading(false)
         return
       }

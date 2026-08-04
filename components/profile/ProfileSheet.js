@@ -91,9 +91,11 @@ export default function ProfileSheet() {
   }
 
   const handleBlock = async () => {
-    await blockUser(profile.id)
+    const result = await blockUser(profile.id)
+    if (result?.error) return result
     window.dispatchEvent(new Event('relay:conversations-changed'))
     closeProfile()
+    return result
   }
 
   const socialLinks = profile ? [
