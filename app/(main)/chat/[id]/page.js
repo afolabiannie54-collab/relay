@@ -31,6 +31,10 @@ import { useProfileSheet } from '@/lib/profile-sheet-context'
 // instead of lucide's default rounded ones.
 const iconProps = { strokeWidth: 2, strokeLinecap: 'square', strokeLinejoin: 'miter' }
 
+// Message status ranks, for the ratchet in getMessageStatus below — a
+// status can only ever move up this scale, never back down.
+const STATUS_RANK = { sent: 1, delivered: 2, read: 3 }
+
 // A reply quoting a media message previously showed that message's raw
 // `content` — for images/files that's often empty or a caption, but for
 // a voice note it's the literal generated filename ("voice-<timestamp>.
@@ -232,6 +236,17 @@ export default function ConversationPage() {
   const channelRef = useRef(null)
   const wasDisconnectedRef = useRef(false)
   const lastMessageIdRef = useRef(null)
+  // Status ticks must only ever move forward (sent -> delivered -> read),
+  // never back — "delivered" is approximated from CURRENT presence (no
+  // delivery-ack column exists in this schema), so without this, a
+  // message that was genuinely delivered (or read) minutes ago would
+  // visibly regress to a single "sent" tick the instant the recipient
+  // goes offline, even though nothing about its actual delivery/read
+  // state changed. Keyed by message id, reset per conversation below.
+  // State, not a ref — read during render (to display), so it can't be a
+  // ref (only writable/readable from effects/handlers under the rules of
+  // React), and it needs to trigger a re-render when it advances anyway.
+  const [statusRatchet, setStatusRatchet] = useState({})
   // message_reactions has no conversation_id column to filter Realtime
   // on, so the reactions listener below has to check each incoming
   // change against the currently loaded messages itself — this ref
@@ -277,6 +292,7 @@ export default function ConversationPage() {
       setConversation(null)
       setGroupInfo(null)
       lastMessageIdRef.current = null
+      setStatusRatchet({})
 
       // Show whatever's cached immediately — zero loading state for data
       // we've already seen, and never an empty/unknown header if a cached
@@ -956,16 +972,13 @@ export default function ConversationPage() {
   // render, for a status tick that's already secondary UI; sent/
   // delivered/failed carries the useful signal without that cost.
   const isGroup = conversation?.type === 'group'
-  const getMessageStatus = (msg) => {
-    if (msg._status === 'sending') return 'sending'
-    if (msg._status === 'failed') return 'failed'
 
+  const computeRawStatus = (msg) => {
     if (isGroup) {
       const others = groupInfo?.members?.filter(m => m.user_id !== profile?.id) || []
       const anyOnline = others.some(m => onlineUsers.includes(m.user_id))
       return anyOnline ? 'delivered' : 'sent'
     }
-
     if (!otherParticipant) return 'sent'
     const readers = readReceipts[msg.id]
     // Reciprocal, like WhatsApp: turning off your own read-receipts
@@ -976,6 +989,31 @@ export default function ConversationPage() {
     if (showReadReceipts && readers?.has(otherParticipant.id)) return 'read'
     if (onlineUsers.includes(otherParticipant.id)) return 'delivered'
     return 'sent'
+  }
+
+  // Updated during render, not in an effect — this is React's own
+  // documented pattern for "storing information from previous renders"
+  // (react.dev/reference/react/useState#storing-information-from-previous-renders):
+  // calling setState conditionally in the render body, guarded so it only
+  // fires when something actually changed, makes React redo this render
+  // immediately with the new value before anything commits to the screen
+  // — no extra visible frame the way an effect-based version would have,
+  // and no infinite loop since the second pass finds nothing left to
+  // change. Only ever ratchets forward — see statusRatchet's declaration
+  // above for why a message's displayed status must never move backward.
+  const statusRatchetUpdates = messages
+    .filter(msg => msg._status !== 'sending' && msg._status !== 'failed' && msg.sender_id === profile?.id)
+    .map(msg => [msg.id, computeRawStatus(msg)])
+    .filter(([msgId, computed]) => STATUS_RANK[computed] > (STATUS_RANK[statusRatchet[msgId]] || 0))
+
+  if (statusRatchetUpdates.length > 0) {
+    setStatusRatchet({ ...statusRatchet, ...Object.fromEntries(statusRatchetUpdates) })
+  }
+
+  const getMessageStatus = (msg) => {
+    if (msg._status === 'sending') return 'sending'
+    if (msg._status === 'failed') return 'failed'
+    return statusRatchet[msg.id] || computeRawStatus(msg)
   }
 
   const handleMediaUpload = async (e) => {
