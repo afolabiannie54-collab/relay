@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { createPortal } from 'react-dom'
 import { BellOff, Bell, Check, Circle, EyeOff, Eye, UserPlus, LogOut, Trash2, Ban } from 'lucide-react'
@@ -27,6 +27,8 @@ export default function ConversationContextMenu({ conversation, isMuted, positio
   const [memberQuery, setMemberQuery] = useState('')
   const [memberResults, setMemberResults] = useState([])
   const [searching, setSearching] = useState(false)
+  const memberSearchTimeout = useRef(null)
+  const memberSearchSeqRef = useRef(0)
   const [addMemberFeedback, setAddMemberFeedback] = useState(null)
   const [adding, setAdding] = useState(null)
 
@@ -117,13 +119,24 @@ export default function ConversationContextMenu({ conversation, isMuted, positio
     return result
   }
 
-  const handleMemberSearch = async (q) => {
+  const handleMemberSearch = (q) => {
     setMemberQuery(q)
-    if (q.trim().length < 3) { setMemberResults([]); return }
+    const seq = ++memberSearchSeqRef.current
+    if (memberSearchTimeout.current) clearTimeout(memberSearchTimeout.current)
+
+    if (q.trim().length < 3) {
+      setMemberResults([])
+      setSearching(false)
+      return
+    }
+
     setSearching(true)
-    const result = await searchUsers(q)
-    if (result.data) setMemberResults(result.data)
-    setSearching(false)
+    memberSearchTimeout.current = setTimeout(async () => {
+      const result = await searchUsers(q)
+      if (seq !== memberSearchSeqRef.current) return
+      if (result.data) setMemberResults(result.data)
+      setSearching(false)
+    }, 300)
   }
 
   const handleAddMember = async (userId) => {

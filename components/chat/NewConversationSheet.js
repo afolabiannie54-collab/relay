@@ -67,6 +67,10 @@ function SheetBody({ onClose, initialMode }) {
   // of leaving the whole screen looking unchanged until it navigates.
   const [openingId, setOpeningId] = useState(null)
   const searchTimeout = useRef(null)
+  // Guards a slower response for an earlier query landing after a faster
+  // one for a later query — the debounce above only throttles how often a
+  // request fires, not the order in which their responses come back.
+  const searchSeqRef = useRef(0)
 
   const [groupName, setGroupName] = useState('')
   const [groupDescription, setGroupDescription] = useState('')
@@ -121,17 +125,20 @@ function SheetBody({ onClose, initialMode }) {
   // rather than a premature "no results".
   const handleSearch = (value) => {
     setSearchQuery(value)
+    const seq = ++searchSeqRef.current
     if (searchTimeout.current) clearTimeout(searchTimeout.current)
 
     const trimmed = value.trim()
     if (trimmed.length < 3) {
       setSearchResults([])
+      setSearching(false)
       return
     }
 
     setSearching(true)
     searchTimeout.current = setTimeout(async () => {
       const result = await searchUsers(trimmed)
+      if (seq !== searchSeqRef.current) return
       setSearchResults(result.data || [])
       setSearching(false)
     }, 300)

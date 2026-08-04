@@ -84,6 +84,8 @@ export default function ConversationSettingsSheet({
   const [memberQuery, setMemberQuery] = useState('')
   const [memberResults, setMemberResults] = useState([])
   const [searching, setSearching] = useState(false)
+  const memberSearchTimeout = useRef(null)
+  const memberSearchSeqRef = useRef(0)
   const [addMemberFeedback, setAddMemberFeedback] = useState(null)
   const [acting, setActing] = useState(null)
   // Locally reflects role changes the instant an action succeeds, ahead
@@ -226,16 +228,27 @@ export default function ConversationSettingsSheet({
     return result
   }
 
-  const handleMemberSearch = async (q) => {
+  const handleMemberSearch = (q) => {
     setMemberQuery(q)
-    if (q.trim().length < 3) { setMemberResults([]); return }
-    setSearching(true)
-    const result = await searchUsers(q)
-    if (result.data) {
-      const memberIds = groupInfo?.members?.map(m => m.user_id) || []
-      setMemberResults(result.data.filter(u => !memberIds.includes(u.id)))
+    const seq = ++memberSearchSeqRef.current
+    if (memberSearchTimeout.current) clearTimeout(memberSearchTimeout.current)
+
+    if (q.trim().length < 3) {
+      setMemberResults([])
+      setSearching(false)
+      return
     }
-    setSearching(false)
+
+    setSearching(true)
+    memberSearchTimeout.current = setTimeout(async () => {
+      const result = await searchUsers(q)
+      if (seq !== memberSearchSeqRef.current) return
+      if (result.data) {
+        const memberIds = groupInfo?.members?.map(m => m.user_id) || []
+        setMemberResults(result.data.filter(u => !memberIds.includes(u.id)))
+      }
+      setSearching(false)
+    }, 300)
   }
 
   const editIsDirty = editFormData.name !== (groupInfo?.name || '') || editFormData.description !== (groupInfo?.description || '')

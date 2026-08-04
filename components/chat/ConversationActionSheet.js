@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import {
   Bell, BellOff, CheckCheck, Circle, EyeOff, Eye, UserPlus, DoorOpen,
@@ -82,6 +82,8 @@ export default function ConversationActionSheet({ conversation, isMuted, isOpen,
   const [memberQuery, setMemberQuery] = useState('')
   const [memberResults, setMemberResults] = useState([])
   const [searching, setSearching] = useState(false)
+  const memberSearchTimeout = useRef(null)
+  const memberSearchSeqRef = useRef(0)
   const [adding, setAdding] = useState(null)
   const [addMemberFeedback, setAddMemberFeedback] = useState(null)
   // Which row's mutation is currently in flight — every row disables
@@ -196,13 +198,24 @@ export default function ConversationActionSheet({ conversation, isMuted, isOpen,
     return result
   }
 
-  const handleMemberSearch = async (q) => {
+  const handleMemberSearch = (q) => {
     setMemberQuery(q)
-    if (q.trim().length < 3) { setMemberResults([]); return }
+    const seq = ++memberSearchSeqRef.current
+    if (memberSearchTimeout.current) clearTimeout(memberSearchTimeout.current)
+
+    if (q.trim().length < 3) {
+      setMemberResults([])
+      setSearching(false)
+      return
+    }
+
     setSearching(true)
-    const result = await searchUsers(q)
-    if (result.data) setMemberResults(result.data)
-    setSearching(false)
+    memberSearchTimeout.current = setTimeout(async () => {
+      const result = await searchUsers(q)
+      if (seq !== memberSearchSeqRef.current) return
+      if (result.data) setMemberResults(result.data)
+      setSearching(false)
+    }, 300)
   }
 
   const handleAddMember = async (userId) => {

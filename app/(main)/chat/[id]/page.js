@@ -44,6 +44,46 @@ function getReplyPreview(reply) {
   return { icon: null, text: reply.content }
 }
 
+const MENTION_REGEX = /@([a-z0-9_]{3,20})/gi
+
+// @mentions were parsed and notified server-side already but rendered as
+// completely plain text — nothing in the bubble marked "@username" as
+// different from the rest of the sentence. Bold everywhere is the one
+// safe universal differentiator here: the accent color only gets layered
+// on for the other person's bubble (a normal surface, exactly what
+// --accent-text was designed for) and skipped for your own sent bubble,
+// which uses inverted surface colors (var(--text) as its background) —
+// the same color would have badly failed contrast in one theme/bubble
+// combination or another, the same class of bug --on-accent exists to
+// avoid elsewhere.
+function renderMessageText(content, { onMentionClick, isOwn } = {}) {
+  if (!content) return content
+  const regex = new RegExp(MENTION_REGEX)
+  const parts = []
+  let lastIndex = 0
+  let match
+  while ((match = regex.exec(content)) !== null) {
+    if (match.index > lastIndex) parts.push(content.slice(lastIndex, match.index))
+    const username = match[1]
+    parts.push(
+      <span
+        key={`${match.index}-${username}`}
+        onClick={onMentionClick ? (e) => { e.stopPropagation(); onMentionClick(username) } : undefined}
+        style={{
+          fontWeight: 800,
+          color: isOwn ? 'inherit' : 'var(--accent-text)',
+          cursor: onMentionClick ? 'pointer' : 'inherit',
+        }}
+      >
+        @{username}
+      </span>
+    )
+    lastIndex = match.index + match[0].length
+  }
+  if (lastIndex < content.length) parts.push(content.slice(lastIndex))
+  return parts
+}
+
 export default function ConversationPage() {
   const { id } = useParams()
   const router = useRouter()
@@ -109,6 +149,15 @@ export default function ConversationPage() {
   const [newMessageCount, setNewMessageCount] = useState(0)
   const isAtBottomRef = useRef(true)
   const messagesContainerRef = useRef(null)
+  // Ref-backed, not state — read from inside the scroll-listener effect's
+  // closure (deps: [loading], set up once per mount), so plain useState
+  // values here would go stale the moment they changed after that effect
+  // last ran. Refs are always read fresh at call time regardless of which
+  // render's closure is calling.
+  const hasMoreMessagesRef = useRef(true)
+  const loadingOlderRef = useRef(false)
+  const pageRef = useRef(0)
+  const [showLoadingOlder, setShowLoadingOlder] = useState(false)
   const [selectMode, setSelectMode] = useState(false)
   const [selectedMsgIds, setSelectedMsgIds] = useState(new Set())
   const { onlineUsers } = useOnlineUsers()
@@ -254,6 +303,7 @@ export default function ConversationPage() {
         setMessages(msgsResult.data)
         loadReactions(msgsResult.data)
         cache.set(`messages:${id}`, msgsResult.data, 20000)
+        hasMoreMessagesRef.current = msgsResult.data.length >= 50
       }
       setLoading(false)
 
@@ -306,6 +356,7 @@ export default function ConversationPage() {
       isAtBottomRef.current = distanceFromBottom < 50
       setShowScrollButton(distanceFromBottom > 200)
       if (distanceFromBottom < 50) setNewMessageCount(0)
+      if (el.scrollTop < 150) loadOlderMessages()
     }
     el.addEventListener('scroll', handleScroll)
     return () => el.removeEventListener('scroll', handleScroll)
@@ -514,6 +565,11 @@ export default function ConversationPage() {
     }
   }, [id, profile?.id])
 
+  // Merges into existing reactions rather than replacing the whole map —
+  // called again for each batch of older messages loaded via scroll-up
+  // pagination, and a flat setMessageReactions(reactionsMap) there would
+  // have wiped out every reaction already loaded for the newer messages
+  // still on screen.
   const loadReactions = async (msgs) => {
     const reactionsMap = {}
     await Promise.all(
@@ -524,7 +580,42 @@ export default function ConversationPage() {
         }
       })
     )
-    setMessageReactions(reactionsMap)
+    setMessageReactions(prev => ({ ...prev, ...reactionsMap }))
+  }
+
+  // Scroll-up pagination — getMessages(id, page) already supported this,
+  // nothing in the UI ever called it with page > 0, so any history past
+  // the most recent 50 messages was simply unreachable. Preserves scroll
+  // position by measuring scrollHeight before the DOM updates and
+  // reapplying the delta after the next paint — otherwise prepending
+  // older messages above the current viewport yanks the view down to
+  // whatever now occupies the old scrollTop.
+  const loadOlderMessages = async () => {
+    if (loadingOlderRef.current || !hasMoreMessagesRef.current) return
+    const el = messagesContainerRef.current
+    if (!el) return
+
+    loadingOlderRef.current = true
+    setShowLoadingOlder(true)
+
+    const nextPage = pageRef.current + 1
+    const scrollHeightBefore = el.scrollHeight
+    const result = await getMessages(id, nextPage)
+
+    if (Array.isArray(result.data) && result.data.length > 0) {
+      pageRef.current = nextPage
+      setMessages(prev => [...result.data, ...prev])
+      loadReactions(result.data)
+      hasMoreMessagesRef.current = result.data.length >= 50
+      requestAnimationFrame(() => {
+        el.scrollTop += el.scrollHeight - scrollHeightBefore
+      })
+    } else {
+      hasMoreMessagesRef.current = false
+    }
+
+    loadingOlderRef.current = false
+    setShowLoadingOlder(false)
   }
 
   const handleTyping = async () => {
@@ -1131,6 +1222,21 @@ export default function ConversationPage() {
           backgroundRepeat: 'repeat',
         }}
       >
+        {showLoadingOlder && (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 0 16px' }}>
+            <span style={{
+              fontSize: '11px',
+              fontWeight: '700',
+              color: 'var(--text-secondary)',
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-pill)',
+              padding: '4px 12px',
+            }}>
+              Loading older messages…
+            </span>
+          </div>
+        )}
         {Object.entries(groupedMessages).map(([date, msgs]) => (
           <div key={date}>
             {/* Date divider — a solid pill rather than plain text, so it
@@ -1400,7 +1506,7 @@ export default function ConversationPage() {
                                 wordBreak: 'break-word',
                               }}
                             >
-                              {isDeleted ? 'This message was deleted' : msg.content}
+                              {isDeleted ? 'This message was deleted' : renderMessageText(msg.content, { isOwn, onMentionClick: openProfile })}
                             </div>
                           )}
                         </div>

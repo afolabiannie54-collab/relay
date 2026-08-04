@@ -33,6 +33,12 @@ export default function SearchPage() {
   const [blockTarget, setBlockTarget] = useState(null)
   const [showNewGroup, setShowNewGroup] = useState(false)
   const searchTimeout = useRef(null)
+  // Guards against an out-of-order response: the 400ms debounce already
+  // stops rapid-fire requests, but two in-flight requests can still race
+  // (a slower response for an earlier query landing after a faster one
+  // for a later query) — without this, whichever response happened to
+  // arrive last would win regardless of which query was actually newest.
+  const searchSeqRef = useRef(0)
   const router = useRouter()
   const { openProfile } = useProfileSheet()
 
@@ -41,17 +47,25 @@ export default function SearchPage() {
     setQuery(value)
     setError(null)
 
+    // Bumped on every keystroke, not just ones that schedule a new fetch
+    // below — invalidates any still-in-flight request from a moment ago
+    // regardless of why the input changed, including clearing back below
+    // the 3-char minimum.
+    const seq = ++searchSeqRef.current
+
     if (searchTimeout.current) clearTimeout(searchTimeout.current)
 
     if (value.trim().length < 3) {
       setResults([])
       setSearched(false)
+      setLoading(false)
       return
     }
 
     setLoading(true)
     searchTimeout.current = setTimeout(async () => {
       const result = await searchUsers(value.trim())
+      if (seq !== searchSeqRef.current) return
       if (result.error) {
         setError(result.error)
         setResults([])
