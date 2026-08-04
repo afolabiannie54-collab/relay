@@ -164,9 +164,22 @@ export default function ChatList({ onSelectConversation }) {
     }
     document.addEventListener('visibilitychange', handleVisibility)
     window.addEventListener('focus', handleVisibility)
+
+    // visibilitychange/focus are the primary trigger, but mobile PWAs are
+    // known to skip them on resume from background (the same gap that
+    // left last_seen stuck stale — see presence-context.js) — a stale
+    // unread badge here reads as "I already read this, why is it still
+    // showing unread," which is worse than the minor cost of a periodic
+    // background refresh. Only actually refetches while the tab is
+    // genuinely visible; a hidden tab just skips the tick.
+    const intervalId = setInterval(() => {
+      if (document.visibilityState === 'visible') refreshConversations()
+    }, 20000)
+
     return () => {
       document.removeEventListener('visibilitychange', handleVisibility)
       window.removeEventListener('focus', handleVisibility)
+      clearInterval(intervalId)
     }
   }, [])
 

@@ -321,7 +321,15 @@ export default function ConversationPage() {
       setConversation(null)
       setGroupInfo(null)
       lastMessageIdRef.current = null
-      setStatusRatchet({})
+      // statusRatchet is deliberately NOT reset here — message ids are
+      // globally unique (UUIDs), so nothing from a previous conversation
+      // could ever collide with this one. Resetting it just forces every
+      // reopen to re-derive read/delivered status from scratch, which is
+      // exactly the wrong move given realtime message_reads delivery is
+      // best-effort (see the note on the message_reads listener below) —
+      // once a message has genuinely ratcheted up to delivered/read, that
+      // should stick for the rest of the session, not restart at "sent"
+      // every time this conversation is reopened.
 
       // Show whatever's cached immediately — zero loading state for data
       // we've already seen, and never an empty/unknown header if a cached
@@ -430,15 +438,20 @@ export default function ConversationPage() {
     load()
   }, [id])
 
-  // Read status is monotonic — once a message is read it's read, this
-  // never needs to be re-polled on a timer. The message_reads realtime
-  // listener below is meant to be the only thing that ever updates this
-  // after the initial load, but cross-device testing turned up sessions
-  // where its INSERT event just never reaches this client (likely a
-  // Supabase-side config issue — see the note further down). Refetching
-  // once when the tab regains focus is a narrow, event-driven fallback
-  // for that specific gap, not a substitute for realtime actually
-  // working.
+  // Read status is monotonic on the DISPLAY side (see the statusRatchet
+  // above), but the FETCH here still needs to actually happen for that to
+  // matter. The message_reads realtime listener below is meant to be the
+  // only thing that ever updates this after the initial load, but direct
+  // inspection of the Supabase project confirmed its tenant regularly
+  // tears down and cold-starts the realtime connection when nobody's
+  // connected — a genuine delivery gap, not just theoretical — and
+  // visibilitychange is separately known to not fire reliably on mobile
+  // PWAs resuming from background (the same gap fixed for last_seen via a
+  // heartbeat). Between those two, relying on event-driven refetches
+  // alone left read status stuck showing "sent" far too often. A light
+  // periodic poll is safe specifically because the ratchet can only ever
+  // move status forward — this can't cause the flicker a naive re-render
+  // would.
   const refreshReadReceipts = async () => {
     const receiptsResult = await getReadReceipts(id)
     if (Array.isArray(receiptsResult.data)) {
@@ -456,7 +469,13 @@ export default function ConversationPage() {
       if (document.visibilityState === 'visible') refreshReadReceipts()
     }
     document.addEventListener('visibilitychange', handleVisibility)
-    return () => document.removeEventListener('visibilitychange', handleVisibility)
+    const intervalId = setInterval(() => {
+      if (document.visibilityState === 'visible') refreshReadReceipts()
+    }, 15000)
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility)
+      clearInterval(intervalId)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
