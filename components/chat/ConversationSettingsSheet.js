@@ -78,6 +78,9 @@ export default function ConversationSettingsSheet({
   const [muteStatus, setMuteStatus] = useState({ muted: false, mutedUntil: null })
   const [showMutePicker, setShowMutePicker] = useState(false)
   const [muting, setMuting] = useState(false)
+  const [mutingLabel, setMutingLabel] = useState(null)
+  const [hiding, setHiding] = useState(false)
+  const [menuError, setMenuError] = useState(null)
   const [confirmAction, setConfirmAction] = useState(null)
   const [memberActionUser, setMemberActionUser] = useState(null)
   const [showAddMember, setShowAddMember] = useState(false)
@@ -155,8 +158,9 @@ export default function ConversationSettingsSheet({
 
   const getMemberRole = (member) => roleOverrides[member.user_id] ?? member.role
 
-  const handleMute = async (hours) => {
+  const handleMute = async (hours, label) => {
     setMuting(true)
+    setMutingLabel(label)
     const mutedUntil = hours ? Date.now() + hours * 3600000 : null
     const result = await muteConversation(conversationId, mutedUntil)
     if (!result.error) {
@@ -166,6 +170,7 @@ export default function ConversationSettingsSheet({
       setShowMutePicker(false)
     }
     setMuting(false)
+    setMutingLabel(null)
   }
 
   const handleUnmute = async () => {
@@ -180,7 +185,13 @@ export default function ConversationSettingsSheet({
 
   const handleHide = async () => {
     vibrate()
-    await hideConversation(conversationId)
+    setHiding(true)
+    const result = await hideConversation(conversationId)
+    if (result?.error) {
+      setHiding(false)
+      showMenuError(result.error)
+      return
+    }
     onClose?.()
     // replace, not push — a hidden/deleted/left conversation's URL
     // shouldn't remain a valid back-navigation target in history.
@@ -309,18 +320,25 @@ export default function ConversationSettingsSheet({
     return result
   }
 
+  const showMenuError = (msg) => {
+    setMenuError(msg)
+    setTimeout(() => setMenuError(null), 3000)
+  }
+
   const handlePromote = async (userId) => {
     setActing(userId)
-    await promoteToAdmin(conversationId, userId)
+    const result = await promoteToAdmin(conversationId, userId)
     setActing(null)
+    if (result?.error) { showMenuError(result.error); return }
     setMemberActionUser(null)
     onGroupChanged?.()
   }
 
   const handleDemote = async (userId) => {
     setActing(userId)
-    await demoteAdmin(conversationId, userId)
+    const result = await demoteAdmin(conversationId, userId)
     setActing(null)
+    if (result?.error) { showMenuError(result.error); return }
     setMemberActionUser(null)
     onGroupChanged?.()
   }
@@ -338,10 +356,13 @@ export default function ConversationSettingsSheet({
     setActing(targetId)
     const result = await transferOwnership(conversationId, targetId)
     setActing(null)
+
+    if (result.error) {
+      showMenuError(result.error)
+      return
+    }
+
     setMemberActionUser(null)
-
-    if (result.error) return
-
     setRoleOverrides(prev => {
       const next = { ...prev, [targetId]: 'owner' }
       if (currentOwner) next[currentOwner.user_id] = 'admin'
@@ -375,6 +396,11 @@ export default function ConversationSettingsSheet({
           {successMessage && (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '10px 20px', background: 'var(--surface)', borderBottom: '1px solid var(--border-light)', fontSize: '13px', color: 'var(--success)', fontWeight: '700', textAlign: 'center' }}>
               <CheckCircle2 size={15} {...iconProps} /> {successMessage}
+            </div>
+          )}
+          {menuError && (
+            <div style={{ padding: '10px 20px', background: 'var(--error-light)', borderBottom: '1px solid var(--border-light)', fontSize: '13px', color: 'var(--error)', fontWeight: '600', textAlign: 'center' }}>
+              {menuError}
             </div>
           )}
           {/* Identity card */}
@@ -418,7 +444,7 @@ export default function ConversationSettingsSheet({
               </div>
               {muteStatus.muted ? (
                 <button className="relay-btn" onClick={handleUnmute} disabled={muting}>
-                  Unmute
+                  {muting ? 'Unmuting...' : 'Unmute'}
                 </button>
               ) : (
                 <button className="relay-btn relay-btn--filled" onClick={() => setShowMutePicker(v => !v)}>
@@ -432,11 +458,11 @@ export default function ConversationSettingsSheet({
                   <button
                     key={opt.label}
                     disabled={muting}
-                    onClick={() => handleMute(opt.hours)}
+                    onClick={() => handleMute(opt.hours, opt.label)}
                     className="relay-menu-row"
                     style={{ borderRadius: 0, borderBottom: '1px solid var(--border-light)', fontSize: '13px', fontWeight: '600', color: 'var(--text)' }}
                   >
-                    {opt.label}
+                    {mutingLabel === opt.label ? 'Muting...' : opt.label}
                   </button>
                 ))}
               </div>
@@ -537,9 +563,9 @@ export default function ConversationSettingsSheet({
                 <UserX size={17} {...iconProps} />
                 <span>Block user</span>
               </button>
-              <button className="relay-menu-row" style={{ ...rowStyle, color: 'var(--error)', borderBottom: 'none' }} onClick={handleHide}>
+              <button className="relay-menu-row" style={{ ...rowStyle, color: 'var(--error)', borderBottom: 'none' }} onClick={handleHide} disabled={hiding}>
                 <EyeOff size={17} {...iconProps} />
-                <span>Hide conversation</span>
+                <span>{hiding ? 'Hiding...' : 'Hide conversation'}</span>
               </button>
             </>
           )}
@@ -684,21 +710,21 @@ export default function ConversationSettingsSheet({
               <span>View profile</span>
             </button>
             {isOwner && memberActionUser?.role === 'member' && (
-              <button className="relay-menu-row" style={rowStyle} onClick={() => handlePromote(memberActionUser.user_id)}>
+              <button className="relay-menu-row" style={rowStyle} onClick={() => handlePromote(memberActionUser.user_id)} disabled={acting === memberActionUser.user_id}>
                 <ShieldCheck size={17} {...iconProps} />
-                <span>Promote to admin</span>
+                <span>{acting === memberActionUser.user_id ? 'Promoting...' : 'Promote to admin'}</span>
               </button>
             )}
             {isOwner && memberActionUser?.role === 'admin' && (
-              <button className="relay-menu-row" style={rowStyle} onClick={() => handleDemote(memberActionUser.user_id)}>
+              <button className="relay-menu-row" style={rowStyle} onClick={() => handleDemote(memberActionUser.user_id)} disabled={acting === memberActionUser.user_id}>
                 <ShieldOff size={17} {...iconProps} />
-                <span>Demote to member</span>
+                <span>{acting === memberActionUser.user_id ? 'Demoting...' : 'Demote to member'}</span>
               </button>
             )}
             {isOwner && memberActionUser?.role !== 'owner' && (
-              <button className="relay-menu-row" style={rowStyle} onClick={handleTransferOwnership}>
+              <button className="relay-menu-row" style={rowStyle} onClick={handleTransferOwnership} disabled={acting === memberActionUser?.user_id}>
                 <Crown size={17} {...iconProps} />
-                <span>Make owner</span>
+                <span>{acting === memberActionUser?.user_id ? 'Transferring...' : 'Make owner'}</span>
               </button>
             )}
             {canManageGroup && memberActionUser?.role !== 'owner' && (

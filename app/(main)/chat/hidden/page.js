@@ -10,6 +10,7 @@ import ConversationContextMenu from '@/components/chat/ConversationContextMenu'
 import { getHiddenConversations } from '@/actions/messages'
 import { createClient } from '@/lib/supabase/client'
 import NotionDoodle from '@/components/shared/illustrations/NotionDoodle'
+import ChatListSkeleton from '@/components/chat/ChatListSkeleton'
 
 const COMMENT_SLASH_PATH = "M11.5 2H19C21.2091 2 23 3.68965 23 5.77394V14.2653C23 16.3496 21.2091 18.0392 19 18.0392H18.0392M8 2H9.5M6 2H5C4.14017 2 3.3437 2.25596 2.69153 2.69153M2.69153 2.69153L1 1M2.69153 2.69153L18.0392 18.0392M18.0392 18.0392L23 23M15.5 18.0392H12.7814C11.6475 18.0392 10.5668 18.4933 9.80827 19.2885L7.37165 21.8429C7.0651 22.1642 6.5 21.9597 6.5 21.5273V18.9827C6.5 18.4616 6.05228 18.0392 5.5 18.0392H5C2.79086 18.0392 1 16.3496 1 14.2653V5.77394C1 5.19125 1.13996 4.6394 1.3899 4.1467"
 
@@ -115,20 +116,6 @@ export default function HiddenConversationsPage() {
     return msg.content || ''
   }
 
-  if (loading) {
-    return (
-      <div style={{
-        height: '100%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontFamily: "'Inter', -apple-system, sans-serif",
-      }}>
-        <p style={{ color: 'var(--text-tertiary)', fontSize: '14px' }}>Loading...</p>
-      </div>
-    )
-  }
-
   return (
     <div style={{
       height: '100%',
@@ -153,7 +140,9 @@ export default function HiddenConversationsPage() {
 
       {/* Conversation list */}
       <div style={{ flex: 1, overflowY: 'auto' }}>
-        {conversations.length === 0 ? (
+        {loading ? (
+          <ChatListSkeleton />
+        ) : conversations.length === 0 ? (
           <div style={{
             display: 'flex',
             flexDirection: 'column',

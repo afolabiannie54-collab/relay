@@ -55,7 +55,13 @@ export default function RequestList({ initialReceived, initialSent, initialInvit
   const [invites, setInvites] = useState(initialInvites || [])
   const [acting, setActing] = useState(null)
   const [blockTarget, setBlockTarget] = useState(null)
+  const [actionError, setActionError] = useState(null)
   const router = useRouter()
+
+  const showActionError = (msg) => {
+    setActionError(msg || 'Something went wrong')
+    setTimeout(() => setActionError(null), 3000)
+  }
 
   // Live-refresh all three lists — a new request/invite coming in affects
   // Received/Invites, an existing one being cancelled from another device
@@ -113,6 +119,7 @@ export default function RequestList({ initialReceived, initialSent, initialInvit
       return
     }
     setActing(null)
+    showActionError(result.error)
   }
 
   const handleBlock = async () => {
@@ -132,6 +139,8 @@ export default function RequestList({ initialReceived, initialSent, initialInvit
     const result = await cancelMessageRequest(requestId)
     if (result.success) {
       setSent(prev => prev.filter(r => r.id !== requestId))
+    } else {
+      showActionError(result.error)
     }
     setActing(null)
   }
@@ -145,6 +154,7 @@ export default function RequestList({ initialReceived, initialSent, initialInvit
       return
     }
     setActing(null)
+    showActionError(result.error)
   }
 
   const handleDeclineInvite = async (inviteId) => {
@@ -152,6 +162,8 @@ export default function RequestList({ initialReceived, initialSent, initialInvit
     const result = await declineGroupInvite(inviteId)
     if (result.success) {
       setInvites(prev => prev.filter(i => i.id !== inviteId))
+    } else {
+      showActionError(result.error)
     }
     setActing(null)
   }
@@ -206,6 +218,12 @@ export default function RequestList({ initialReceived, initialSent, initialInvit
           Group invites{invites.length > 0 ? ` (${invites.length})` : ''}
         </button>
       </div>
+
+      {actionError && (
+        <div style={{ padding: '10px 24px', background: 'var(--error-light)', borderBottom: '1px solid var(--border-light)', fontSize: '13px', color: 'var(--error)', fontWeight: '600', textAlign: 'center' }}>
+          {actionError}
+        </div>
+      )}
 
       <div style={{ flex: 1, overflowY: 'auto' }}>
         {list.length === 0 ? (
@@ -381,7 +399,7 @@ export default function RequestList({ initialReceived, initialSent, initialInvit
                     className="relay-btn"
                     style={{ padding: '10px 16px', fontSize: '14px' }}
                   >
-                    Decline
+                    {acting === invite.id ? 'Declining...' : 'Decline'}
                   </button>
                 </div>
               </div>

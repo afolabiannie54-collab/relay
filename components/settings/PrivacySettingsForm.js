@@ -15,14 +15,21 @@ export default function PrivacySettingsForm({ initialSettings }) {
   const [settings, setSettings] = useState(initialSettings)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState(null)
+  const [savingKey, setSavingKey] = useState(null)
 
-  const handleAutoSave = async (updatedSettings) => {
+  const handleAutoSave = async (key, previousSettings, updatedSettings) => {
+    setSavingKey(key)
     const data = new FormData()
-    Object.entries(updatedSettings).forEach(([key, value]) => {
-      data.append(key, String(value))
+    Object.entries(updatedSettings).forEach(([k, value]) => {
+      data.append(k, String(value))
     })
     const result = await updatePrivacySettings(data)
+    setSavingKey(null)
     if (result.error) {
+      // The toggle/select already flipped optimistically before this
+      // resolved — without reverting, a failed save would silently leave
+      // the UI showing a value the server never actually saved.
+      setSettings(previousSettings)
       setError(result.error)
     } else {
       setSuccess('Saved')
@@ -31,27 +38,30 @@ export default function PrivacySettingsForm({ initialSettings }) {
   }
 
   const handleToggle = async (key) => {
+    const previousSettings = settings
     const updatedSettings = { ...settings, [key]: !settings[key] }
     setSettings(updatedSettings)
-    await handleAutoSave(updatedSettings)
+    await handleAutoSave(key, previousSettings, updatedSettings)
   }
 
   const handleSelect = async (key, value) => {
+    const previousSettings = settings
     const updatedSettings = { ...settings, [key]: value }
     setSettings(updatedSettings)
-    await handleAutoSave(updatedSettings)
+    await handleAutoSave(key, previousSettings, updatedSettings)
   }
 
-  const Toggle = ({ value, onChange }) => (
+  const Toggle = ({ value, onChange, saving }) => (
     <div
-      onClick={onChange}
+      onClick={saving ? undefined : onChange}
       style={{
         width: '44px',
         height: '24px',
         background: value ? 'var(--border-strong)' : 'var(--border)',
         borderRadius: 'var(--radius-pill)',
         border: '1.5px solid var(--border-strong)',
-        cursor: 'pointer',
+        cursor: saving ? 'default' : 'pointer',
+        opacity: saving ? 0.6 : 1,
         position: 'relative',
         transition: 'background 0.2s',
         flexShrink: 0,
@@ -171,6 +181,7 @@ export default function PrivacySettingsForm({ initialSettings }) {
             <select
               value={settings?.who_can_message}
               onChange={e => handleSelect('who_can_message', e.target.value)}
+              disabled={savingKey === 'who_can_message'}
               style={{
                 padding: '6px 10px',
                 border: '1.5px solid var(--border-strong)',
@@ -179,7 +190,8 @@ export default function PrivacySettingsForm({ initialSettings }) {
                 fontFamily: 'inherit',
                 background: 'var(--surface)',
                 color: 'var(--text)',
-                cursor: 'pointer',
+                cursor: savingKey === 'who_can_message' ? 'default' : 'pointer',
+                opacity: savingKey === 'who_can_message' ? 0.6 : 1,
                 outline: 'none',
               }}
             >
@@ -195,6 +207,7 @@ export default function PrivacySettingsForm({ initialSettings }) {
             <Toggle
               value={settings?.show_online_status}
               onChange={() => handleToggle('show_online_status')}
+              saving={savingKey === 'show_online_status'}
             />
           </SettingRow>
 
@@ -205,6 +218,7 @@ export default function PrivacySettingsForm({ initialSettings }) {
             <Toggle
               value={settings?.show_last_seen}
               onChange={() => handleToggle('show_last_seen')}
+              saving={savingKey === 'show_last_seen'}
             />
           </SettingRow>
 
@@ -216,6 +230,7 @@ export default function PrivacySettingsForm({ initialSettings }) {
             <Toggle
               value={settings?.discoverable}
               onChange={() => handleToggle('discoverable')}
+              saving={savingKey === 'discoverable'}
             />
           </div>
         </div>

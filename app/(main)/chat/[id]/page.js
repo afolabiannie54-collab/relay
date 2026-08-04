@@ -150,6 +150,8 @@ export default function ConversationPage() {
   const [profile, setProfile] = useState(() => cache.peek('profile'))
   const [content, setContent] = useState('')
   const [loading, setLoading] = useState(() => !Array.isArray(cache.peek(`messages:${id}`)))
+  const [loadError, setLoadError] = useState(false)
+  const [retryingLoad, setRetryingLoad] = useState(false)
   const [sending, setSending] = useState(false)
   const [errorMsg, setErrorMsg] = useState(null)
   const errorTimeoutRef = useRef(null)
@@ -350,6 +352,12 @@ export default function ConversationPage() {
         loadReactions(msgsResult.data)
         cache.set(`messages:${id}`, msgsResult.data, 20000)
         hasMoreMessagesRef.current = msgsResult.data.length >= 50
+        setLoadError(false)
+      } else if (!cachedMessages) {
+        // Only surface the error state when there's nothing cached
+        // already on screen — a background refresh failure shouldn't
+        // blow away messages the user can already see.
+        setLoadError(true)
       }
       setLoading(false)
 
@@ -373,6 +381,22 @@ export default function ConversationPage() {
     }
     load()
   }, [id])
+
+  const handleRetryLoadMessages = async () => {
+    setRetryingLoad(true)
+    const result = await getMessages(id)
+    if (Array.isArray(result.data)) {
+      setMessages(result.data)
+      loadReactions(result.data)
+      cache.set(`messages:${id}`, result.data, 20000)
+      hasMoreMessagesRef.current = result.data.length >= 50
+      setLoadError(false)
+      setLoading(false)
+    } else {
+      setLoadError(true)
+    }
+    setRetryingLoad(false)
+  }
 
   // Scroll to bottom when messages change — but only actually move the
   // scroll position when the last message genuinely changed. A single
@@ -1146,20 +1170,6 @@ export default function ConversationPage() {
     return groups
   }, {})
 
-  if (loading) {
-    return (
-      <div style={{
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        fontFamily: "'Inter', -apple-system, sans-serif",
-        background: 'var(--surface)',
-      }}>
-        <MessagesSkeleton />
-      </div>
-    )
-  }
-
   return (
     <div style={{
       height: '100%',
@@ -1368,6 +1378,44 @@ export default function ConversationPage() {
           backgroundRepeat: 'repeat',
         }}
       >
+        {loading ? (
+          <MessagesSkeleton />
+        ) : loadError ? (
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            height: '100%',
+            padding: '40px',
+            textAlign: 'center',
+          }}>
+            <h2 style={{ fontSize: '16px', fontWeight: '800', color: 'var(--text)', marginBottom: '6px', letterSpacing: '-0.01em' }}>Couldn&apos;t load messages</h2>
+            <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginBottom: '20px', maxWidth: '260px' }}>
+              Check your connection and try again.
+            </p>
+            <button
+              onClick={handleRetryLoadMessages}
+              disabled={retryingLoad}
+              style={{
+                padding: '10px 20px',
+                background: 'var(--text)',
+                color: 'var(--background)',
+                borderRadius: 'var(--radius-sm)',
+                border: 'none',
+                fontSize: '13px',
+                fontWeight: '700',
+                boxShadow: 'var(--shadow-md)',
+                cursor: retryingLoad ? 'default' : 'pointer',
+                opacity: retryingLoad ? 0.6 : 1,
+                fontFamily: 'inherit',
+              }}
+            >
+              {retryingLoad ? 'Retrying...' : 'Try again'}
+            </button>
+          </div>
+        ) : (
+        <>
         {showLoadingOlder && (
           <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 0 16px' }}>
             <span style={{
@@ -1762,6 +1810,9 @@ export default function ConversationPage() {
                 : 'Several people are typing…'}
             </div>
           </div>
+        )}
+
+        </>
         )}
 
         <div ref={messagesEndRef} />

@@ -33,6 +33,8 @@ export default function ChatList({ onSelectConversation }) {
   const [userId, setUserId] = useState(null)
   const [mutedIds, setMutedIds] = useState([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
+  const [retrying, setRetrying] = useState(false)
   const [filterQuery, setFilterQuery] = useState('')
   const [actionSheetConv, setActionSheetConv] = useState(null)
   const [contextMenu, setContextMenu] = useState(null)
@@ -107,6 +109,12 @@ export default function ChatList({ onSelectConversation }) {
       if (convsResult.data) {
         setConversations(convsResult.data)
         cache.set('conversations', convsResult.data, 10000)
+        setLoadError(false)
+      } else if (!cachedConvs) {
+        // Only surface the error state when there's nothing cached to
+        // fall back to — a background refresh failure with a cached list
+        // already on screen shouldn't blow away a working view.
+        setLoadError(true)
       }
       if (mutedResult.data) {
         setMutedIds(mutedResult.data)
@@ -128,7 +136,23 @@ export default function ChatList({ onSelectConversation }) {
     if (result.data) {
       setConversations(result.data)
       cache.set('conversations', result.data, 10000)
+      setLoadError(false)
+    } else {
+      // Functional form rather than reading `conversations` from the
+      // enclosing closure — this function is called from long-lived
+      // effects with empty/partial dep arrays, and closing over reactive
+      // state directly here would make those effects need it too.
+      setConversations(prev => {
+        if (prev.length === 0) setLoadError(true)
+        return prev
+      })
     }
+  }
+
+  const handleRetryLoad = async () => {
+    setRetrying(true)
+    await refreshConversations()
+    setRetrying(false)
   }
 
   useEffect(() => {
@@ -511,19 +535,6 @@ export default function ChatList({ onSelectConversation }) {
     })
   }, [conversations, filterQuery])
 
-  if (loading) {
-    return (
-      <div style={{
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        fontFamily: "'Inter', -apple-system, sans-serif",
-      }}>
-        <ChatListSkeleton />
-      </div>
-    )
-  }
-
   return (
     <div style={{
       height: '100%',
@@ -694,7 +705,47 @@ export default function ChatList({ onSelectConversation }) {
             had no entry point at all once nothing was pending. The icon
             still switches to the bold accent treatment when there's
             something to act on, same idea as Hidden Chats' always-visible
-            row below. */}
+            row below. Held back during the true first load along with the
+            rest of this scroll area — its count isn't fetched yet either,
+            so showing it a beat early would just flash a wrong "0". */}
+        {loading ? (
+          <ChatListSkeleton />
+        ) : loadError ? (
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            height: '100%',
+            padding: '40px',
+            textAlign: 'center',
+          }}>
+            <h2 style={{ fontSize: '18px', fontWeight: '800', color: 'var(--text)', marginBottom: '6px', letterSpacing: '-0.01em' }}>Couldn&apos;t load your chats</h2>
+            <p style={{ fontSize: '14px', color: 'var(--text-tertiary)', marginBottom: '24px', maxWidth: '260px' }}>
+              Check your connection and try again.
+            </p>
+            <button
+              onClick={handleRetryLoad}
+              disabled={retrying}
+              style={{
+                padding: '11px 22px',
+                background: 'var(--text)',
+                color: 'var(--background)',
+                borderRadius: 'var(--radius-sm)',
+                border: 'none',
+                fontSize: '14px',
+                fontWeight: '700',
+                boxShadow: 'var(--shadow-md)',
+                cursor: retrying ? 'default' : 'pointer',
+                opacity: retrying ? 0.6 : 1,
+                fontFamily: 'inherit',
+              }}
+            >
+              {retrying ? 'Retrying...' : 'Try again'}
+            </button>
+          </div>
+        ) : (
+        <>
         {!bulkSelectMode && (
           <div
             onClick={() => router.push('/requests')}
@@ -976,6 +1027,8 @@ export default function ChatList({ onSelectConversation }) {
               </span>
             )}
           </div>
+        )}
+        </>
         )}
 
       </div>
