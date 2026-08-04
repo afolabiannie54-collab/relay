@@ -369,17 +369,39 @@ export default function ConversationPage() {
         setPinnedMessageIds(new Set(pinnedResult.data.map(p => p.messages?.id)))
       }
 
-      const receiptsResult = await getReadReceipts(id)
-      if (Array.isArray(receiptsResult.data)) {
-        const map = {}
-        for (const row of receiptsResult.data) {
-          if (!map[row.message_id]) map[row.message_id] = new Set()
-          map[row.message_id].add(row.user_id)
-        }
-        setReadReceipts(map)
-      }
+      await refreshReadReceipts()
     }
     load()
+  }, [id])
+
+  // Read status is monotonic — once a message is read it's read, this
+  // never needs to be re-polled on a timer. The message_reads realtime
+  // listener below is meant to be the only thing that ever updates this
+  // after the initial load, but cross-device testing turned up sessions
+  // where its INSERT event just never reaches this client (likely a
+  // Supabase-side config issue — see the note further down). Refetching
+  // once when the tab regains focus is a narrow, event-driven fallback
+  // for that specific gap, not a substitute for realtime actually
+  // working.
+  const refreshReadReceipts = async () => {
+    const receiptsResult = await getReadReceipts(id)
+    if (Array.isArray(receiptsResult.data)) {
+      const map = {}
+      for (const row of receiptsResult.data) {
+        if (!map[row.message_id]) map[row.message_id] = new Set()
+        map[row.message_id].add(row.user_id)
+      }
+      setReadReceipts(map)
+    }
+  }
+
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') refreshReadReceipts()
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => document.removeEventListener('visibilitychange', handleVisibility)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
   const handleRetryLoadMessages = async () => {
@@ -636,6 +658,13 @@ export default function ConversationPage() {
       // Flips a sent message's status tick from delivered to read live —
       // same no-conversation_id-column workaround as message_reactions
       // above, scoped via messagesRef instead of a server-side filter.
+      // If this stops firing reliably (confirmed happening in cross-
+      // device testing — a message read on one device stayed on a
+      // single tick on another open tab until that tab was refocused),
+      // the cause is outside this file: check the Supabase dashboard
+      // under Database > Replication that message_reads is included in
+      // the supabase_realtime publication — postgres_changes silently
+      // never fires for a table that isn't, no client-side error either.
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
