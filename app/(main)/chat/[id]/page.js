@@ -759,14 +759,25 @@ export default function ConversationPage() {
         setMessages(prev => prev.map(m => m.id === tempId ? { ...m, _status: 'failed' } : m))
         return
       }
-      const realMsg = { ...result.data, reply: replySnapshot || null }
+      // _clientKey stays pinned to the temp id across this swap — the
+      // list's key={} reads this instead of msg.id, so React keeps
+      // reconciling the SAME DOM node (tick just flips from clock to
+      // check) instead of unmounting the temp bubble and mounting a
+      // fresh one at a new list position, which is what read as the
+      // message "jumping in" a second time once it actually sent.
+      const realMsg = { ...result.data, reply: replySnapshot || null, _clientKey: tempId }
       setMessages(prev => {
-        const withoutTemp = prev.filter(m => m.id !== tempId)
         // The realtime INSERT listener may have already added this exact
         // message (same real id) if its echo won the race against this
         // reconciliation — don't add it twice either way this lands.
-        const alreadyHasReal = withoutTemp.some(m => m.id === realMsg.id)
-        return alreadyHasReal ? withoutTemp : [...withoutTemp, realMsg]
+        const alreadyHasReal = prev.some(m => m.id === realMsg.id)
+        if (alreadyHasReal) return prev.filter(m => m.id !== tempId)
+        // Swap in place rather than filter-then-append — replacing at the
+        // temp message's own index keeps its position stable even if
+        // other messages arrived (e.g. via realtime) while this was
+        // still in flight, instead of the swap silently reordering it to
+        // the end of the list.
+        return prev.map(m => m.id === tempId ? realMsg : m)
       })
     } catch {
       setMessages(prev => prev.map(m => m.id === tempId ? { ...m, _status: 'failed' } : m))
@@ -1295,6 +1306,89 @@ export default function ConversationPage() {
       </div>
       )}
 
+      {/* Anchored right under the header, not above the composer — a
+          search input that autofocuses (opening the on-screen keyboard)
+          used to sit just above the composer at the very bottom of the
+          screen, where the keyboard would immediately cover or crowd it
+          on mobile. Matches where every mainstream messaging app puts
+          in-conversation search instead. */}
+      {showSearch && (
+        <div className="relay-fade-in" style={{
+          borderBottom: '2px solid var(--border-strong)',
+          background: 'var(--surface)',
+          flexShrink: 0,
+          maxHeight: '50vh',
+          display: 'flex',
+          flexDirection: 'column',
+        }}>
+          <div style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid var(--border-light)' }}>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => handleSearch(e.target.value)}
+              placeholder="Search messages…"
+              autoFocus
+              className="relay-input"
+              style={{
+                flex: 1,
+                padding: '8px 12px',
+                borderRadius: '8px',
+                fontSize: '16px',
+                boxSizing: 'border-box',
+              }}
+            />
+            <button
+              onClick={() => { setShowSearch(false); setSearchQuery(''); setSearchResults([]) }}
+              aria-label="Close search"
+              className="relay-plain-icon-btn"
+              style={{ width: '32px', height: '32px', flexShrink: 0 }}
+            >
+              <X size={18} {...iconProps} />
+            </button>
+          </div>
+          <div style={{ overflowY: 'auto', flex: 1 }}>
+            {searching && (
+              <p style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--text-tertiary)' }}>Searching…</p>
+            )}
+            {!searching && searchQuery.length >= 2 && searchResults.length === 0 && (
+              <p style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--text-tertiary)' }}>No messages found</p>
+            )}
+            {searchResults.map(msg => (
+              <div
+                key={msg.id}
+                className="relay-menu-row"
+                style={{
+                  padding: '10px 16px',
+                  borderBottom: '1px solid var(--border-light)',
+                  borderRadius: 0,
+                  display: 'block',
+                  cursor: 'pointer',
+                }}
+                onClick={() => {
+                  const el = document.getElementById(`msg-${msg.id}`)
+                  if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                    el.style.background = 'var(--accent-light)'
+                    setTimeout(() => el.style.background = '', 2000)
+                  }
+                  setShowSearch(false)
+                }}
+              >
+                <p style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text)', marginBottom: '2px' }}>
+                  {msg.sender_name_snapshot}
+                </p>
+                <p style={{ fontSize: '13px', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {msg.content}
+                </p>
+                <p style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
+                  {formatTime(msg.created_at)}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {showPinnedPanel && (
         <div className="relay-fade-in" style={{
           borderBottom: '2px solid var(--border-strong)',
@@ -1494,7 +1588,7 @@ export default function ConversationPage() {
 
               return (
                 <div
-                  key={msg.id}
+                  key={msg._clientKey || msg.id}
                   id={`msg-${msg.id}`}
                   style={{
                     display: 'flex',
@@ -2014,75 +2108,6 @@ export default function ConversationPage() {
             >
               <X size={18} {...iconProps} />
             </button>
-          </div>
-        </div>
-      )}
-
-      {showSearch && (
-        <div className="relay-fade-in" style={{
-          borderTop: '2px solid var(--border-strong)',
-          background: 'var(--surface)',
-          flexShrink: 0,
-          maxHeight: '300px',
-          display: 'flex',
-          flexDirection: 'column',
-        }}>
-          <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border-light)' }}>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={e => handleSearch(e.target.value)}
-              placeholder="Search messages…"
-              autoFocus
-              className="relay-input"
-              style={{
-                width: '100%',
-                padding: '8px 12px',
-                borderRadius: '8px',
-                fontSize: '16px',
-                boxSizing: 'border-box',
-              }}
-            />
-          </div>
-          <div style={{ overflowY: 'auto', flex: 1 }}>
-            {searching && (
-              <p style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--text-tertiary)' }}>Searching…</p>
-            )}
-            {!searching && searchQuery.length >= 2 && searchResults.length === 0 && (
-              <p style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--text-tertiary)' }}>No messages found</p>
-            )}
-            {searchResults.map(msg => (
-              <div
-                key={msg.id}
-                className="relay-menu-row"
-                style={{
-                  padding: '10px 16px',
-                  borderBottom: '1px solid var(--border-light)',
-                  borderRadius: 0,
-                  display: 'block',
-                  cursor: 'pointer',
-                }}
-                onClick={() => {
-                  const el = document.getElementById(`msg-${msg.id}`)
-                  if (el) {
-                    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-                    el.style.background = 'var(--accent-light)'
-                    setTimeout(() => el.style.background = '', 2000)
-                  }
-                  setShowSearch(false)
-                }}
-              >
-                <p style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text)', marginBottom: '2px' }}>
-                  {msg.sender_name_snapshot}
-                </p>
-                <p style={{ fontSize: '13px', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {msg.content}
-                </p>
-                <p style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
-                  {formatTime(msg.created_at)}
-                </p>
-              </div>
-            ))}
           </div>
         </div>
       )}
