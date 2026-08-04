@@ -300,7 +300,14 @@ export default function ConversationPage() {
     }
     el.addEventListener('scroll', handleScroll)
     return () => el.removeEventListener('scroll', handleScroll)
-  }, [])
+    // Depends on `loading` (not just []) because the messages container
+    // — and therefore messagesContainerRef.current — doesn't exist yet
+    // while the loading-state early return above is what's rendering.
+    // With an empty dep array this ran exactly once, saw a null ref on
+    // any conversation that wasn't already warm from cache, and never
+    // attached the listener at all for that page's lifetime — the
+    // scroll-to-bottom button and its badge just silently never worked.
+  }, [loading])
 
   const handleScrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
@@ -324,7 +331,7 @@ export default function ConversationPage() {
         if (payload.new.reply_to_id) {
           const { data: reply } = await supabase
             .from('messages')
-            .select('id, content, sender_name_snapshot, type')
+            .select('id, content, sender_id, sender_name_snapshot, type')
             .eq('id', payload.new.reply_to_id)
             .single()
           newMsg.reply = reply || null
@@ -939,7 +946,7 @@ export default function ConversationPage() {
         flexShrink: 0,
       }}>
         <button
-          onClick={() => router.push('/chat')}
+          onClick={() => router.replace('/chat')}
           aria-label="Back"
           className="mobile-back-btn relay-plain-icon-btn"
         >
@@ -1244,7 +1251,7 @@ export default function ConversationPage() {
                         maxWidth: '100%',
                       }}>
                         <p style={{ fontWeight: '700', marginBottom: '2px', fontSize: '11px', color: 'var(--text)' }}>
-                          {msg.reply.sender_name_snapshot === profile?.display_name ? 'You' : msg.reply.sender_name_snapshot}
+                          {msg.reply.sender_id === profile?.id ? 'You' : msg.reply.sender_name_snapshot}
                         </p>
                         <p style={{
                           display: 'flex',
@@ -1541,7 +1548,7 @@ export default function ConversationPage() {
             paddingLeft: '10px',
           }}>
             <p style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text)', marginBottom: '2px' }}>
-              Replying to {replyTo.sender_name_snapshot}
+              Replying to {replyTo.sender_id === profile?.id ? 'yourself' : replyTo.sender_name_snapshot}
             </p>
             <p style={{
               fontSize: '12px',
@@ -1928,6 +1935,11 @@ export default function ConversationPage() {
           </p>
         )}
         <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
+        {/* Hidden once there's a draft in progress — same idea as
+            WhatsApp/iMessage's composer — so the textarea gets the full
+            width for it instead of squeezing next to three icon buttons
+            the whole time. Reappears the instant the box empties. */}
+        {content.length === 0 && (
         <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
           <input
             type="file"
@@ -1961,6 +1973,7 @@ export default function ConversationPage() {
             <Mic size={18} {...iconProps} />
           </button>
         </div>
+        )}
         <textarea
           ref={inputRef}
           value={content}
@@ -1997,7 +2010,13 @@ export default function ConversationPage() {
           style={{
             flex: 1,
             padding: '10px 16px',
-            borderRadius: 'var(--radius-pill)',
+            // Fixed 20px, not --radius-pill (999px) — a true pill radius
+            // is fine at one line (it draws as a pill either way, since
+            // 20px already equals this box's single-line half-height) but
+            // clips into the text at both ends once the box grows taller
+            // for a longer message, reading as a "stadium" shape instead
+            // of a rounded rectangle.
+            borderRadius: '20px',
             fontSize: '16px',
             resize: 'none',
             lineHeight: '1.5',

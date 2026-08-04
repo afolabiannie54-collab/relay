@@ -72,7 +72,16 @@ export default function ChatLayout({ children }) {
     const deltaY = touch.clientY - start.y
 
     if (deltaX > 60 && deltaX > Math.abs(deltaY) * 1.5) {
-      router.push('/chat')
+      // replace, not push — a conversation opened from the list is a
+      // fresh detour, not a new place in the stack, so "going back" from
+      // it should land cleanly on /chat rather than stack another entry
+      // on top of it. With push, repeatedly opening a conversation and
+      // swiping back kept growing browser history with a fresh /chat
+      // entry every time, so the phone's own system back gesture (a
+      // separate mechanism from this one) had to be triggered several
+      // times to actually leave the section — there was no real
+      // "boundary," just an ever-growing stack of redundant stops.
+      router.replace('/chat')
     }
   }
 
