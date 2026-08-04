@@ -115,6 +115,15 @@ export default function ConversationPage() {
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
   const typingTimeout = useRef(null)
+  // Safety net for the "X is typing…" indicator, keyed by userId. The
+  // sender clears their own indicator 2s after their last keystroke, but
+  // that's a broadcast like any other — a dropped connection, closed
+  // tab, or crashed browser on their end means it may just never arrive,
+  // leaving this stuck showing "typing…" forever on the receiving side
+  // with nothing to time it out. This force-clears a user's indicator if
+  // no follow-up broadcast (a fresh "still typing" or an actual "stopped")
+  // shows up within 5s of their last one.
+  const typingClearTimeoutsRef = useRef({})
   const channelRef = useRef(null)
   const wasDisconnectedRef = useRef(false)
   const lastMessageIdRef = useRef(null)
@@ -370,14 +379,28 @@ export default function ConversationPage() {
       })
       .on('broadcast', { event: 'typing' }, (payload) => {
         if (payload.payload.userId === profile?.id) return
+        const { userId } = payload.payload
+
+        if (typingClearTimeoutsRef.current[userId]) {
+          clearTimeout(typingClearTimeoutsRef.current[userId])
+          delete typingClearTimeoutsRef.current[userId]
+        }
+
         setTypingUsers(prev => {
           if (payload.payload.isTyping) {
-            if (prev.find(u => u.userId === payload.payload.userId)) return prev
+            if (prev.find(u => u.userId === userId)) return prev
             return [...prev, payload.payload]
           } else {
-            return prev.filter(u => u.userId !== payload.payload.userId)
+            return prev.filter(u => u.userId !== userId)
           }
         })
+
+        if (payload.payload.isTyping) {
+          typingClearTimeoutsRef.current[userId] = setTimeout(() => {
+            setTypingUsers(prev => prev.filter(u => u.userId !== userId))
+            delete typingClearTimeoutsRef.current[userId]
+          }, 5000)
+        }
       })
       .subscribe((status) => {
         // A dropped connection (network blip, laptop sleep, Supabase
@@ -486,6 +509,8 @@ export default function ConversationPage() {
     return () => {
       supabase.removeChannel(channel)
       supabase.removeChannel(auxChannel)
+      Object.values(typingClearTimeoutsRef.current).forEach(clearTimeout)
+      typingClearTimeoutsRef.current = {}
     }
   }, [id, profile?.id])
 
