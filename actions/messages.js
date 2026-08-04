@@ -594,6 +594,29 @@ export async function markConversationRead(conversationId) {
   return { success: true }
 }
 
+// Powers message status ticks (sent/delivered/read) — useReadReceipts
+// only ever writes the CURRENT user's own reads of others' messages; this
+// is the other direction, fetching who has read messages the current user
+// SENT. Scoped by conversation via an embedded filter on the joined
+// messages row rather than a conversation_id column on message_reads
+// itself, since that table doesn't have one (same shape as the realtime
+// message_reactions listener elsewhere in this file, which has the same
+// gap and works around it the same way).
+export async function getReadReceipts(conversationId) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) return { error: 'Not authenticated' }
+
+  const { data, error } = await supabase
+    .from('message_reads')
+    .select('message_id, user_id, messages!inner(conversation_id)')
+    .eq('messages.conversation_id', conversationId)
+
+  if (error) return { error: error.message }
+  return { data: data || [] }
+}
+
 export async function markConversationUnread(conversationId) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

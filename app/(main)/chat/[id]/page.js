@@ -5,16 +5,18 @@ import { useParams, useRouter } from 'next/navigation'
 import {
   ChevronLeft, Pin, X, ArrowDown, Paperclip, Camera, Mic, Send,
   Trash2, Forward, Copy, FileText, Reply, Image as ImageIcon,
+  Clock, Check, CheckCheck, AlertCircle,
 } from 'lucide-react'
 import Avatar from '@/components/shared/Avatar'
 import EllipsisDoodle from '@/components/shared/icons/EllipsisDoodle'
-import { getMessages, sendMessage, getConversation, markConversationRead, editMessage, deleteMessage, uploadMedia, getReactions, toggleReaction, getPinnedMessages, togglePin, searchMessages, acceptMessageRequest } from '@/actions/messages'
+import { getMessages, sendMessage, getConversation, markConversationRead, editMessage, deleteMessage, uploadMedia, getReactions, toggleReaction, getPinnedMessages, togglePin, searchMessages, acceptMessageRequest, getReadReceipts } from '@/actions/messages'
 import { getGroupInfo } from '@/actions/groups'
 import { createClient } from '@/lib/supabase/client'
 import { cache } from '@/lib/cache'
 import { useReadReceipts } from '@/hooks/useReadReceipts'
 import { useOnlineUsers } from '@/lib/presence-context'
 import MediaMessage from '@/components/chat/MediaMessage'
+import MessagesSkeleton from '@/components/chat/MessagesSkeleton'
 import AudioRecorder from '@/components/chat/MediaRecorder'
 import CameraCapture from '@/components/chat/CameraCapture'
 import MessageReactions from '@/components/chat/MessageReactions'
@@ -84,6 +86,44 @@ function renderMessageText(content, { onMentionClick, isOwn } = {}) {
   return parts
 }
 
+// Status tick shown below the timestamp on every message the current
+// user sent. Same 12px size and --text-tertiary color as the timestamp
+// itself for sending/sent/delivered, so it reads as part of that same
+// meta line — read and failed are the only two that break from that on
+// purpose, since those are the two states actually worth a glance.
+function MessageStatusIndicator({ status, onRetry }) {
+  if (status === 'failed') {
+    return (
+      <button
+        onClick={onRetry}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '3px',
+          background: 'none',
+          border: 'none',
+          padding: 0,
+          cursor: 'pointer',
+          color: 'var(--error)',
+          fontSize: '10px',
+          fontFamily: 'inherit',
+          fontWeight: '600',
+        }}
+      >
+        <AlertCircle size={12} strokeWidth={2} />
+        Tap to retry
+      </button>
+    )
+  }
+
+  const iconProps = { size: 12, strokeWidth: 2 }
+  if (status === 'sending') return <Clock {...iconProps} color="var(--text-tertiary)" />
+  if (status === 'sent') return <Check {...iconProps} color="var(--text-tertiary)" />
+  if (status === 'delivered') return <CheckCheck {...iconProps} color="var(--text-tertiary)" />
+  if (status === 'read') return <CheckCheck {...iconProps} color="var(--accent)" />
+  return null
+}
+
 export default function ConversationPage() {
   const { id } = useParams()
   const router = useRouter()
@@ -123,6 +163,12 @@ export default function ConversationPage() {
   const [showRecorder, setShowRecorder] = useState(false)
   const [showCamera, setShowCamera] = useState(false)
   const [messageReactions, setMessageReactions] = useState({})
+  // { [messageId]: Set<userId who has read it> } — only ever populated
+  // for messages the current user sent (that's the only direction the
+  // status ticks need); read for other people's own messages is handled
+  // separately by useReadReceipts writing into message_reads, not by
+  // reading this map.
+  const [readReceipts, setReadReceipts] = useState({})
   const [showPinnedPanel, setShowPinnedPanel] = useState(false)
   const [pinnedMessages, setPinnedMessages] = useState([])
   const [showSearch, setShowSearch] = useState(false)
@@ -313,6 +359,16 @@ export default function ConversationPage() {
       if (pinnedResult.data) {
         setPinnedMessages(pinnedResult.data)
         setPinnedMessageIds(new Set(pinnedResult.data.map(p => p.messages?.id)))
+      }
+
+      const receiptsResult = await getReadReceipts(id)
+      if (Array.isArray(receiptsResult.data)) {
+        const map = {}
+        for (const row of receiptsResult.data) {
+          if (!map[row.message_id]) map[row.message_id] = new Set()
+          map[row.message_id].add(row.user_id)
+        }
+        setReadReceipts(map)
       }
     }
     load()
@@ -553,6 +609,23 @@ export default function ConversationPage() {
           setPinnedMessageIds(new Set(result.data.map(p => p.messages?.id)))
         }
       })
+      // Flips a sent message's status tick from delivered to read live —
+      // same no-conversation_id-column workaround as message_reactions
+      // above, scoped via messagesRef instead of a server-side filter.
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'message_reads',
+      }, (payload) => {
+        const { message_id, user_id } = payload.new
+        if (!messagesRef.current.some(m => m.id === message_id)) return
+        setReadReceipts(prev => {
+          const next = { ...prev }
+          const existing = next[message_id] || new Set()
+          next[message_id] = new Set(existing).add(user_id)
+          return next
+        })
+      })
       .subscribe()
 
     channelRef.current = channel
@@ -648,12 +721,65 @@ export default function ConversationPage() {
     errorTimeoutRef.current = setTimeout(() => setErrorMsg(null), 4000)
   }
 
-  const handleSend = async () => {
-    if (!content.trim() || sending) return
+  // Shared by both the initial send and a retry tap — calls the real
+  // action and reconciles whatever comes back against the optimistic
+  // temp message. replySnapshot is carried through separately because
+  // sendMessage()'s own insert+select doesn't return a joined reply
+  // object (that's a client-side convenience this page builds, not a
+  // column) — without it, a reply preview would visibly vanish the
+  // instant a message's status flips from sending to sent.
+  const sendMessageAndReconcile = async (tempId, text, replyToId, replySnapshot) => {
+    try {
+      const result = await sendMessage(id, text, replyToId)
+      if (result.error) {
+        setMessages(prev => prev.map(m => m.id === tempId ? { ...m, _status: 'failed' } : m))
+        return
+      }
+      const realMsg = { ...result.data, reply: replySnapshot || null }
+      setMessages(prev => {
+        const withoutTemp = prev.filter(m => m.id !== tempId)
+        // The realtime INSERT listener may have already added this exact
+        // message (same real id) if its echo won the race against this
+        // reconciliation — don't add it twice either way this lands.
+        const alreadyHasReal = withoutTemp.some(m => m.id === realMsg.id)
+        return alreadyHasReal ? withoutTemp : [...withoutTemp, realMsg]
+      })
+    } catch {
+      setMessages(prev => prev.map(m => m.id === tempId ? { ...m, _status: 'failed' } : m))
+    }
+  }
 
-    setSending(true)
+  // Message appears instantly with a 'sending' status tick — no waiting
+  // on the round-trip before it shows up at all. The composer clears
+  // right away too, so a second message can be typed and sent while the
+  // first is still in flight instead of being blocked on it.
+  const handleSend = async () => {
+    if (!content.trim()) return
+
     const text = content.trim()
     const pendingReply = replyTo
+    const tempId = `temp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+    const replySnapshot = pendingReply ? {
+      id: pendingReply.id,
+      content: pendingReply.content,
+      sender_id: pendingReply.sender_id,
+      sender_name_snapshot: pendingReply.sender_name_snapshot,
+      type: pendingReply.type,
+    } : null
+
+    setMessages(prev => [...prev, {
+      id: tempId,
+      conversation_id: id,
+      sender_id: profile?.id,
+      sender_name_snapshot: profile?.display_name,
+      content: text,
+      type: 'text',
+      reply_to_id: pendingReply?.id || null,
+      reply: replySnapshot,
+      is_edited: false,
+      created_at: new Date().toISOString(),
+      _status: 'sending',
+    }])
     setContent('')
     setReplyTo(null)
 
@@ -664,30 +790,20 @@ export default function ConversationPage() {
       payload: { userId: profile?.id, displayName: profile?.display_name, isTyping: false },
     })
 
-    try {
-      const result = await sendMessage(id, text, pendingReply?.id || null)
-      if (result.error) {
-        setContent(text)
-        // Restore the reply target too, not just the draft text — otherwise
-        // a retry after a failed send silently posts as a plain message
-        // instead of the reply the user actually composed.
-        setReplyTo(pendingReply)
-        // This used to fail completely silently — the draft just bounced
-        // back into the input with no explanation, which is exactly how a
-        // still-pending message request (blocked server-side in
-        // sendMessage) would present: looks like nothing happened at all.
-        showError(result.error)
-      } else {
-        try { window.navigator.vibrate?.(10) } catch {}
-      }
-    } catch (err) {
-      setContent(text)
-      setReplyTo(pendingReply)
-      showError('Failed to send — please try again.')
-    } finally {
-      setSending(false)
-      inputRef.current?.focus()
-    }
+    try { window.navigator.vibrate?.(10) } catch {}
+    inputRef.current?.focus()
+
+    await sendMessageAndReconcile(tempId, text, pendingReply?.id || null, replySnapshot)
+  }
+
+  // Tapping a failed message's "Tap to retry" re-runs the exact same
+  // optimistic flow against its existing temp id — flips back to
+  // 'sending' in place rather than removing and re-adding it, so the
+  // message doesn't jump position in the list on retry.
+  const handleRetrySend = async (msg) => {
+    if (msg._status !== 'failed') return
+    setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, _status: 'sending' } : m))
+    await sendMessageAndReconcile(msg.id, msg.content, msg.reply_to_id || null, msg.reply || null)
   }
 
   const handleAcceptRequest = async () => {
@@ -750,6 +866,36 @@ export default function ConversationPage() {
     if (msgDate === today) return 'Today'
     if (msgDate === yesterday) return 'Yesterday'
     return new Date(timestamp).toLocaleDateString([], { month: 'long', day: 'numeric' })
+  }
+
+  // 'sending' / 'failed' come straight off the optimistic message object
+  // itself. Past that, 'delivered' is approximated from presence (this
+  // app has no delivered_at column or ack table to track true delivery
+  // against) — if the recipient is online, a realtime INSERT reaches
+  // them close enough to instantly that presence is a reasonable proxy.
+  // 'read' is exact, backed by the real message_reads table.
+  //
+  // Groups are deliberately simplified to sent/delivered/failed only —
+  // no per-member read aggregation. "Read" for a group would mean
+  // comparing against every other member's own read row on every
+  // render, for a status tick that's already secondary UI; sent/
+  // delivered/failed carries the useful signal without that cost.
+  const isGroup = conversation?.type === 'group'
+  const getMessageStatus = (msg) => {
+    if (msg._status === 'sending') return 'sending'
+    if (msg._status === 'failed') return 'failed'
+
+    if (isGroup) {
+      const others = groupInfo?.members?.filter(m => m.user_id !== profile?.id) || []
+      const anyOnline = others.some(m => onlineUsers.includes(m.user_id))
+      return anyOnline ? 'delivered' : 'sent'
+    }
+
+    if (!otherParticipant) return 'sent'
+    const readers = readReceipts[msg.id]
+    if (readers?.has(otherParticipant.id)) return 'read'
+    if (onlineUsers.includes(otherParticipant.id)) return 'delivered'
+    return 'sent'
   }
 
   const handleMediaUpload = async (e) => {
@@ -1005,11 +1151,11 @@ export default function ConversationPage() {
       <div style={{
         height: '100%',
         display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
+        flexDirection: 'column',
         fontFamily: "'Inter', -apple-system, sans-serif",
+        background: 'var(--surface)',
       }}>
-        <p style={{ color: 'var(--text-tertiary)', fontSize: '14px' }}>Loading…</p>
+        <MessagesSkeleton />
       </div>
     )
   }
@@ -1565,6 +1711,12 @@ export default function ConversationPage() {
                       <span style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>
                         {formatTime(msg.created_at)}
                       </span>
+                      {isOwn && !isDeleted && (
+                        <MessageStatusIndicator
+                          status={getMessageStatus(msg)}
+                          onRetry={() => handleRetrySend(msg)}
+                        />
+                      )}
                     </div>
                     <MessageReactions
                       messageId={msg.id}
@@ -2163,7 +2315,7 @@ export default function ConversationPage() {
             ChatList's "+" button — everything else here is neutral. */}
         <button
           onClick={handleSend}
-          disabled={!content.trim() || sending}
+          disabled={!content.trim()}
           aria-label="Send"
           className={content.trim() ? 'relay-icon-btn relay-icon-btn--accent' : 'relay-icon-btn'}
           style={{ borderRadius: '10px', cursor: content.trim() ? 'pointer' : 'not-allowed', opacity: content.trim() ? 1 : 0.5 }}

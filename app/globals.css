@@ -424,6 +424,17 @@ a, button, input, textarea, select {
   animation: relay-skeleton-pulse 1.3s ease-in-out infinite;
 }
 
+/* Shimmer variant — a moving gradient sweep instead of a flat opacity
+   pulse, used by components/shared/Skeleton.js for full skeleton
+   SCREENS (ChatListSkeleton, MessagesSkeleton) where several shapes
+   loading together read more convincingly with a highlight passing
+   across the whole layout. Defined once here rather than injected by
+   every Skeleton instance's own <style> tag. */
+@keyframes relay-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
 /* The one standardized type scale for screen-level titles — establishes
    what was previously just ChatList's one-off "Messages" heading as the
    actual convention for every root/top-level screen (a tab's own list,

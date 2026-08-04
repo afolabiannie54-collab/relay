@@ -12,6 +12,7 @@ import NewConversationSheet from '@/components/chat/NewConversationSheet'
 import ConversationActionSheet from '@/components/chat/ConversationActionSheet'
 import ConversationContextMenu from '@/components/chat/ConversationContextMenu'
 import ConfirmSheet from '@/components/shared/ConfirmSheet'
+import ChatListSkeleton from '@/components/chat/ChatListSkeleton'
 import { getConversations, getMessages, getHiddenConversationCount, markConversationRead, hideConversation } from '@/actions/messages'
 import { getMutedConversationIds, muteConversation, deleteConversationForUser } from '@/actions/conversations'
 import { getUnreadCount as getUnreadNotificationCount, getRequestsCount } from '@/actions/notifications'
@@ -515,11 +516,10 @@ export default function ChatList({ onSelectConversation }) {
       <div style={{
         height: '100%',
         display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
+        flexDirection: 'column',
         fontFamily: "'Inter', -apple-system, sans-serif",
       }}>
-        <p style={{ color: 'var(--text-tertiary)', fontSize: '14px' }}>Loading…</p>
+        <ChatListSkeleton />
       </div>
     )
   }
