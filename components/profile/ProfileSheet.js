@@ -6,6 +6,7 @@ import { MoreHorizontal, Share2, UserX, Flag, Globe, Link as LinkIcon } from 'lu
 import BottomSheet from '@/components/shared/BottomSheet'
 import ConfirmSheet from '@/components/shared/ConfirmSheet'
 import Avatar from '@/components/shared/Avatar'
+import Skeleton from '@/components/shared/Skeleton'
 import CopyUsernameButton from '@/components/profile/CopyUsernameButton'
 import OnlineStatus from '@/components/profile/OnlineStatus'
 import MessageButton from '@/components/profile/MessageButton'
@@ -109,11 +110,16 @@ export default function ProfileSheet() {
     <>
       <BottomSheet isOpen={!!username} onClose={closeProfile}>
         <div style={{ fontFamily: "'Inter', -apple-system, sans-serif" }}>
-          {loading || !profile ? (
+          {error ? (
             <div style={{ padding: '60px 20px', textAlign: 'center' }}>
-              <p style={{ fontSize: '14px', color: 'var(--text-tertiary)' }}>
-                {error || 'Loading...'}
-              </p>
+              <p style={{ fontSize: '14px', color: 'var(--text-tertiary)' }}>{error}</p>
+            </div>
+          ) : loading || !profile ? (
+            <div style={{ padding: '18px 24px 32px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <div style={{ width: '100%', display: 'flex', justifyContent: 'flex-end', minHeight: '32px' }} />
+              <Skeleton width="96px" height="96px" borderRadius="50%" style={{ marginTop: '16px' }} />
+              <Skeleton width="140px" height="18px" style={{ marginTop: '16px' }} />
+              <Skeleton width="90px" height="13px" style={{ marginTop: '8px' }} />
             </div>
           ) : (
             <div style={{ padding: '18px 24px 32px' }}>

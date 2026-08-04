@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import BottomSheet from '@/components/shared/BottomSheet'
 import NotionDoodle from '@/components/shared/illustrations/NotionDoodle'
+import RowSkeleton from '@/components/shared/RowSkeleton'
 import SessionRow from '@/components/settings/SessionRow'
 import { getActiveSessions } from '@/actions/sessions'
 
@@ -45,9 +46,10 @@ export default function ActiveSessionsSheet({ isOpen, onClose }) {
         )}
 
         {loading ? (
-          <p style={{ padding: '40px 20px', textAlign: 'center', fontSize: '14px', color: 'var(--text-tertiary)' }}>
-            Loading...
-          </p>
+          <div style={{ padding: '4px 0' }}>
+            <RowSkeleton />
+            <RowSkeleton isLast />
+          </div>
         ) : sessions.length === 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '32px 24px 40px', textAlign: 'center' }}>
             <div style={{ marginBottom: '12px' }}>

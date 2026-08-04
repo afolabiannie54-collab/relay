@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import BottomSheet from '@/components/shared/BottomSheet'
 import NotionDoodle from '@/components/shared/illustrations/NotionDoodle'
+import RowSkeleton from '@/components/shared/RowSkeleton'
 import BlockedUserRow from '@/components/settings/BlockedUserRow'
 import { getBlockedUsers } from '@/actions/blocks'
 
@@ -25,9 +26,11 @@ export default function BlockedUsersSheet({ isOpen, onClose }) {
     <BottomSheet isOpen={isOpen} onClose={onClose} title="Blocked users">
       <div style={{ fontFamily: "'Inter', -apple-system, sans-serif" }}>
         {loading ? (
-          <p style={{ padding: '40px 20px', textAlign: 'center', fontSize: '14px', color: 'var(--text-tertiary)' }}>
-            Loading...
-          </p>
+          <div style={{ padding: '4px 0' }}>
+            <RowSkeleton />
+            <RowSkeleton />
+            <RowSkeleton isLast />
+          </div>
         ) : users.length === 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '32px 24px 40px', textAlign: 'center' }}>
             <div style={{ marginBottom: '12px' }}>

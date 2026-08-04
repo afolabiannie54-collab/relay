@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import BottomSheet from '@/components/shared/BottomSheet'
+import Skeleton from '@/components/shared/Skeleton'
 import { getPrivacySettings, updatePrivacySettings } from '@/actions/users'
 import { usePushNotifications } from '@/hooks/usePushNotifications'
 import { createClient } from '@/lib/supabase/client'
@@ -92,6 +93,20 @@ export default function NotificationSettingsSheet({ isOpen, onClose }) {
     </div>
   )
 
+  const ToggleRowSkeleton = ({ last }) => (
+    <div style={{
+      padding: '14px 20px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: '16px',
+      borderBottom: last ? 'none' : '1px solid var(--border-light)',
+    }}>
+      <Skeleton width="120px" height="14px" />
+      <Skeleton width="44px" height="24px" borderRadius="var(--radius-pill)" />
+    </div>
+  )
+
   const SettingRow = ({ label, children, last }) => (
     <div style={{
       padding: '14px 20px',
@@ -110,9 +125,28 @@ export default function NotificationSettingsSheet({ isOpen, onClose }) {
     <BottomSheet isOpen={isOpen} onClose={onClose} title="Notifications">
       <div style={{ fontFamily: "'Inter', -apple-system, sans-serif", padding: '4px 20px 20px' }}>
         {loading ? (
-          <p style={{ padding: '32px 0', textAlign: 'center', fontSize: '14px', color: 'var(--text-tertiary)' }}>
-            Loading...
-          </p>
+          <>
+            <div style={{
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-lg)',
+              overflow: 'hidden',
+              marginBottom: '16px',
+              padding: '14px 20px',
+            }}>
+              <Skeleton width="140px" height="14px" style={{ marginBottom: '8px' }} />
+              <Skeleton width="220px" height="12px" />
+            </div>
+            <div style={{
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-lg)',
+              overflow: 'hidden',
+            }}>
+              <ToggleRowSkeleton />
+              <ToggleRowSkeleton />
+              <ToggleRowSkeleton />
+              <ToggleRowSkeleton last />
+            </div>
+          </>
         ) : (
           <>
             {success && (
