@@ -9,7 +9,7 @@ import {
 } from 'lucide-react'
 import Avatar from '@/components/shared/Avatar'
 import EllipsisDoodle from '@/components/shared/icons/EllipsisDoodle'
-import { getMessages, sendMessage, getConversation, markConversationRead, editMessage, deleteMessage, uploadMedia, getReactions, toggleReaction, getPinnedMessages, togglePin, searchMessages, acceptMessageRequest, getReadReceipts } from '@/actions/messages'
+import { getMessages, sendMessage, getConversation, markConversationRead, editMessage, deleteMessage, uploadMedia, getReactions, toggleReaction, getPinnedMessages, togglePin, searchMessages, acceptMessageRequest, getReadReceipts, setViewingConversation } from '@/actions/messages'
 import { getGroupInfo } from '@/actions/groups'
 import { getPrivacySettings } from '@/actions/users'
 import { createClient } from '@/lib/supabase/client'
@@ -276,6 +276,35 @@ export default function ConversationPage() {
   }, [markReadIfVisible])
 
   useReadReceipts(id, profile?.id, messages, showReadReceipts)
+
+  // Tells sendPushNotification not to push for THIS conversation while
+  // it's genuinely open and visible — like WhatsApp, a push for a chat
+  // you're already looking at is just redundant. Refreshed every 15s
+  // (well inside the 25s TTL setViewingConversation sets server-side) so
+  // a crashed tab or force-quit PWA can't leave this stuck suppressing
+  // push forever; cleared immediately on unmount/hide as a fast path so
+  // leaving doesn't have to wait out the TTL.
+  useEffect(() => {
+    if (!id) return
+    let cancelled = false
+    const ping = () => {
+      if (cancelled || document.visibilityState !== 'visible') return
+      setViewingConversation(id, true)
+    }
+    ping()
+    const intervalId = setInterval(ping, 15000)
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') ping()
+      else setViewingConversation(id, false)
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => {
+      cancelled = true
+      clearInterval(intervalId)
+      document.removeEventListener('visibilitychange', handleVisibility)
+      setViewingConversation(id, false)
+    }
+  }, [id])
 
   useEffect(() => {
     messagesRef.current = messages

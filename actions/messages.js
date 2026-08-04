@@ -594,6 +594,29 @@ export async function markConversationRead(conversationId) {
   return { success: true }
 }
 
+// Powers per-conversation push suppression (see sendPushNotification) —
+// a TTL rather than a plain boolean, same self-healing idea as the
+// presence heartbeat: the client refreshes this every ~15s while the
+// conversation is open and visible, so a crashed tab or force-quit PWA
+// (which would never fire a "leaving" call) only suppresses push for a
+// short window instead of silently forever. Not gated on being a
+// participant beyond RLS itself — this row already can't exist for
+// someone who isn't one.
+export async function setViewingConversation(conversationId, viewing) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) return { error: 'Not authenticated' }
+
+  await supabase
+    .from('conversation_participants')
+    .update({ viewing_until: viewing ? new Date(Date.now() + 25000).toISOString() : null })
+    .eq('conversation_id', conversationId)
+    .eq('user_id', user.id)
+
+  return { success: true }
+}
+
 // Powers message status ticks (sent/delivered/read) — useReadReceipts
 // only ever writes the CURRENT user's own reads of others' messages; this
 // is the other direction, fetching who has read messages the current user
