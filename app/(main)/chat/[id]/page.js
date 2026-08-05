@@ -209,7 +209,14 @@ export default function ConversationPage() {
   // stops seeing them (getMessageStatus caps the viewer's own sent
   // messages at "delivered", never "read"), regardless of what the other
   // side's setting is or what message_reads actually contains.
-  const [showReadReceipts, setShowReadReceipts] = useState(true)
+  // null = not yet known. Deliberately NOT defaulting to true: the write
+  // side (useReadReceipts) must never record a read receipt on an
+  // optimistic assumption, because a user who has this turned off would
+  // then leak reads for the window before their setting loads — and a
+  // read receipt, once written, is permanent. Unknown therefore blocks
+  // writing but still permits displaying (see computeRawStatus), since
+  // showing a tick reveals nothing about this user.
+  const [showReadReceipts, setShowReadReceipts] = useState(null)
   const [showPinnedPanel, setShowPinnedPanel] = useState(false)
   const [pinnedMessages, setPinnedMessages] = useState([])
   const [showSearch, setShowSearch] = useState(false)
@@ -429,11 +436,16 @@ export default function ConversationPage() {
       // tick first and only corrects afterward, which reads as ticks being
       // wrong/laggy rather than as data still loading. Same reasoning as
       // groupInfo being folded into convPromise above.
-      const [freshProfile, convResult, msgsResult, receiptsResult] = await Promise.all([
+      const [freshProfile, convResult, msgsResult, receiptsResult, privacyResult] = await Promise.all([
         profilePromise,
         convPromise,
         getMessages(id),
         getReadReceipts(id),
+        // Also here rather than later: until this resolves, read receipts
+        // can't be written at all (see the null-blocks-writing note on
+        // showReadReceipts), so a late answer means reads silently go
+        // unrecorded for that window.
+        getPrivacySettings(),
       ])
 
       if (freshProfile) setProfile(freshProfile)
@@ -447,6 +459,8 @@ export default function ConversationPage() {
         const incoming = buildReceiptsMap(receiptsResult.data)
         setReadReceipts(prev => mergeReceiptsMaps(prev, incoming))
       }
+
+      if (privacyResult.data) setShowReadReceipts(privacyResult.data.show_read_receipts ?? true)
 
       if (Array.isArray(msgsResult.data)) {
         setMessages(msgsResult.data)
@@ -469,9 +483,6 @@ export default function ConversationPage() {
       // failure here must not take the rest of the load down with it the
       // way an unhandled rejection previously would have.
       try {
-        const privacyResult = await getPrivacySettings()
-        if (privacyResult.data) setShowReadReceipts(privacyResult.data.show_read_receipts ?? true)
-
         const pinnedResult = await getPinnedMessages(id)
         if (pinnedResult.data) {
           setPinnedMessages(pinnedResult.data)
@@ -1097,7 +1108,7 @@ export default function ConversationPage() {
     // "delivered" for the viewer regardless of what message_reads
     // actually contains, rather than checking the other participant's
     // setting (theirs governs what THEY see of yours, independently).
-    if (showReadReceipts && hasRead) return 'read'
+    if (showReadReceipts !== false && hasRead) return 'read'
 
     // Reading a message proves it was delivered, so a known read still
     // counts as delivered even when the read state itself is hidden by

@@ -19,7 +19,10 @@ import { markConversationRead } from '@/actions/messages'
 // older messages always sort before it and are excluded automatically,
 // while new arrivals always sort after it. ISO 8601 strings compare
 // correctly as plain strings, so no Date parsing is needed here.
-export function useReadReceipts(conversationId, userId, messages, showReadReceipts = true) {
+// showReadReceipts is tri-state: true (on), false (off), null (not loaded
+// yet). Writing is only ever allowed on an explicit true — see the guard
+// below.
+export function useReadReceipts(conversationId, userId, messages, showReadReceipts = null) {
   const supabase = createClient()
   const lastProcessedAtRef = useRef(null)
 
@@ -59,7 +62,12 @@ export function useReadReceipts(conversationId, userId, messages, showReadReceip
     // everything read while it was off), but no row actually gets written
     // — turning this off means not sending read receipts at all, not
     // sending them late.
-    if (!showReadReceipts) return
+    //
+    // Strict === true, so the not-yet-loaded (null) case blocks writing
+    // too. A read receipt is permanent and unretractable, so writing one
+    // on the assumption that the setting is probably on would leak reads
+    // for anyone who has it off, every time they open a conversation.
+    if (showReadReceipts !== true) return
 
     const reads = unreadMessages.map(m => ({
       message_id: m.id,
