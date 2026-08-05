@@ -9,7 +9,7 @@ import {
 } from 'lucide-react'
 import Avatar from '@/components/shared/Avatar'
 import EllipsisDoodle from '@/components/shared/icons/EllipsisDoodle'
-import { getMessages, sendMessage, getConversation, markConversationRead, editMessage, deleteMessage, uploadMedia, getReactions, toggleReaction, getPinnedMessages, togglePin, searchMessages, acceptMessageRequest, getReadReceipts, setViewingConversation } from '@/actions/messages'
+import { getMessages, sendMessage, getConversation, markConversationRead, editMessage, deleteMessage, uploadMedia, getReactions, toggleReaction, getPinnedMessages, togglePin, searchMessages, acceptMessageRequest, getReadReceipts, setViewingConversation, toggleStar, getStarredMessageIds } from '@/actions/messages'
 import { getGroupInfo } from '@/actions/groups'
 import { getPrivacySettings } from '@/actions/users'
 import { createClient } from '@/lib/supabase/client'
@@ -24,6 +24,8 @@ import MessageReactions from '@/components/chat/MessageReactions'
 import ConversationSettingsSheet from '@/components/chat/ConversationSettingsSheet'
 import MessageActionSheet from '@/components/chat/MessageActionSheet'
 import MessageActionBar from '@/components/chat/MessageActionBar'
+import ForwardSheet from '@/components/chat/ForwardSheet'
+import StarredMessagesSheet from '@/components/chat/StarredMessagesSheet'
 import ConfirmSheet from '@/components/shared/ConfirmSheet'
 import { useProfileSheet } from '@/lib/profile-sheet-context'
 
@@ -225,6 +227,11 @@ export default function ConversationPage() {
   const [searching, setSearching] = useState(false)
   const [activeReactionPicker, setActiveReactionPicker] = useState(null)
   const [pinnedMessageIds, setPinnedMessageIds] = useState(new Set())
+  const [starredMessageIds, setStarredMessageIds] = useState(new Set())
+  const [showStarredSheet, setShowStarredSheet] = useState(false)
+  // Non-null means the forward sheet is open, holding the ids being
+  // forwarded — one id from a message menu, many from bulk select.
+  const [forwardMessageIds, setForwardMessageIds] = useState(null)
   const [mentionQuery, setMentionQuery] = useState('')
   const [mentionResults, setMentionResults] = useState([])
   const [showMentions, setShowMentions] = useState(false)
@@ -483,11 +490,15 @@ export default function ConversationPage() {
       // failure here must not take the rest of the load down with it the
       // way an unhandled rejection previously would have.
       try {
-        const pinnedResult = await getPinnedMessages(id)
+        const [pinnedResult, starredResult] = await Promise.all([
+          getPinnedMessages(id),
+          getStarredMessageIds(id),
+        ])
         if (pinnedResult.data) {
           setPinnedMessages(pinnedResult.data)
           setPinnedMessageIds(new Set(pinnedResult.data.map(p => p.messages?.id)))
         }
+        if (starredResult.data) setStarredMessageIds(new Set(starredResult.data))
       } catch {}
     }
     load()
@@ -1244,6 +1255,54 @@ export default function ConversationPage() {
       else next.add(messageId)
       return next
     })
+  }
+
+  // Optimistic, then reconciled against what the server actually did —
+  // starring is private and instant-feeling, so waiting on the round-trip
+  // before the icon flips would be the only thing that made it feel slow.
+  const handleToggleStar = async (messageId) => {
+    setStarredMessageIds(prev => {
+      const next = new Set(prev)
+      if (next.has(messageId)) next.delete(messageId)
+      else next.add(messageId)
+      return next
+    })
+
+    const result = await toggleStar(id, messageId)
+
+    if (result?.error) {
+      showError(result.error)
+      setStarredMessageIds(prev => {
+        const next = new Set(prev)
+        if (next.has(messageId)) next.delete(messageId)
+        else next.add(messageId)
+        return next
+      })
+      return
+    }
+
+    setStarredMessageIds(prev => {
+      const next = new Set(prev)
+      if (result.starred) next.add(messageId)
+      else next.delete(messageId)
+      return next
+    })
+  }
+
+  const handleOpenForward = (messageIds) => {
+    if (!messageIds?.length) return
+    setForwardMessageIds(messageIds)
+  }
+
+  const handleJumpToMessage = (messageId) => {
+    const el = document.getElementById(`msg-${messageId}`)
+    if (!el) {
+      showError('That message isn\'t loaded — scroll up to load older messages first.')
+      return
+    }
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    el.style.background = 'var(--accent-light)'
+    setTimeout(() => { el.style.background = '' }, 2000)
   }
 
   const handleCopyMessage = async (msg) => {
@@ -2037,12 +2096,15 @@ export default function ConversationPage() {
                               message={msg}
                               isOwn={isOwn}
                               isPinned={pinnedMessageIds.has(msg.id)}
+                              isStarred={starredMessageIds.has(msg.id)}
                               dropdownOpen={activeMessageDropdown === msg.id}
                               onDropdownOpenChange={(open) => setActiveMessageDropdown(open ? msg.id : null)}
                               onReply={() => setReplyTo(msg)}
                               onEdit={() => { setEditingId(msg.id); setEditContent(msg.content) }}
                               onDelete={() => handleDelete(msg.id)}
                               onTogglePin={() => handleTogglePin(msg.id)}
+                              onToggleStar={() => handleToggleStar(msg.id)}
+                              onForward={() => handleOpenForward([msg.id])}
                               onReact={(emoji) => handleQuickReact(msg.id, emoji)}
                               onCopy={() => handleCopyMessage(msg)}
                               onSelect={() => handleEnterSelectMode(msg)}
@@ -2059,6 +2121,15 @@ export default function ConversationPage() {
                       alignItems: 'center',
                       marginTop: '2px',
                     }}>
+                      {/* Sits with 'edited' rather than above the bubble —
+                          this row is already where this app puts message
+                          metadata, so a forwarded marker belongs with it
+                          instead of introducing a second metadata slot. */}
+                      {msg.is_forwarded && !isDeleted && (
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '10px', color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
+                          <Forward size={10} {...iconProps} /> forwarded
+                        </span>
+                      )}
                       {msg.is_edited && (
                         <span style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>edited</span>
                       )}
@@ -2395,8 +2466,8 @@ export default function ConversationPage() {
             <Trash2 size={16} {...iconProps} /> Delete
           </button>
           <button
-            disabled
-            title="Coming soon"
+            onClick={() => handleOpenForward([...selectedMsgIds])}
+            disabled={selectedMsgIds.size === 0}
             style={{
               flex: 1,
               display: 'flex',
@@ -2406,11 +2477,11 @@ export default function ConversationPage() {
               padding: '12px',
               background: 'none',
               border: 'none',
-              color: 'var(--text-tertiary)',
-              opacity: 0.5,
+              color: selectedMsgIds.size > 0 ? 'var(--text)' : 'var(--text-tertiary)',
+              opacity: selectedMsgIds.size > 0 ? 1 : 0.5,
               fontSize: '14px',
               fontWeight: '700',
-              cursor: 'not-allowed',
+              cursor: selectedMsgIds.size > 0 ? 'pointer' : 'not-allowed',
               fontFamily: 'inherit',
             }}
           >
@@ -2658,6 +2729,7 @@ export default function ConversationPage() {
         pinnedCount={pinnedMessages.length}
         onOpenSearch={() => setShowSearch(true)}
         onOpenPinned={handleLoadPinned}
+        onOpenStarred={() => setShowStarredSheet(true)}
         onGroupChanged={reloadGroupInfo}
         onSelectMessages={() => handleEnterSelectMode(null)}
       />
@@ -2668,13 +2740,38 @@ export default function ConversationPage() {
         onClose={() => setActionSheetMsg(null)}
         isOwn={actionSheetMsg?.sender_id === profile?.id}
         isPinned={actionSheetMsg ? pinnedMessageIds.has(actionSheetMsg.id) : false}
+        isStarred={actionSheetMsg ? starredMessageIds.has(actionSheetMsg.id) : false}
         onReply={() => setReplyTo(actionSheetMsg)}
         onEdit={() => { setEditingId(actionSheetMsg.id); setEditContent(actionSheetMsg.content) }}
         onDelete={() => handleDelete(actionSheetMsg.id)}
         onTogglePin={() => handleTogglePin(actionSheetMsg.id)}
+        onToggleStar={() => handleToggleStar(actionSheetMsg.id)}
+        onForward={() => handleOpenForward([actionSheetMsg.id])}
         onReact={(emoji) => handleQuickReact(actionSheetMsg.id, emoji)}
         onCopy={() => handleCopyMessage(actionSheetMsg)}
         onSelect={() => handleEnterSelectMode(actionSheetMsg)}
+      />
+
+      <ForwardSheet
+        isOpen={!!forwardMessageIds}
+        onClose={() => setForwardMessageIds(null)}
+        messageIds={forwardMessageIds || []}
+        fromConversationId={id}
+        onForwarded={(result) => {
+          handleExitSelectMode()
+          showError(
+            result?.failed
+              ? `Forwarded to ${result.delivered}, ${result.failed} failed`
+              : `Forwarded to ${result.delivered} chat${result.delivered === 1 ? '' : 's'}`
+          )
+        }}
+      />
+
+      <StarredMessagesSheet
+        isOpen={showStarredSheet}
+        onClose={() => setShowStarredSheet(false)}
+        conversationId={id}
+        onJumpTo={handleJumpToMessage}
       />
 
       <ConfirmSheet

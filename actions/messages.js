@@ -370,6 +370,7 @@ export async function getMessages(conversationId, page = 0) {
       sender_name_snapshot,
       reply_to_id,
       is_edited,
+      is_forwarded,
       edited_at,
       created_at,
       media(url, filename, size, mime_type),
@@ -1055,6 +1056,219 @@ export async function getPinnedMessages(conversationId) {
 
   if (error) return { error: error.message }
   return { data }
+}
+
+// Starring is private and per-user — unlike pinning, which is shared with
+// the whole conversation and posts a system message, starring tells nobody
+// and needs no role check beyond "you're in this conversation" (enforced
+// by RLS on insert). Returns the resulting state so the caller can update
+// optimistically without refetching.
+export async function toggleStar(conversationId, messageId) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) return { error: 'Not authenticated' }
+
+  const { data: existing } = await supabase
+    .from('starred_messages')
+    .select('id')
+    .eq('user_id', user.id)
+    .eq('message_id', messageId)
+    .maybeSingle()
+
+  if (existing) {
+    const { error } = await supabase.from('starred_messages').delete().eq('id', existing.id)
+    if (error) return { error: error.message }
+    return { success: true, starred: false }
+  }
+
+  const { error } = await supabase.from('starred_messages').insert({
+    user_id: user.id,
+    message_id: messageId,
+    conversation_id: conversationId,
+  })
+
+  if (error) return { error: error.message }
+  return { success: true, starred: true }
+}
+
+// Ids only — the conversation page already holds the message bodies, so it
+// just needs to know which of them are starred. Cheap enough to refetch on
+// open rather than trying to keep a separate cache in sync.
+export async function getStarredMessageIds(conversationId) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) return { error: 'Not authenticated' }
+
+  const { data, error } = await supabase
+    .from('starred_messages')
+    .select('message_id')
+    .eq('user_id', user.id)
+    .eq('conversation_id', conversationId)
+
+  if (error) return { error: error.message }
+  return { data: (data || []).map(r => r.message_id) }
+}
+
+// Full rows for the "Starred messages" viewer. Deleted messages are
+// filtered out rather than shown as tombstones — a star is a bookmark, and
+// a bookmark to something that no longer exists is just noise.
+export async function getStarredMessages(conversationId) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) return { error: 'Not authenticated' }
+
+  const { data, error } = await supabase
+    .from('starred_messages')
+    .select(`
+      id,
+      created_at,
+      message_id,
+      messages(id, content, type, sender_id, sender_name_snapshot, created_at)
+    `)
+    .eq('user_id', user.id)
+    .eq('conversation_id', conversationId)
+    .order('created_at', { ascending: false })
+
+  if (error) return { error: error.message }
+  return { data: (data || []).filter(r => r.messages && r.messages.type !== 'deleted') }
+}
+
+// Forwards one or more messages into other conversations. Each forward is
+// a genuinely NEW message authored by the forwarder (WhatsApp-style), not a
+// pointer back to the original — so it survives the original being deleted
+// and carries no reply linkage into a conversation where the quoted message
+// wouldn't exist.
+//
+// Every target is validated independently: a caller could pass any
+// conversation id, so participation is checked per target rather than
+// assumed. Blocks and un-accepted message requests are honoured too, since
+// forwarding must not become a way around either.
+export async function forwardMessages(messageIds, targetConversationIds) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) return { error: 'Not authenticated' }
+  if (!messageIds?.length) return { error: 'No messages selected' }
+  if (!targetConversationIds?.length) return { error: 'No conversations selected' }
+
+  // Only messages the user can actually see — RLS already restricts this
+  // select to their own conversations, so a forged id simply returns
+  // nothing rather than leaking content.
+  const { data: sourceMessages, error: sourceError } = await supabase
+    .from('messages')
+    .select('id, content, type, media(url, filename, size, mime_type)')
+    .in('id', messageIds)
+    .order('created_at', { ascending: true })
+
+  if (sourceError) return { error: sourceError.message }
+  if (!sourceMessages?.length) return { error: 'Messages not found' }
+
+  const forwardable = sourceMessages.filter(m => m.type !== 'deleted' && m.type !== 'system')
+  if (!forwardable.length) return { error: 'These messages can\'t be forwarded' }
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('display_name')
+    .eq('id', user.id)
+    .single()
+
+  let delivered = 0
+  const failures = []
+
+  for (const conversationId of targetConversationIds) {
+    const { data: participant } = await supabase
+      .from('conversation_participants')
+      .select('role')
+      .eq('conversation_id', conversationId)
+      .eq('user_id', user.id)
+      .maybeSingle()
+
+    if (!participant) { failures.push('Not a participant'); continue }
+
+    const { blocked, type: conversationType } = await checkDmBlock(supabase, conversationId, user.id)
+    if (blocked) { failures.push('Unable to send message'); continue }
+
+    if (await checkPendingRequest(supabase, conversationId)) {
+      failures.push('This message request hasn\'t been accepted yet')
+      continue
+    }
+
+    const rows = forwardable.map(m => ({
+      conversation_id: conversationId,
+      sender_id: user.id,
+      sender_name_snapshot: profile.display_name,
+      // Media is re-pointed at the same stored object rather than copied:
+      // the row carries the caption/content, and the media table row below
+      // reuses the original's url. Forwarding shouldn't duplicate blobs.
+      content: m.content,
+      type: m.type,
+      is_forwarded: true,
+    }))
+
+    const { data: inserted, error: insertError } = await supabase
+      .from('messages')
+      .insert(rows)
+      .select('id, type')
+
+    if (insertError) { failures.push(insertError.message); continue }
+
+    const mediaRows = []
+    inserted.forEach((row, i) => {
+      const original = forwardable[i]
+      const media = original.media?.[0]
+      if (media && row.type !== 'text') {
+        mediaRows.push({
+          message_id: row.id,
+          url: media.url,
+          type: row.type,
+          mime_type: media.mime_type,
+          filename: media.filename,
+          size: media.size,
+        })
+      }
+    })
+
+    if (mediaRows.length) await supabase.from('media').insert(mediaRows)
+
+    delivered += 1
+
+    const { data: participants } = await supabase
+      .from('conversation_participants')
+      .select('user_id')
+      .eq('conversation_id', conversationId)
+      .neq('user_id', user.id)
+
+    const preview = forwardable[0].type === 'text'
+      ? (forwardable[0].content || '').slice(0, 60)
+      : 'Forwarded a message'
+
+    for (const p of participants || []) {
+      sendPushNotification(
+        p.user_id,
+        profile.display_name,
+        preview,
+        `/chat/${conversationId}`,
+        conversationId,
+        conversationType === 'group' ? 'group_message' : 'direct_message'
+      )
+    }
+  }
+
+  if (delivered === 0) {
+    return { error: failures[0] || 'Could not forward these messages' }
+  }
+
+  return {
+    success: true,
+    delivered,
+    // Partial success is reported rather than swallowed — forwarding to
+    // five chats where one is blocked should say so, not silently claim
+    // everything went through.
+    failed: failures.length,
+  }
 }
 
 export async function searchMessages(conversationId, query) {

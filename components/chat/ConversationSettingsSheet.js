@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  Bell, BellOff, Pin, Search, CheckSquare, ChevronRight, Pencil,
+  Bell, BellOff, Pin, Star, Search, CheckSquare, ChevronRight, Pencil,
   DoorOpen, Trash2, User, Share2, UserX, EyeOff, UserPlus, Crown,
   ShieldCheck, ShieldOff, CheckCircle2, Camera,
 } from 'lucide-react'
@@ -70,6 +70,7 @@ export default function ConversationSettingsSheet({
   pinnedCount,
   onOpenSearch,
   onOpenPinned,
+  onOpenStarred,
   onGroupChanged,
   onSelectMessages,
 }) {
@@ -474,6 +475,14 @@ export default function ConversationSettingsSheet({
             <Pin size={17} {...iconProps} />
             <span style={{ flex: 1 }}>Pinned messages</span>
             <span style={{ display: 'flex', alignItems: 'center', gap: '2px', color: 'var(--text-tertiary)', fontWeight: '600' }}>{pinnedCount} <ChevronRight size={15} {...iconProps} /></span>
+          </button>
+          {/* Sits directly under Pinned since they're the two "saved
+              messages" views — pinned is shared with the conversation,
+              starred is private to this user. */}
+          <button className="relay-menu-row" style={rowStyle} onClick={() => { onClose?.(); onOpenStarred?.() }}>
+            <Star size={17} {...iconProps} />
+            <span style={{ flex: 1 }}>Starred messages</span>
+            <ChevronRight size={15} {...iconProps} color="var(--text-tertiary)" />
           </button>
           <button className="relay-menu-row" style={rowStyle} onClick={() => { onClose?.(); onOpenSearch?.() }}>
             <Search size={17} {...iconProps} />

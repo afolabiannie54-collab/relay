@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Smile, Reply, Copy, Pin, PinOff, Pencil, Trash2, CheckSquare } from 'lucide-react'
+import { Smile, Reply, Copy, Pin, PinOff, Pencil, Trash2, CheckSquare, Star, StarOff, Forward } from 'lucide-react'
 
 const QUICK_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🙏']
 const EDIT_WINDOW_MS = 15 * 60 * 1000
@@ -41,12 +41,15 @@ export default function MessageActionBar({
   message,
   isOwn,
   isPinned,
+  isStarred,
   dropdownOpen,
   onDropdownOpenChange,
   onReply,
   onEdit,
   onDelete,
   onTogglePin,
+  onToggleStar,
+  onForward,
   onReact,
   onCopy,
   onSelect,
@@ -185,6 +188,13 @@ export default function MessageActionBar({
                 <Copy size={17} {...iconProps} /> Copy
               </button>
             )}
+            <button className="relay-menu-row" style={{ color: 'var(--text)' }} onClick={() => { onForward?.(); onDropdownOpenChange?.(false) }}>
+              <Forward size={17} {...iconProps} /> Forward
+            </button>
+            <button className="relay-menu-row" style={{ color: 'var(--text)' }} onClick={() => { onToggleStar?.(); onDropdownOpenChange?.(false) }}>
+              {isStarred ? <StarOff size={17} {...iconProps} /> : <Star size={17} {...iconProps} />}
+              {isStarred ? 'Unstar' : 'Star'}
+            </button>
             <button className="relay-menu-row" style={{ color: 'var(--text)' }} onClick={() => { onTogglePin?.(); onDropdownOpenChange?.(false) }}>
               {isPinned ? <PinOff size={17} {...iconProps} /> : <Pin size={17} {...iconProps} />}
               {isPinned ? 'Unpin' : 'Pin'}

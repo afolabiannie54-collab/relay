@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Reply, Copy, Pin, PinOff, Pencil, Trash2, CheckSquare } from 'lucide-react'
+import { Plus, Reply, Copy, Pin, PinOff, Pencil, Trash2, CheckSquare, Star, StarOff, Forward } from 'lucide-react'
 import BottomSheet from '@/components/shared/BottomSheet'
 
 const QUICK_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🙏']
@@ -20,10 +20,13 @@ export default function MessageActionSheet({
   onClose,
   isOwn,
   isPinned,
+  isStarred,
   onReply,
   onEdit,
   onDelete,
   onTogglePin,
+  onToggleStar,
+  onForward,
   onReact,
   onCopy,
   onSelect,
@@ -87,6 +90,16 @@ export default function MessageActionSheet({
               <Copy size={17} {...iconProps} /> Copy
             </button>
           )}
+          <button className="relay-menu-row" style={{ padding: '14px 12px', fontSize: '15px', color: 'var(--text)' }} onClick={() => { onForward?.(); onClose?.() }}>
+            <Forward size={17} {...iconProps} /> Forward
+          </button>
+          {/* Starring is private to this user, unlike pinning which is
+              shared with the whole conversation — they sit next to each
+              other deliberately so the distinction is easy to learn. */}
+          <button className="relay-menu-row" style={{ padding: '14px 12px', fontSize: '15px', color: 'var(--text)' }} onClick={() => { onToggleStar?.(); onClose?.() }}>
+            {isStarred ? <StarOff size={17} {...iconProps} /> : <Star size={17} {...iconProps} />}
+            {isStarred ? 'Unstar' : 'Star'}
+          </button>
           <button className="relay-menu-row" style={{ padding: '14px 12px', fontSize: '15px', color: 'var(--text)' }} onClick={() => { onTogglePin?.(); onClose?.() }}>
             {isPinned ? <PinOff size={17} {...iconProps} /> : <Pin size={17} {...iconProps} />}
             {isPinned ? 'Unpin' : 'Pin'}
