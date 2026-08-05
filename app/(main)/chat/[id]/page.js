@@ -35,6 +35,33 @@ const iconProps = { strokeWidth: 2, strokeLinecap: 'square', strokeLinejoin: 'mi
 // status can only ever move up this scale, never back down.
 const STATUS_RANK = { sent: 1, delivered: 2, read: 3 }
 
+// getReadReceipts returns flat { message_id, user_id } rows; the UI wants
+// them grouped as { [messageId]: Set<userId> }. Shared by the initial load
+// and every later refresh so both build the map identically.
+function buildReceiptsMap(rows) {
+  const map = {}
+  for (const row of rows) {
+    if (!map[row.message_id]) map[row.message_id] = new Set()
+    map[row.message_id].add(row.user_id)
+  }
+  return map
+}
+
+// Unions incoming receipts into what's already known instead of replacing
+// it. A read receipt is a permanent fact — once someone has read a
+// message, no later response should ever be able to un-know that. Plain
+// assignment would mean any refetch that came back short (a partial
+// response, a transient error swallowed upstream, a narrower page of
+// messages) silently demoted already-read messages back to sent, which is
+// exactly the "ticks reset every time I reopen" behavior.
+function mergeReceiptsMaps(prev, incoming) {
+  const next = { ...prev }
+  for (const [messageId, readers] of Object.entries(incoming)) {
+    next[messageId] = next[messageId] ? new Set([...next[messageId], ...readers]) : readers
+  }
+  return next
+}
+
 // A reply quoting a media message previously showed that message's raw
 // `content` — for images/files that's often empty or a caption, but for
 // a voice note it's the literal generated filename ("voice-<timestamp>.
@@ -395,10 +422,18 @@ export default function ConversationPage() {
         return { conversation: convData, groupInfo }
       })()
 
-      const [freshProfile, convResult, msgsResult] = await Promise.all([
+      // Read receipts are fetched HERE, in the same parallel batch as the
+      // messages themselves — not in a later sequential await. They
+      // describe the messages being rendered, so arriving even one
+      // round-trip later means every own-message paints as a single "sent"
+      // tick first and only corrects afterward, which reads as ticks being
+      // wrong/laggy rather than as data still loading. Same reasoning as
+      // groupInfo being folded into convPromise above.
+      const [freshProfile, convResult, msgsResult, receiptsResult] = await Promise.all([
         profilePromise,
         convPromise,
         getMessages(id),
+        getReadReceipts(id),
       ])
 
       if (freshProfile) setProfile(freshProfile)
@@ -406,6 +441,11 @@ export default function ConversationPage() {
       if (convResult.conversation) {
         setConversation(convResult.conversation)
         if (convResult.groupInfo) setGroupInfo(convResult.groupInfo)
+      }
+
+      if (Array.isArray(receiptsResult.data)) {
+        const incoming = buildReceiptsMap(receiptsResult.data)
+        setReadReceipts(prev => mergeReceiptsMaps(prev, incoming))
       }
 
       if (Array.isArray(msgsResult.data)) {
@@ -424,16 +464,20 @@ export default function ConversationPage() {
 
       markReadIfVisible()
 
-      const privacyResult = await getPrivacySettings()
-      if (privacyResult.data) setShowReadReceipts(privacyResult.data.show_read_receipts ?? true)
+      // Everything past this point is secondary chrome (the pinned-messages
+      // panel, the reciprocity setting) — none of it gates the ticks, so a
+      // failure here must not take the rest of the load down with it the
+      // way an unhandled rejection previously would have.
+      try {
+        const privacyResult = await getPrivacySettings()
+        if (privacyResult.data) setShowReadReceipts(privacyResult.data.show_read_receipts ?? true)
 
-      const pinnedResult = await getPinnedMessages(id)
-      if (pinnedResult.data) {
-        setPinnedMessages(pinnedResult.data)
-        setPinnedMessageIds(new Set(pinnedResult.data.map(p => p.messages?.id)))
-      }
-
-      await refreshReadReceipts()
+        const pinnedResult = await getPinnedMessages(id)
+        if (pinnedResult.data) {
+          setPinnedMessages(pinnedResult.data)
+          setPinnedMessageIds(new Set(pinnedResult.data.map(p => p.messages?.id)))
+        }
+      } catch {}
     }
     load()
   }, [id])
@@ -455,12 +499,8 @@ export default function ConversationPage() {
   const refreshReadReceipts = async () => {
     const receiptsResult = await getReadReceipts(id)
     if (Array.isArray(receiptsResult.data)) {
-      const map = {}
-      for (const row of receiptsResult.data) {
-        if (!map[row.message_id]) map[row.message_id] = new Set()
-        map[row.message_id].add(row.user_id)
-      }
-      setReadReceipts(map)
+      const incoming = buildReceiptsMap(receiptsResult.data)
+      setReadReceipts(prev => mergeReceiptsMaps(prev, incoming))
     }
   }
 
@@ -1008,11 +1048,22 @@ export default function ConversationPage() {
   }
 
   // 'sending' / 'failed' come straight off the optimistic message object
-  // itself. Past that, 'delivered' is approximated from presence (this
-  // app has no delivered_at column or ack table to track true delivery
-  // against) — if the recipient is online, a realtime INSERT reaches
-  // them close enough to instantly that presence is a reasonable proxy.
-  // 'read' is exact, backed by the real message_reads table.
+  // itself. Past that, both remaining states are derived from PERSISTENT
+  // facts, never from live/ephemeral signals:
+  //
+  //   read      — a message_reads row exists. Permanent by nature.
+  //   delivered — the recipient's last_seen is at or after the message's
+  //               created_at, i.e. they were connected at some point after
+  //               it was sent, so it reached them. last_seen only ever
+  //               moves forward, so this is permanent too.
+  //
+  // The earlier version asked "is the recipient online RIGHT NOW" for
+  // delivered, which is not a fact about the message at all — it made a
+  // message delivered (and read) days ago fall back to a single "sent"
+  // tick the moment that person went offline, and re-derive from scratch
+  // on every reopen. Comparing against last_seen instead means a status,
+  // once earned, is simply true forever and survives reloads without
+  // depending on the in-memory ratchet to paper over it.
   //
   // Groups are deliberately simplified to sent/delivered/failed only —
   // no per-member read aggregation. "Read" for a group would mean
@@ -1021,21 +1072,39 @@ export default function ConversationPage() {
   // delivered/failed carries the useful signal without that cost.
   const isGroup = conversation?.type === 'group'
 
+  // Pure comparison of two timestamps — no Date.now(), nothing that could
+  // vary between renders for the same inputs.
+  const reachedAfterSend = (lastSeen, msg) => {
+    if (!lastSeen || !msg.created_at) return false
+    return new Date(lastSeen).getTime() >= new Date(msg.created_at).getTime()
+  }
+
   const computeRawStatus = (msg) => {
     if (isGroup) {
       const others = groupInfo?.members?.filter(m => m.user_id !== profile?.id) || []
-      const anyOnline = others.some(m => onlineUsers.includes(m.user_id))
-      return anyOnline ? 'delivered' : 'sent'
+      const anyReached = others.some(m =>
+        onlineUsers.includes(m.user_id) || reachedAfterSend(m.last_seen, msg)
+      )
+      return anyReached ? 'delivered' : 'sent'
     }
     if (!otherParticipant) return 'sent'
-    const readers = readReceipts[msg.id]
+
+    const hasRead = readReceipts[msg.id]?.has(otherParticipant.id)
+
     // Reciprocal, like WhatsApp: turning off your own read-receipts
     // setting also stops you from seeing others' — this caps display at
     // "delivered" for the viewer regardless of what message_reads
     // actually contains, rather than checking the other participant's
     // setting (theirs governs what THEY see of yours, independently).
-    if (showReadReceipts && readers?.has(otherParticipant.id)) return 'read'
-    if (onlineUsers.includes(otherParticipant.id)) return 'delivered'
+    if (showReadReceipts && hasRead) return 'read'
+
+    // Reading a message proves it was delivered, so a known read still
+    // counts as delivered even when the read state itself is hidden by
+    // the viewer's own setting — hiding read receipts shouldn't demote a
+    // message all the way back to a single tick.
+    if (hasRead || onlineUsers.includes(otherParticipant.id) || reachedAfterSend(otherParticipant.last_seen, msg)) {
+      return 'delivered'
+    }
     return 'sent'
   }
 
