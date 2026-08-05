@@ -9,7 +9,7 @@ import { getOwnProfile } from '@/actions/users'
 import { PresenceProvider } from '@/lib/presence-context'
 import { ProfileSheetProvider } from '@/lib/profile-sheet-context'
 import ProfileSheet from '@/components/profile/ProfileSheet'
-import { getUnreadChatsCount } from '@/actions/messages'
+import { getUnreadChatsCount, markConversationDelivered } from '@/actions/messages'
 import { createClient } from '@/lib/supabase/client'
 import { usePushNotifications } from '@/hooks/usePushNotifications'
 import { cache } from '@/lib/cache'
@@ -64,6 +64,15 @@ export default function MainLayout({ children }) {
     }
     loadChatsUnread()
 
+    // Delivery ACK on app load, covering every conversation at once —
+    // messages that arrived while the app was closed produced no realtime
+    // INSERT to ack individually, so without this they'd stay on a single
+    // tick for the sender until the recipient happened to open that
+    // specific thread. Opening the app IS the delivery event; this records
+    // it. Lives in the layout (always mounted) rather than the chat list
+    // or a conversation, so it doesn't depend on which screen is showing.
+    markConversationDelivered()
+
     // Deterministic same-tab signal: fires the instant a conversation is
     // marked read, without depending on Realtime being enabled for
     // conversation_participants (this layout persists across /chat <->
@@ -90,8 +99,15 @@ export default function MainLayout({ children }) {
         event: 'INSERT',
         schema: 'public',
         table: 'messages',
-      }, () => {
+      }, (payload) => {
         loadChatsUnread()
+        // This message reached this device — that's precisely what the
+        // sender's double tick reports, so ack it right here rather than
+        // waiting for the recipient to open that conversation (which
+        // would conflate delivered with read).
+        if (payload.new?.conversation_id && payload.new.sender_id !== profile.id) {
+          markConversationDelivered(payload.new.conversation_id)
+        }
       })
       .on('postgres_changes', {
         event: 'UPDATE',

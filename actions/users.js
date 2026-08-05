@@ -44,10 +44,16 @@ export async function getProfileByUsername(username) {
     if (blocked) return { error: 'User not found' }
   }
 
+  const showLastSeen = data.privacy_settings?.show_last_seen ?? true
+
   return {
     data: {
       ...data,
-      show_last_seen: data.privacy_settings?.show_last_seen ?? true,
+      // Withheld outright when hidden rather than shipped with a flag —
+      // otherwise the raw timestamp is readable straight off the network
+      // response regardless of the setting. Same fix as getConversation.
+      last_seen: showLastSeen ? data.last_seen : null,
+      show_last_seen: showLastSeen,
       show_online_status: data.privacy_settings?.show_online_status ?? true,
     },
   }

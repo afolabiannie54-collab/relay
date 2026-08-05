@@ -45,7 +45,7 @@ export async function getGroupInfo(conversationId) {
 
   const { data: members } = await supabase
     .from('conversation_participants')
-    .select('user_id, role, joined_at, users(id, username, display_name, avatar_url, last_seen)')
+    .select('user_id, role, joined_at, last_delivered_at, users(id, username, display_name, avatar_url)')
     .eq('conversation_id', conversationId)
     .order('joined_at', { ascending: true })
 

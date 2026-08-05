@@ -1052,18 +1052,21 @@ export default function ConversationPage() {
   // facts, never from live/ephemeral signals:
   //
   //   read      — a message_reads row exists. Permanent by nature.
-  //   delivered — the recipient's last_seen is at or after the message's
-  //               created_at, i.e. they were connected at some point after
-  //               it was sent, so it reached them. last_seen only ever
-  //               moves forward, so this is permanent too.
+  //   delivered — the recipient's last_delivered_at (a real ACK their own
+  //               client writes on receiving messages) is at or after the
+  //               message's created_at. Only ever moves forward, so this
+  //               is permanent too.
   //
   // The earlier version asked "is the recipient online RIGHT NOW" for
   // delivered, which is not a fact about the message at all — it made a
   // message delivered (and read) days ago fall back to a single "sent"
   // tick the moment that person went offline, and re-derive from scratch
-  // on every reopen. Comparing against last_seen instead means a status,
-  // once earned, is simply true forever and survives reloads without
-  // depending on the in-memory ratchet to paper over it.
+  // on every reopen. An intermediate version used last_seen, which fixed
+  // the regression but tied delivery to a field the show_last_seen privacy
+  // toggle governs — so anyone hiding their last seen would have silently
+  // stripped double ticks from everyone messaging them. last_delivered_at
+  // is independent of every privacy setting, exactly as delivery receipts
+  // are everywhere else (only READ receipts are user-controllable).
   //
   // Groups are deliberately simplified to sent/delivered/failed only —
   // no per-member read aggregation. "Read" for a group would mean
@@ -1074,17 +1077,15 @@ export default function ConversationPage() {
 
   // Pure comparison of two timestamps — no Date.now(), nothing that could
   // vary between renders for the same inputs.
-  const reachedAfterSend = (lastSeen, msg) => {
-    if (!lastSeen || !msg.created_at) return false
-    return new Date(lastSeen).getTime() >= new Date(msg.created_at).getTime()
+  const reachedAfterSend = (deliveredAt, msg) => {
+    if (!deliveredAt || !msg.created_at) return false
+    return new Date(deliveredAt).getTime() >= new Date(msg.created_at).getTime()
   }
 
   const computeRawStatus = (msg) => {
     if (isGroup) {
       const others = groupInfo?.members?.filter(m => m.user_id !== profile?.id) || []
-      const anyReached = others.some(m =>
-        onlineUsers.includes(m.user_id) || reachedAfterSend(m.last_seen, msg)
-      )
+      const anyReached = others.some(m => reachedAfterSend(m.last_delivered_at, msg))
       return anyReached ? 'delivered' : 'sent'
     }
     if (!otherParticipant) return 'sent'
@@ -1102,7 +1103,7 @@ export default function ConversationPage() {
     // counts as delivered even when the read state itself is hidden by
     // the viewer's own setting — hiding read receipts shouldn't demote a
     // message all the way back to a single tick.
-    if (hasRead || onlineUsers.includes(otherParticipant.id) || reachedAfterSend(otherParticipant.last_seen, msg)) {
+    if (hasRead || reachedAfterSend(otherParticipant.last_delivered_at, msg)) {
       return 'delivered'
     }
     return 'sent'

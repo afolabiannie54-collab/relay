@@ -279,6 +279,7 @@ export async function getConversation(conversationId) {
       .select(`
         user_id,
         role,
+        last_delivered_at,
         users!inner(id, username, display_name, avatar_url, last_seen, privacy_settings(show_online_status, show_last_seen))
       `)
       .eq('conversation_id', conversationId)
@@ -305,12 +306,21 @@ export async function getConversation(conversationId) {
 
   const otherParticipants = participants?.map(p => {
     const { privacy_settings, ...userFields } = p.users
+    const showLastSeen = privacy_settings?.show_last_seen ?? true
     return {
       user_id: p.user_id,
       role: p.role,
       ...userFields,
+      // Actually withhold the timestamp rather than shipping it and
+      // trusting every consumer to check the flag before rendering it —
+      // the raw value was previously readable straight off the network
+      // response even with last-seen hidden, which defeats the setting.
+      // Delivery ticks don't depend on this (see last_delivered_at below),
+      // so hiding last seen no longer costs the sender their double tick.
+      last_seen: showLastSeen ? userFields.last_seen : null,
+      last_delivered_at: p.last_delivered_at || null,
       show_online_status: privacy_settings?.show_online_status ?? true,
-      show_last_seen: privacy_settings?.show_last_seen ?? true,
+      show_last_seen: showLastSeen,
     }
   }) || []
 
@@ -591,6 +601,37 @@ export async function markConversationRead(conversationId) {
     .eq('conversation_id', conversationId)
     .eq('user_id', user.id)
 
+  return { success: true }
+}
+
+// Delivery ACK — the recipient's own client calls this to record "my
+// device has received everything in this conversation up to now", which is
+// what the sender's double tick actually means. Deliberately NOT derived
+// from presence/last_seen: those are gated by the show_last_seen privacy
+// toggle, and delivery receipts must not depend on a privacy setting that
+// governs something else entirely (hiding your last seen shouldn't strip
+// double ticks from everyone who messages you — WhatsApp keeps these
+// strictly independent too). Scoped per conversation, so it only ever
+// reveals "their device got messages in this specific thread", which is
+// exactly what a delivery receipt is, rather than a global online history.
+//
+// Passing no conversationId marks every conversation the user is in —
+// used on app load to cover messages that arrived while the app was
+// closed, where no realtime INSERT was ever received to ack individually.
+export async function markConversationDelivered(conversationId = null) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) return { error: 'Not authenticated' }
+
+  let query = supabase
+    .from('conversation_participants')
+    .update({ last_delivered_at: new Date().toISOString() })
+    .eq('user_id', user.id)
+
+  if (conversationId) query = query.eq('conversation_id', conversationId)
+
+  await query
   return { success: true }
 }
 
