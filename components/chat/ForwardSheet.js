@@ -6,6 +6,7 @@ import BottomSheet from '@/components/shared/BottomSheet'
 import Avatar from '@/components/shared/Avatar'
 import RowSkeleton from '@/components/shared/RowSkeleton'
 import { getConversations, forwardMessages } from '@/actions/messages'
+import { getBlockedUserIds } from '@/actions/blocks'
 import { cache } from '@/lib/cache'
 
 const iconProps = { strokeWidth: 2, strokeLinecap: 'square', strokeLinejoin: 'miter' }
@@ -16,6 +17,10 @@ const iconProps = { strokeWidth: 2, strokeLinecap: 'square', strokeLinejoin: 'mi
 // list is an easy misfire.
 export default function ForwardSheet({ isOpen, onClose, messageIds, fromConversationId, onForwarded }) {
   const [conversations, setConversations] = useState([])
+  // Covers both directions (people you blocked and people who blocked
+  // you) — getBlockedUserIds already returns the union, and forwarding is
+  // refused either way, so both must be hidden.
+  const [blockedIds, setBlockedIds] = useState(new Set())
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
   const [selected, setSelected] = useState(new Set())
@@ -40,11 +45,12 @@ export default function ForwardSheet({ isOpen, onClose, messageIds, fromConversa
       setLoading(true)
     }
 
-    getConversations().then(result => {
+    Promise.all([getConversations(), getBlockedUserIds()]).then(([result, blocked]) => {
       if (result.data) {
         setConversations(result.data)
         cache.set('conversations', result.data, 10000)
       }
+      setBlockedIds(new Set(blocked?.data || []))
       setLoading(false)
     })
   }, [isOpen])
@@ -53,12 +59,22 @@ export default function ForwardSheet({ isOpen, onClose, messageIds, fromConversa
     const q = query.trim().toLowerCase()
     return conversations
       .filter(c => c.conversation_id !== fromConversationId)
+      // Blocked DMs are removed from the list entirely rather than left
+      // in to fail on send. Offering a target that can only ever be
+      // rejected is a trap; a block should simply mean that person isn't
+      // somewhere you can send to. Groups are unaffected — a block
+      // between two members doesn't stop group messaging.
+      .filter(c => {
+        if (c.type === 'group') return true
+        const otherId = c.other_participants?.[0]?.user_id
+        return !otherId || !blockedIds.has(otherId)
+      })
       .filter(c => {
         if (!q) return true
         const name = (c.type === 'group' ? c.group_info?.name : c.other_participants?.[0]?.display_name) || ''
         return name.toLowerCase().includes(q)
       })
-  }, [conversations, query, fromConversationId])
+  }, [conversations, query, fromConversationId, blockedIds])
 
   const toggle = (id) => {
     setSelected(prev => {
