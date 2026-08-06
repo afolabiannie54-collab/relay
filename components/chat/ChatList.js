@@ -462,25 +462,16 @@ export default function ChatList({ onSelectConversation }) {
     })
   }
 
-  const handleReadAll = async () => {
-    setShowListMenu(false)
-    const unreadIds = conversations
-      .filter(c => (c.unread_count || 0) > 0)
-      .map(c => c.conversation_id)
-    if (unreadIds.length === 0) return
-    await Promise.all(unreadIds.map(id => markConversationRead(id)))
-    await refreshConversations()
-  }
+  // Shared by both entry points — the ⋯ menu's "Read all" and the
+  // bulk-select bar's "Read". They previously had separate copies of this
+  // logic and only one of them got fixed, so they're deliberately one
+  // function now.
+  const markManyRead = async (ids) => {
+    if (ids.length === 0) return true
 
-  const handleBulkMarkRead = async () => {
-    const ids = [...selectedConvIds]
-    if (ids.length === 0) return
-
-    setBulkActing(true)
-
-    // Clear the badges immediately. Previously this waited on N server
-    // round-trips plus a full list refetch before anything moved, so on a
-    // slow connection the action read as having done nothing at all.
+    // Clear the badges immediately. Waiting on N server round-trips plus a
+    // full list refetch before anything moved meant that on a slow
+    // connection the action read as having done nothing at all.
     setConversations(prev => {
       const next = prev.map(c => ids.includes(c.conversation_id) ? { ...c, unread_count: 0 } : c)
       cache.set('conversations', next, 10000)
@@ -488,9 +479,8 @@ export default function ChatList({ onSelectConversation }) {
     })
 
     const results = await Promise.all(ids.map(id => markConversationRead(id)))
-    setBulkActing(false)
-
     const failed = results.filter(r => r?.error)
+
     if (failed.length > 0) {
       // Put the badges back rather than leaving the list asserting these
       // were read when the server never recorded it.
@@ -498,8 +488,7 @@ export default function ChatList({ onSelectConversation }) {
       showBulkError(failed.length === ids.length
         ? 'Couldn\'t mark these as read. Please try again.'
         : `Marked ${ids.length - failed.length} of ${ids.length} as read — the rest failed.`)
-      handleExitBulkSelect()
-      return
+      return false
     }
 
     // The bottom-nav Chats badge is driven by its own count query in the
@@ -509,25 +498,66 @@ export default function ChatList({ onSelectConversation }) {
       window.dispatchEvent(new CustomEvent('relay:conversation-read', { detail: { conversationId: id } }))
     }
 
-    handleExitBulkSelect()
     refreshConversations()
+    return true
+  }
+
+  const unreadConversationIds = () => conversations
+    .filter(c => (c.unread_count || 0) > 0)
+    .map(c => c.conversation_id)
+
+  const handleReadAll = async () => {
+    setShowListMenu(false)
+    await markManyRead(unreadConversationIds())
+  }
+
+  const handleBulkMarkRead = async () => {
+    const ids = [...selectedConvIds]
+    if (ids.length === 0) return
+
+    setBulkActing(true)
+    await markManyRead(ids)
+    setBulkActing(false)
+    handleExitBulkSelect()
+  }
+
+  // Both of these threw away every result, so a partial or total failure
+  // was indistinguishable from success: the sheet closed, the list
+  // refreshed, and the conversations were simply still there.
+  const reportBulkFailures = (failed, total, verb) => {
+    if (failed === 0) return true
+    showBulkError(failed === total
+      ? `Couldn't ${verb} ${total === 1 ? 'that chat' : 'those chats'}. Please try again.`
+      : `${verb === 'hide' ? 'Hid' : 'Muted'} ${total - failed} of ${total} — the rest failed.`)
+    return false
   }
 
   const handleBulkHide = async () => {
+    const ids = [...selectedConvIds]
+    if (ids.length === 0) return
+
     setBulkActing(true)
-    await Promise.all([...selectedConvIds].map(id => hideConversation(id)))
+    const results = await Promise.all(ids.map(id => hideConversation(id)))
     await refreshConversations()
     setBulkActing(false)
+
+    reportBulkFailures(results.filter(r => r?.error).length, ids.length, 'hide')
     handleExitBulkSelect()
   }
 
   const handleBulkMute = async () => {
+    const ids = [...selectedConvIds]
+    if (ids.length === 0) return
+
     setBulkActing(true)
-    await Promise.all([...selectedConvIds].map(id => muteConversation(id, null)))
+    const results = await Promise.all(ids.map(id => muteConversation(id, null)))
+
     cache.invalidate('muted-ids')
     const mutedResult = await getMutedConversationIds()
     if (mutedResult.data) setMutedIds(mutedResult.data)
     setBulkActing(false)
+
+    reportBulkFailures(results.filter(r => r?.error).length, ids.length, 'mute')
     handleExitBulkSelect()
   }
 
@@ -675,12 +705,22 @@ export default function ChatList({ onSelectConversation }) {
                   >
                     <CheckSquare size={15} {...iconProps} /> Select chats
                   </button>
+                  {/* Disabled when there's nothing to do — including while
+                      the list is still loading, when `conversations` is
+                      empty and this would have silently no-opped, which is
+                      indistinguishable from the button being broken. */}
                   <button
                     onClick={handleReadAll}
+                    disabled={loading || unreadConversationCount === 0}
                     className="relay-menu-row"
-                    style={{ color: 'var(--text)' }}
+                    style={{
+                      color: (loading || unreadConversationCount === 0) ? 'var(--text-tertiary)' : 'var(--text)',
+                      opacity: (loading || unreadConversationCount === 0) ? 0.55 : 1,
+                      cursor: (loading || unreadConversationCount === 0) ? 'default' : 'pointer',
+                    }}
                   >
-                    <Check size={15} {...iconProps} /> Read all
+                    <Check size={15} {...iconProps} />
+                    {unreadConversationCount > 0 ? `Read all (${unreadConversationCount})` : 'Read all'}
                   </button>
                 </div>
               </>
@@ -1205,7 +1245,16 @@ export default function ChatList({ onSelectConversation }) {
           <button
             onClick={() => setBulkConfirmAction('delete')}
             disabled={selectedConvIds.size === 0 || bulkActing}
-            style={{ ...bulkActionBtnStyle(selectedConvIds.size === 0 || bulkActing), color: 'var(--error)', borderRight: 'none' }}
+            // The unconditional error colour used to be applied AFTER the
+            // shared style, overriding the disabled treatment — so with
+            // nothing selected Delete stayed bright red next to three
+            // greyed-out siblings, reading as the one thing you could
+            // still tap when it was equally inert.
+            style={{
+              ...bulkActionBtnStyle(selectedConvIds.size === 0 || bulkActing),
+              ...(selectedConvIds.size === 0 || bulkActing ? {} : { color: 'var(--error)' }),
+              borderRight: 'none',
+            }}
           >
             <Trash2 size={17} {...iconProps} /> Delete
           </button>

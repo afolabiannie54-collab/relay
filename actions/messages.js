@@ -724,13 +724,18 @@ export async function hideConversation(conversationId) {
 
   if (!user) return { error: 'Not authenticated' }
 
-  await supabase
+  // Same silent-failure shape markConversationRead had: the result was
+  // discarded and success returned regardless, so a rejected write looked
+  // identical to a successful one and the conversation simply stayed put.
+  const { error } = await supabase
     .from('conversation_hidden')
     .upsert({
       conversation_id: conversationId,
       user_id: user.id,
       hidden_at: new Date().toISOString(),
     })
+
+  if (error) return { error: error.message }
 
   return { success: true }
 }
@@ -741,11 +746,13 @@ export async function unhideConversation(conversationId) {
 
   if (!user) return { error: 'Not authenticated' }
 
-  await supabase
+  const { error } = await supabase
     .from('conversation_hidden')
     .delete()
     .eq('conversation_id', conversationId)
     .eq('user_id', user.id)
+
+  if (error) return { error: error.message }
 
   return { success: true }
 }
