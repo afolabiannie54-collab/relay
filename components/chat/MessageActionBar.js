@@ -59,6 +59,13 @@ export default function MessageActionBar({
   const moreBtnRef = useRef(null)
   const reactBtnRef = useRef(null)
 
+  // A message that hasn't been accepted by the server yet only exists
+  // client-side under a temp id, so every action that has to name it to
+  // the server (forward, star, pin, edit, delete, react, reply) would be
+  // referring to a row that doesn't exist. Copy is the one thing that
+  // works purely off local text, so it's all that stays.
+  const isPending = message._status === 'sending' || message._status === 'failed'
+
   const canEdit = isOwn && message.type === 'text' && (Date.now() - new Date(message.created_at).getTime()) < EDIT_WINDOW_MS
 
   const iconBtnStyle = {
@@ -109,23 +116,27 @@ export default function MessageActionBar({
         boxShadow: 'var(--shadow-hard-sm)',
         padding: '2px',
       }}>
-        <button
-          ref={reactBtnRef}
-          className="relay-menu-row"
-          style={{ ...iconBtnStyle, padding: 0 }}
-          title="React"
-          onClick={() => (showEmojiRow ? setShowEmojiRow(false) : openEmojiRow())}
-        >
-          <Smile size={18} {...iconProps} />
-        </button>
-        <button
-          className="relay-menu-row"
-          style={{ ...iconBtnStyle, padding: 0 }}
-          title="Reply"
-          onClick={onReply}
-        >
-          <Reply size={18} {...iconProps} />
-        </button>
+        {!isPending && (
+          <>
+            <button
+              ref={reactBtnRef}
+              className="relay-menu-row"
+              style={{ ...iconBtnStyle, padding: 0 }}
+              title="React"
+              onClick={() => (showEmojiRow ? setShowEmojiRow(false) : openEmojiRow())}
+            >
+              <Smile size={18} {...iconProps} />
+            </button>
+            <button
+              className="relay-menu-row"
+              style={{ ...iconBtnStyle, padding: 0 }}
+              title="Reply"
+              onClick={onReply}
+            >
+              <Reply size={18} {...iconProps} />
+            </button>
+          </>
+        )}
         <button
           ref={moreBtnRef}
           className="relay-menu-row"
@@ -188,30 +199,41 @@ export default function MessageActionBar({
                 <Copy size={17} {...iconProps} /> Copy
               </button>
             )}
-            <button className="relay-menu-row" style={{ color: 'var(--text)' }} onClick={() => { onForward?.(); onDropdownOpenChange?.(false) }}>
-              <Forward size={17} {...iconProps} /> Forward
-            </button>
-            <button className="relay-menu-row" style={{ color: 'var(--text)' }} onClick={() => { onToggleStar?.(); onDropdownOpenChange?.(false) }}>
-              {isStarred ? <StarOff size={17} {...iconProps} /> : <Star size={17} {...iconProps} />}
-              {isStarred ? 'Unstar' : 'Star'}
-            </button>
-            <button className="relay-menu-row" style={{ color: 'var(--text)' }} onClick={() => { onTogglePin?.(); onDropdownOpenChange?.(false) }}>
-              {isPinned ? <PinOff size={17} {...iconProps} /> : <Pin size={17} {...iconProps} />}
-              {isPinned ? 'Unpin' : 'Pin'}
-            </button>
-            {canEdit && (
+            {!isPending && (
+              <>
+                <button className="relay-menu-row" style={{ color: 'var(--text)' }} onClick={() => { onForward?.(); onDropdownOpenChange?.(false) }}>
+                  <Forward size={17} {...iconProps} /> Forward
+                </button>
+                <button className="relay-menu-row" style={{ color: 'var(--text)' }} onClick={() => { onToggleStar?.(); onDropdownOpenChange?.(false) }}>
+                  {isStarred ? <StarOff size={17} {...iconProps} /> : <Star size={17} {...iconProps} />}
+                  {isStarred ? 'Unstar' : 'Star'}
+                </button>
+                <button className="relay-menu-row" style={{ color: 'var(--text)' }} onClick={() => { onTogglePin?.(); onDropdownOpenChange?.(false) }}>
+                  {isPinned ? <PinOff size={17} {...iconProps} /> : <Pin size={17} {...iconProps} />}
+                  {isPinned ? 'Unpin' : 'Pin'}
+                </button>
+              </>
+            )}
+            {canEdit && !isPending && (
               <button className="relay-menu-row" style={{ color: 'var(--text)' }} onClick={() => { onEdit?.(); onDropdownOpenChange?.(false) }}>
                 <Pencil size={17} {...iconProps} /> Edit
               </button>
             )}
-            {isOwn && (
+            {isOwn && !isPending && (
               <button className="relay-menu-row" style={{ color: 'var(--error)' }} onClick={() => { onDelete?.(); onDropdownOpenChange?.(false) }}>
                 <Trash2 size={17} {...iconProps} /> Delete
               </button>
             )}
-            <button className="relay-menu-row" style={{ color: 'var(--text)' }} onClick={() => { onSelect?.(); onDropdownOpenChange?.(false) }}>
-              <CheckSquare size={17} {...iconProps} /> Select
-            </button>
+            {!isPending && (
+              <button className="relay-menu-row" style={{ color: 'var(--text)' }} onClick={() => { onSelect?.(); onDropdownOpenChange?.(false) }}>
+                <CheckSquare size={17} {...iconProps} /> Select
+              </button>
+            )}
+            {isPending && (
+              <p style={{ padding: '10px 12px', fontSize: '12px', color: 'var(--text-tertiary)', lineHeight: 1.4 }}>
+                {message._status === 'failed' ? 'Tap the message to retry.' : 'Still sending…'}
+              </p>
+            )}
           </div>
         </>,
         document.body

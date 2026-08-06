@@ -37,9 +37,15 @@ export default function MessageActionSheet({
 
   const canEdit = isOwn && message.type === 'text' && (Date.now() - new Date(message.created_at).getTime()) < EDIT_WINDOW_MS
 
+  // Not yet accepted by the server, so it only exists client-side under a
+  // temp id — every action that names it to the server would reference a
+  // row that doesn't exist. Copy works off local text, so it survives.
+  const isPending = message._status === 'sending' || message._status === 'failed'
+
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose}>
       <div style={{ fontFamily: "'Inter', -apple-system, sans-serif" }}>
+        {!isPending && (
         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 16px 12px', borderBottom: '1px solid var(--border-light)' }}>
           {(showMoreEmojis ? [...QUICK_EMOJIS, ...MORE_EMOJIS] : QUICK_EMOJIS).map(emoji => (
             <button
@@ -80,43 +86,59 @@ export default function MessageActionSheet({
             </button>
           )}
         </div>
+        )}
 
         <div style={{ padding: '8px' }}>
+          {isPending && (
+            <p style={{ padding: '12px', fontSize: '13px', color: 'var(--text-tertiary)', lineHeight: 1.4 }}>
+              {message._status === 'failed'
+                ? 'This message hasn\'t sent yet. Close this and tap the message to retry.'
+                : 'This message is still sending. Other actions become available once it\'s delivered.'}
+            </p>
+          )}
+          {!isPending && (
           <button className="relay-menu-row" style={{ padding: '14px 12px', fontSize: '15px', color: 'var(--text)' }} onClick={() => { onReply?.(); onClose?.() }}>
             <Reply size={17} {...iconProps} /> Reply
           </button>
+          )}
           {message.type === 'text' && (
             <button className="relay-menu-row" style={{ padding: '14px 12px', fontSize: '15px', color: 'var(--text)' }} onClick={() => { onCopy?.(); onClose?.() }}>
               <Copy size={17} {...iconProps} /> Copy
             </button>
           )}
-          <button className="relay-menu-row" style={{ padding: '14px 12px', fontSize: '15px', color: 'var(--text)' }} onClick={() => { onForward?.(); onClose?.() }}>
-            <Forward size={17} {...iconProps} /> Forward
-          </button>
-          {/* Starring is private to this user, unlike pinning which is
-              shared with the whole conversation — they sit next to each
-              other deliberately so the distinction is easy to learn. */}
-          <button className="relay-menu-row" style={{ padding: '14px 12px', fontSize: '15px', color: 'var(--text)' }} onClick={() => { onToggleStar?.(); onClose?.() }}>
-            {isStarred ? <StarOff size={17} {...iconProps} /> : <Star size={17} {...iconProps} />}
-            {isStarred ? 'Unstar' : 'Star'}
-          </button>
-          <button className="relay-menu-row" style={{ padding: '14px 12px', fontSize: '15px', color: 'var(--text)' }} onClick={() => { onTogglePin?.(); onClose?.() }}>
-            {isPinned ? <PinOff size={17} {...iconProps} /> : <Pin size={17} {...iconProps} />}
-            {isPinned ? 'Unpin' : 'Pin'}
-          </button>
-          {canEdit && (
+          {!isPending && (
+            <>
+              <button className="relay-menu-row" style={{ padding: '14px 12px', fontSize: '15px', color: 'var(--text)' }} onClick={() => { onForward?.(); onClose?.() }}>
+                <Forward size={17} {...iconProps} /> Forward
+              </button>
+              {/* Starring is private to this user, unlike pinning which is
+                  shared with the whole conversation — they sit next to each
+                  other deliberately so the distinction is easy to learn. */}
+              <button className="relay-menu-row" style={{ padding: '14px 12px', fontSize: '15px', color: 'var(--text)' }} onClick={() => { onToggleStar?.(); onClose?.() }}>
+                {isStarred ? <StarOff size={17} {...iconProps} /> : <Star size={17} {...iconProps} />}
+                {isStarred ? 'Unstar' : 'Star'}
+              </button>
+              <button className="relay-menu-row" style={{ padding: '14px 12px', fontSize: '15px', color: 'var(--text)' }} onClick={() => { onTogglePin?.(); onClose?.() }}>
+                {isPinned ? <PinOff size={17} {...iconProps} /> : <Pin size={17} {...iconProps} />}
+                {isPinned ? 'Unpin' : 'Pin'}
+              </button>
+            </>
+          )}
+          {canEdit && !isPending && (
             <button className="relay-menu-row" style={{ padding: '14px 12px', fontSize: '15px', color: 'var(--text)' }} onClick={() => { onEdit?.(); onClose?.() }}>
               <Pencil size={17} {...iconProps} /> Edit
             </button>
           )}
-          {isOwn && (
+          {isOwn && !isPending && (
             <button className="relay-menu-row" style={{ padding: '14px 12px', fontSize: '15px', color: 'var(--error)' }} onClick={() => { onDelete?.(); onClose?.() }}>
               <Trash2 size={17} {...iconProps} /> Delete
             </button>
           )}
-          <button className="relay-menu-row" style={{ padding: '14px 12px', fontSize: '15px', color: 'var(--text)' }} onClick={() => { onSelect?.(); onClose?.() }}>
-            <CheckSquare size={17} {...iconProps} /> Select messages
-          </button>
+          {!isPending && (
+            <button className="relay-menu-row" style={{ padding: '14px 12px', fontSize: '15px', color: 'var(--text)' }} onClick={() => { onSelect?.(); onClose?.() }}>
+              <CheckSquare size={17} {...iconProps} /> Select messages
+            </button>
+          )}
           <div style={{ borderTop: '1px solid var(--border-light)', margin: '4px 0' }} />
           <button className="relay-menu-row" style={{ padding: '14px 12px', fontSize: '15px', color: 'var(--text-tertiary)' }} onClick={onClose}>Cancel</button>
         </div>

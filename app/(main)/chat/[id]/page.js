@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import {
   ChevronLeft, Pin, X, ArrowDown, Paperclip, Camera, Mic, Send,
   Trash2, Forward, Copy, FileText, Reply, Image as ImageIcon,
-  Clock, Check, CheckCheck, AlertCircle,
+  Clock, Check, CheckCheck, AlertCircle, Star,
 } from 'lucide-react'
 import Avatar from '@/components/shared/Avatar'
 import EllipsisDoodle from '@/components/shared/icons/EllipsisDoodle'
@@ -1245,16 +1245,35 @@ export default function ConversationPage() {
     }
   }
 
+  // Optimistic with rollback, same as starring below. Pinning is slower
+  // than it looks (it also posts a system message), and previously nothing
+  // moved until the whole round-trip finished — so a tap read as ignored.
+  // The old version also flipped the icon even when the server had
+  // rejected the pin, leaving the UI asserting something untrue.
   const handleTogglePin = async (messageId) => {
-    const result = await togglePin(id, messageId)
-    if (result.error) showError(result.error)
-    else if (showPinnedPanel) handleLoadPinned()
-    setPinnedMessageIds(prev => {
+    const flip = () => setPinnedMessageIds(prev => {
       const next = new Set(prev)
       if (next.has(messageId)) next.delete(messageId)
       else next.add(messageId)
       return next
     })
+
+    flip()
+    const result = await togglePin(id, messageId)
+
+    if (result?.error) {
+      flip()
+      showError(result.error)
+      return
+    }
+
+    setPinnedMessageIds(prev => {
+      const next = new Set(prev)
+      if (result.action === 'pinned') next.add(messageId)
+      else next.delete(messageId)
+      return next
+    })
+    if (showPinnedPanel) handleLoadPinned()
   }
 
   // Optimistic, then reconciled against what the server actually did —
@@ -1320,6 +1339,12 @@ export default function ConversationPage() {
   }
 
   const handleToggleSelectMessage = (msgId) => {
+    // Same reason the action menus hide their entries for these: an
+    // unsent message has only a temp id, so letting it into a selection
+    // would hand that id to bulk forward/delete as if it were real.
+    const target = messages.find(m => m.id === msgId)
+    if (target?._status === 'sending' || target?._status === 'failed') return
+
     setSelectedMsgIds(prev => {
       const next = new Set(prev)
       if (next.has(msgId)) next.delete(msgId)
@@ -2129,6 +2154,20 @@ export default function ConversationPage() {
                         <span style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '10px', color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
                           <Forward size={10} {...iconProps} /> forwarded
                         </span>
+                      )}
+                      {/* Filled accent star, no label — starring is private,
+                          so this only ever appears for the person who
+                          starred it and needs to read as a personal
+                          bookmark rather than shared state like 'pinned'. */}
+                      {starredMessageIds.has(msg.id) && !isDeleted && (
+                        <Star
+                          size={11}
+                          strokeWidth={2}
+                          fill="var(--accent)"
+                          color="var(--accent)"
+                          aria-label="Starred"
+                          style={{ flexShrink: 0 }}
+                        />
                       )}
                       {msg.is_edited && (
                         <span style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>edited</span>
