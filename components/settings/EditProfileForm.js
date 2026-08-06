@@ -499,19 +499,17 @@ export default function EditProfileForm({ initialProfile }) {
           )}
         </div>
 
-        {/* Email — read-only. Changing it needs its own verification flow
-            (Supabase requires confirming the new address before it takes
-            effect) which isn't built yet; this at least surfaces which
-            account is actually linked, which wasn't visible anywhere
-            before — easy to lose track of for a Google sign-in in
-            particular, where the email is never manually typed. */}
+        {/* Email is shown here but changed under Settings > Security, next
+            to the password — both are credentials and both need the same
+            re-authentication, so they belong together rather than split
+            between a profile form and a security screen. */}
         <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-light)' }}>
           <h2 style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text)', marginBottom: '4px' }}>Email</h2>
           <p style={{ fontSize: '13px', color: 'var(--text)', marginBottom: '4px' }}>
             {profile?.email}
           </p>
           <p style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>
-            Contact support to change the email on your account.
+            Change this under Settings → Security → Password &amp; email.
           </p>
         </div>
 

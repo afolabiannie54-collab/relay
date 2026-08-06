@@ -16,9 +16,22 @@ export async function GET(request) {
       if (user) {
         const { data: profile } = await supabase
           .from('users')
-          .select('username')
+          .select('username, email')
           .eq('id', user.id)
           .maybeSingle()
+
+        // An email change only actually takes effect when its confirmation
+        // link is followed, which lands here — auth.users has the new
+        // address by this point but public.users still holds the old one,
+        // and nothing else in the app would ever reconcile them. Comparing
+        // on every callback (rather than only on an email-change link)
+        // keeps them in step no matter which flow brought the user through.
+        if (profile && user.email && profile.email !== user.email) {
+          await supabase
+            .from('users')
+            .update({ email: user.email })
+            .eq('id', user.id)
+        }
 
         if (!profile?.username) {
           return NextResponse.redirect(`${origin}/setup-username`)

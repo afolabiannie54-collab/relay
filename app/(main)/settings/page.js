@@ -8,6 +8,7 @@ import Avatar from '@/components/shared/Avatar'
 import SignOutRow from '@/components/settings/SignOutRow'
 import SignOutAllRow from '@/components/settings/SignOutAllRow'
 import ThemeToggle from '@/components/settings/ThemeToggle'
+import AccountSecuritySheet from '@/components/settings/AccountSecuritySheet'
 import BlockedUsersSheet from '@/components/settings/BlockedUsersSheet'
 import ActiveSessionsSheet from '@/components/settings/ActiveSessionsSheet'
 import NotificationSettingsSheet from '@/components/settings/NotificationSettingsSheet'
@@ -122,6 +123,7 @@ export default function SettingsPage() {
           {
             title: 'Security',
             items: [
+              { label: 'Password & email', action: 'openSheet', sheet: 'account' },
               { label: 'Active sessions', action: 'openSheet', sheet: 'sessions' },
               { label: 'Sign out', action: 'signOut' },
               { label: 'Sign out all devices', action: 'signOutAll' },
@@ -203,6 +205,7 @@ export default function SettingsPage() {
         ))}
       </div>
 
+      <AccountSecuritySheet isOpen={activeSheet === 'account'} onClose={() => setActiveSheet(null)} />
       <BlockedUsersSheet isOpen={activeSheet === 'blocked'} onClose={() => setActiveSheet(null)} />
       <ActiveSessionsSheet isOpen={activeSheet === 'sessions'} onClose={() => setActiveSheet(null)} />
       <NotificationSettingsSheet isOpen={activeSheet === 'notifications'} onClose={() => setActiveSheet(null)} />
