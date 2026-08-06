@@ -36,6 +36,10 @@ export default function ChatList({ onSelectConversation }) {
   const [loadError, setLoadError] = useState(false)
   const [retrying, setRetrying] = useState(false)
   const [filterQuery, setFilterQuery] = useState('')
+  // 'all' | 'unread' | 'groups'. Intentionally not persisted: a filter is
+  // a transient way to find something now, and coming back later to a list
+  // that's silently hiding conversations reads as messages having vanished.
+  const [activeFilter, setActiveFilter] = useState('all')
   const [actionSheetConv, setActionSheetConv] = useState(null)
   const [contextMenu, setContextMenu] = useState(null)
   const longPressTimerRef = useRef(null)
@@ -533,10 +537,17 @@ export default function ChatList({ onSelectConversation }) {
 
   const getUnreadCount = (conv) => conv.unread_count || 0
 
+  // Purely a view over data already in memory — no refetch on tab change,
+  // so switching is instant and works offline against whatever's cached.
   const filteredConversations = useMemo(() => {
     const q = filterQuery.trim().toLowerCase()
-    if (!q) return conversations
+
     return conversations.filter(conv => {
+      if (activeFilter === 'unread' && (conv.unread_count || 0) === 0) return false
+      if (activeFilter === 'groups' && conv.type !== 'group') return false
+
+      if (!q) return true
+
       const isGroup = conv.type === 'group'
       const otherUser = conv.other_participants?.[0]
       const name = (isGroup ? conv.group_info?.name : otherUser?.display_name) || ''
@@ -546,7 +557,12 @@ export default function ChatList({ onSelectConversation }) {
         lastMessageContent.toLowerCase().includes(q)
       )
     })
-  }, [conversations, filterQuery])
+  }, [conversations, filterQuery, activeFilter])
+
+  const unreadConversationCount = useMemo(
+    () => conversations.filter(c => (c.unread_count || 0) > 0).length,
+    [conversations]
+  )
 
   return (
     <div style={{
@@ -704,6 +720,35 @@ export default function ChatList({ onSelectConversation }) {
         </div>
       )}
 
+      {/* Filter pills — same treatment as the Requests tabs, so the two
+          screens read as the same control rather than two inventions.
+          Hidden during bulk-select for the same reason the search bar is:
+          that mode replaces browsing with acting on a selection, and a
+          filter changing what's on screen mid-selection would be able to
+          hide rows that are still selected. */}
+      {!bulkSelectMode && !loading && !loadError && (
+        <div style={{ display: 'flex', gap: '8px', padding: '10px 24px', borderBottom: '1px solid var(--border-light)', background: 'var(--surface)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          {[
+            { key: 'all', label: 'All' },
+            // Only the unread pill carries a count. "All" would just
+            // restate the list length, and a zero next to Groups would
+            // read as an error rather than information.
+            { key: 'unread', label: 'Unread', count: unreadConversationCount },
+            { key: 'groups', label: 'Groups' },
+          ].map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveFilter(tab.key)}
+              aria-pressed={activeFilter === tab.key}
+              className={activeFilter === tab.key ? 'relay-btn relay-btn--filled' : 'relay-btn'}
+              style={{ borderRadius: 'var(--radius-pill)', padding: '7px 15px', fontSize: '13px', flexShrink: 0 }}
+            >
+              {tab.label}{tab.count > 0 ? ` (${tab.count})` : ''}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Conversation list */}
       <div style={{
         flex: 1,
@@ -759,7 +804,9 @@ export default function ChatList({ onSelectConversation }) {
           </div>
         ) : (
         <>
-        {!bulkSelectMode && (
+        {/* Shelves, not conversations — they'd be noise sitting on top of a
+            list the user has deliberately narrowed to unread or groups. */}
+        {!bulkSelectMode && activeFilter === 'all' && (
           <div
             onClick={() => router.push('/requests')}
             style={{
@@ -849,8 +896,28 @@ export default function ChatList({ onSelectConversation }) {
             </button>
           </div>
         ) : filteredConversations.length === 0 ? (
+          // Names whichever thing is actually hiding the rows. Blaming the
+          // search box when an empty result is really the filter's doing
+          // sends people to clear a field that isn't the problem.
           <div style={{ padding: '40px 20px', textAlign: 'center' }}>
-            <p style={{ fontSize: '14px', color: 'var(--text-tertiary)' }}>No conversations match &quot;{filterQuery}&quot;</p>
+            <p style={{ fontSize: '14px', color: 'var(--text-tertiary)', marginBottom: activeFilter === 'all' ? 0 : '14px' }}>
+              {filterQuery.trim()
+                ? <>No conversations match &quot;{filterQuery}&quot;</>
+                : activeFilter === 'unread'
+                  ? 'No unread chats. You\'re all caught up.'
+                  : activeFilter === 'groups'
+                    ? 'You\'re not in any groups yet.'
+                    : 'No conversations'}
+            </p>
+            {activeFilter !== 'all' && (
+              <button
+                onClick={() => setActiveFilter('all')}
+                className="relay-btn"
+                style={{ borderRadius: 'var(--radius-pill)', padding: '7px 15px', fontSize: '13px' }}
+              >
+                Show all chats
+              </button>
+            )}
           </div>
         ) : (
           filteredConversations.map(conv => {
@@ -999,10 +1066,11 @@ export default function ChatList({ onSelectConversation }) {
           })
         )}
 
-        {/* Always visible, unlike the conditional Message Requests row —
-            hidden chats aren't a transient state to clear, they're a
-            permanent shelf users should always be able to find. */}
-        {!bulkSelectMode && (
+        {/* A permanent shelf users should always be able to find, so it
+            stays regardless of unread state — but still only under "All",
+            since it isn't a conversation and a narrowed list shouldn't
+            carry navigation rows that ignore the narrowing. */}
+        {!bulkSelectMode && activeFilter === 'all' && (
           <div
             onClick={() => router.push('/chat/hidden')}
             style={{
