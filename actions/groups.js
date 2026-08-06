@@ -149,10 +149,14 @@ export async function uploadGroupAvatar(conversationId, formData) {
     .eq('conversation_id', conversationId)
     .single()
 
-  await supabase
+  // The upload can succeed while this row update fails, which would report
+  // a new avatar the group never actually got.
+  const { error: avatarError } = await supabase
     .from('groups')
     .update({ avatar_url: publicUrl, updated_at: new Date().toISOString() })
     .eq('id', group.id)
+
+  if (avatarError) return { error: avatarError.message }
 
   return { success: true, url: publicUrl }
 }
@@ -264,9 +268,11 @@ export async function addMember(conversationId, userId) {
     return { success: true, invited: true }
   }
 
-  await supabase
+  const { error: addError } = await supabase
     .from('conversation_participants')
     .insert({ conversation_id: conversationId, user_id: userId, role: 'member' })
+
+  if (addError) return { error: addError.message }
 
   await supabase.from('messages').insert({
     conversation_id: conversationId,
@@ -375,11 +381,13 @@ export async function leaveGroup(conversationId) {
     type: 'system',
   })
 
-  await supabase
+  const { error: leaveError } = await supabase
     .from('conversation_participants')
     .delete()
     .eq('conversation_id', conversationId)
     .eq('user_id', user.id)
+
+  if (leaveError) return { error: leaveError.message }
 
   return { success: true }
 }
@@ -486,11 +494,13 @@ export async function promoteToAdmin(conversationId, userId) {
     return { error: 'Only the owner can promote members' }
   }
 
-  await supabase
+  const { error: promoteError } = await supabase
     .from('conversation_participants')
     .update({ role: 'admin' })
     .eq('conversation_id', conversationId)
     .eq('user_id', userId)
+
+  if (promoteError) return { error: promoteError.message }
 
   const { data: promotedName } = await supabase
     .from('users')
@@ -526,11 +536,13 @@ export async function demoteAdmin(conversationId, userId) {
     return { error: 'Only the owner can demote admins' }
   }
 
-  await supabase
+  const { error: demoteError } = await supabase
     .from('conversation_participants')
     .update({ role: 'member' })
     .eq('conversation_id', conversationId)
     .eq('user_id', userId)
+
+  if (demoteError) return { error: demoteError.message }
 
   return { success: true }
 }
@@ -645,7 +657,7 @@ export async function acceptGroupInvite(inviteId) {
 
   if (memberCount?.length >= 500) return { error: 'Group is full' }
 
-  await supabase
+  const { error: joinError } = await supabase
     .from('conversation_participants')
     .insert({
       conversation_id: invite.groups.conversation_id,
@@ -653,10 +665,17 @@ export async function acceptGroupInvite(inviteId) {
       role: 'member',
     })
 
-  await supabase
+  if (joinError) return { error: joinError.message }
+
+  // Only marked accepted once the join above actually succeeded —
+  // otherwise a failed join would still consume the invite, leaving the
+  // user neither in the group nor able to retry.
+  const { error: inviteError } = await supabase
     .from('group_invites')
     .update({ status: 'accepted', updated_at: new Date().toISOString() })
     .eq('id', inviteId)
+
+  if (inviteError) return { error: inviteError.message }
 
   const { data: profile } = await supabase
     .from('users')

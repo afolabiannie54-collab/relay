@@ -118,11 +118,15 @@ export async function acceptMessageRequest(requestId) {
 
   if (error || !request) return { error: 'Request not found' }
 
-  // Update request status
-  await supabase
+  // Update request status. Primary write: if this fails the request is
+  // still pending, so reporting acceptance would strand the user in a
+  // conversation they can't actually send into.
+  const { error: statusError } = await supabase
     .from('message_requests')
     .update({ status: 'accepted', updated_at: new Date().toISOString() })
     .eq('id', requestId)
+
+  if (statusError) return { error: statusError.message }
 
   // Notify the original sender that their request was accepted
   const { data: accepterProfile } = await supabase
@@ -709,11 +713,13 @@ export async function markConversationUnread(conversationId) {
     ? new Date(new Date(lastMessage.created_at).getTime() - 1000).toISOString()
     : null
 
-  await supabase
+  const { error } = await supabase
     .from('conversation_participants')
     .update({ last_read_at: beforeLastMessage })
     .eq('conversation_id', conversationId)
     .eq('user_id', user.id)
+
+  if (error) return { error: error.message }
 
   return { success: true }
 }
@@ -906,8 +912,11 @@ export async function uploadMedia(conversationId, formData) {
 
   if (msgError) return { error: msgError.message }
 
-  // Create media record
-  await supabase.from('media').insert({
+  // Create media record. The message row is already inserted at this
+  // point, so losing this one silently produces an image/audio/file
+  // message with nothing attached — a permanently broken bubble rather
+  // than a failed upload the user could retry.
+  const { error: mediaError } = await supabase.from('media').insert({
     message_id: message.id,
     url: publicUrl,
     type: messageType,
@@ -915,6 +924,8 @@ export async function uploadMedia(conversationId, formData) {
     filename: file.name,
     size: file.size,
   })
+
+  if (mediaError) return { error: mediaError.message }
 
   return { success: true, data: message }
 }
@@ -948,22 +959,25 @@ export async function toggleReaction(messageId, emoji) {
 
   if (existing) {
     if (existing.emoji === emoji) {
-      await supabase
+      const { error } = await supabase
         .from('message_reactions')
         .delete()
         .eq('id', existing.id)
+      if (error) return { error: error.message }
       return { success: true, action: 'removed' }
     } else {
-      await supabase
+      const { error } = await supabase
         .from('message_reactions')
         .update({ emoji })
         .eq('id', existing.id)
+      if (error) return { error: error.message }
       return { success: true, action: 'changed' }
     }
   } else {
-    await supabase
+    const { error } = await supabase
       .from('message_reactions')
       .insert({ message_id: messageId, user_id: user.id, emoji })
+    if (error) return { error: error.message }
     return { success: true, action: 'added' }
   }
 }
@@ -1013,7 +1027,8 @@ export async function togglePin(conversationId, messageId) {
     .maybeSingle()
 
   if (existing) {
-    await supabase.from('pinned_messages').delete().eq('id', existing.id)
+    const { error } = await supabase.from('pinned_messages').delete().eq('id', existing.id)
+    if (error) return { error: error.message }
     return { success: true, action: 'unpinned' }
   }
 
@@ -1026,11 +1041,13 @@ export async function togglePin(conversationId, messageId) {
     return { error: 'Maximum 5 pinned messages per conversation' }
   }
 
-  await supabase.from('pinned_messages').insert({
+  const { error: pinError } = await supabase.from('pinned_messages').insert({
     conversation_id: conversationId,
     message_id: messageId,
     pinned_by: user.id,
   })
+
+  if (pinError) return { error: pinError.message }
 
   const { data: profile } = await supabase
     .from('users')

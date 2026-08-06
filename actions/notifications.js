@@ -44,11 +44,13 @@ export async function markNotificationRead(notificationId) {
 
   if (!user) return { error: 'Not authenticated' }
 
-  await supabase
+  const { error } = await supabase
     .from('notifications')
     .update({ read: true })
     .eq('id', notificationId)
     .eq('user_id', user.id)
+
+  if (error) return { error: error.message }
 
   return { success: true }
 }
@@ -59,11 +61,13 @@ export async function markAllNotificationsRead() {
 
   if (!user) return { error: 'Not authenticated' }
 
-  await supabase
+  const { error } = await supabase
     .from('notifications')
     .update({ read: true })
     .eq('user_id', user.id)
     .eq('read', false)
+
+  if (error) return { error: error.message }
 
   return { success: true }
 }
@@ -76,7 +80,10 @@ export async function subscribeToPush(subscription) {
 
   const { endpoint, keys } = subscription
 
-  await supabase
+  // Worth checking especially here: a swallowed failure meant "Enable on
+  // this device" reported success while no subscription row existed, so
+  // the toggle looked on and no push ever arrived.
+  const { error } = await supabase
     .from('push_subscriptions')
     .upsert({
       user_id: user.id,
@@ -84,6 +91,8 @@ export async function subscribeToPush(subscription) {
       p256dh: keys.p256dh,
       auth: keys.auth,
     }, { onConflict: 'endpoint' })
+
+  if (error) return { error: error.message }
 
   return { success: true }
 }
@@ -94,11 +103,13 @@ export async function unsubscribeFromPush(endpoint) {
 
   if (!user) return { error: 'Not authenticated' }
 
-  await supabase
+  const { error } = await supabase
     .from('push_subscriptions')
     .delete()
     .eq('user_id', user.id)
     .eq('endpoint', endpoint)
+
+  if (error) return { error: error.message }
 
   return { success: true }
 }
