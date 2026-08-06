@@ -596,11 +596,17 @@ export async function markConversationRead(conversationId) {
 
   if (!user) return { error: 'Not authenticated' }
 
-  await supabase
+  // The result was previously discarded and { success: true } returned
+  // unconditionally, so an RLS rejection or a network failure reported
+  // itself as a success and the caller happily refreshed a list that had
+  // not actually changed — a mark-as-read that silently did nothing.
+  const { error } = await supabase
     .from('conversation_participants')
     .update({ last_read_at: new Date().toISOString() })
     .eq('conversation_id', conversationId)
     .eq('user_id', user.id)
+
+  if (error) return { error: error.message }
 
   return { success: true }
 }

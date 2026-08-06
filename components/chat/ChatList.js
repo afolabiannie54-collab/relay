@@ -54,6 +54,12 @@ export default function ChatList({ onSelectConversation }) {
   const [selectedConvIds, setSelectedConvIds] = useState(new Set())
   const [bulkConfirmAction, setBulkConfirmAction] = useState(null)
   const [bulkActing, setBulkActing] = useState(false)
+  const [bulkError, setBulkError] = useState(null)
+
+  const showBulkError = (msg) => {
+    setBulkError(msg)
+    setTimeout(() => setBulkError(null), 4000)
+  }
 
   // Tells app/(main)/layout.js to hide the bottom tab bar while this is
   // active — WhatsApp replaces its tab bar with the bulk-action bar
@@ -467,11 +473,44 @@ export default function ChatList({ onSelectConversation }) {
   }
 
   const handleBulkMarkRead = async () => {
+    const ids = [...selectedConvIds]
+    if (ids.length === 0) return
+
     setBulkActing(true)
-    await Promise.all([...selectedConvIds].map(id => markConversationRead(id)))
-    await refreshConversations()
+
+    // Clear the badges immediately. Previously this waited on N server
+    // round-trips plus a full list refetch before anything moved, so on a
+    // slow connection the action read as having done nothing at all.
+    setConversations(prev => {
+      const next = prev.map(c => ids.includes(c.conversation_id) ? { ...c, unread_count: 0 } : c)
+      cache.set('conversations', next, 10000)
+      return next
+    })
+
+    const results = await Promise.all(ids.map(id => markConversationRead(id)))
     setBulkActing(false)
+
+    const failed = results.filter(r => r?.error)
+    if (failed.length > 0) {
+      // Put the badges back rather than leaving the list asserting these
+      // were read when the server never recorded it.
+      await refreshConversations()
+      showBulkError(failed.length === ids.length
+        ? 'Couldn\'t mark these as read. Please try again.'
+        : `Marked ${ids.length - failed.length} of ${ids.length} as read — the rest failed.`)
+      handleExitBulkSelect()
+      return
+    }
+
+    // The bottom-nav Chats badge is driven by its own count query in the
+    // app layout, which has no idea this happened — without telling it,
+    // the tiles cleared but the nav badge kept the old number.
+    for (const id of ids) {
+      window.dispatchEvent(new CustomEvent('relay:conversation-read', { detail: { conversationId: id } }))
+    }
+
     handleExitBulkSelect()
+    refreshConversations()
   }
 
   const handleBulkHide = async () => {
@@ -746,6 +785,12 @@ export default function ChatList({ onSelectConversation }) {
               {tab.label}{tab.count > 0 ? ` (${tab.count})` : ''}
             </button>
           ))}
+        </div>
+      )}
+
+      {bulkError && (
+        <div style={{ padding: '10px 24px', background: 'var(--error-light)', borderBottom: '1px solid var(--border-light)', fontSize: '13px', color: 'var(--error)', fontWeight: '600', textAlign: 'center' }}>
+          {bulkError}
         </div>
       )}
 
