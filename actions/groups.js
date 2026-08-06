@@ -93,6 +93,8 @@ export async function updateGroupInfo(conversationId, formData) {
     .eq('conversation_id', conversationId)
     .single()
 
+  if (!group) return { error: 'Group not found' }
+
   const { error } = await supabase
     .from('groups')
     .update({
@@ -148,6 +150,8 @@ export async function uploadGroupAvatar(conversationId, formData) {
     .select('id')
     .eq('conversation_id', conversationId)
     .single()
+
+  if (!group) return { error: 'Group not found' }
 
   // The upload can succeed while this row update fails, which would report
   // a new avatar the group never actually got.
@@ -377,7 +381,7 @@ export async function leaveGroup(conversationId) {
     conversation_id: conversationId,
     sender_id: null,
     sender_name_snapshot: 'System',
-    content: `${profile.display_name} left the group`,
+    content: `${profile?.display_name || 'Someone'} left the group`,
     type: 'system',
   })
 
@@ -512,7 +516,7 @@ export async function promoteToAdmin(conversationId, userId) {
     conversation_id: conversationId,
     sender_id: null,
     sender_name_snapshot: 'System',
-    content: `${promotedName.display_name} is now an admin`,
+    content: `${promotedName?.display_name || 'A member'} is now an admin`,
     type: 'system',
   })
 
@@ -687,7 +691,7 @@ export async function acceptGroupInvite(inviteId) {
     conversation_id: invite.groups.conversation_id,
     sender_id: null,
     sender_name_snapshot: 'System',
-    content: `${profile.display_name} joined the group`,
+    content: `${profile?.display_name || 'Someone'} joined the group`,
     type: 'system',
   })
 

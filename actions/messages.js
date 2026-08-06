@@ -139,13 +139,13 @@ export async function acceptMessageRequest(requestId) {
     user_id: request.sender_id,
     type: 'message_request',
     reference_id: request.conversation_id,
-    title: `${accepterProfile.display_name} accepted your message request`,
+    title: `${accepterProfile?.display_name || 'Someone'} accepted your message request`,
     body: 'You can now chat freely.',
   })
 
   sendPushNotification(
     request.sender_id,
-    `${accepterProfile.display_name} accepted your message request`,
+    `${accepterProfile?.display_name || 'Someone'} accepted your message request`,
     'You can now chat freely.',
     `/chat/${request.conversation_id}`,
     request.conversation_id
@@ -439,6 +439,11 @@ export async function sendMessage(conversationId, content, replyToId = null) {
     .select('display_name')
     .eq('id', user.id)
     .single()
+
+  // sender_name_snapshot is required, so a failed profile read would have
+  // thrown on profile.display_name and surfaced as an opaque crash rather
+  // than a message that simply didn't send.
+  if (!profile) return { error: 'Could not load your profile. Please try again.' }
 
   const messageData = {
     conversation_id: conversationId,
@@ -879,6 +884,8 @@ export async function uploadMedia(conversationId, formData) {
     .eq('id', user.id)
     .single()
 
+  if (!profile) return { error: 'Could not load your profile. Please try again.' }
+
   // Upload to Supabase Storage
   const ext = file.name.split('.').pop()
   const path = `${conversationId}/${user.id}/${Date.now()}.${ext}`
@@ -1015,6 +1022,13 @@ export async function togglePin(conversationId, messageId) {
     .eq('id', conversationId)
     .single()
 
+  // Must fail closed. The check below only enforces admin/owner when
+  // conv.type is 'group', so a null conv reached via optional chaining
+  // would evaluate that condition to false and let any member pin in a
+  // group — the permission check would silently disappear rather than
+  // erroring. Bail instead.
+  if (!conv) return { error: 'Conversation not found' }
+
   if (conv.type === 'group' && !['admin', 'owner'].includes(participant.role)) {
     return { error: 'Only admins and owners can pin messages in groups' }
   }
@@ -1059,7 +1073,7 @@ export async function togglePin(conversationId, messageId) {
     conversation_id: conversationId,
     sender_id: null,
     sender_name_snapshot: 'System',
-    content: `${profile.display_name} pinned a message`,
+    content: `${profile?.display_name || 'Someone'} pinned a message`,
     type: 'system',
   })
 
