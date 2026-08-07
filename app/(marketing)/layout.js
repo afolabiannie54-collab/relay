@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import Logo from '@/components/marketing/Logo'
+import Logo, { LOGO_SIZES } from '@/components/marketing/Logo'
 import Footer from '@/components/marketing/Footer'
 
 // Marketing shell. Deliberately NOT the app shell: (main)/layout.js mounts
@@ -45,7 +45,7 @@ export default async function MarketingLayout({ children }) {
           {/* Mark only, no wordmark — Notion's treatment. The logo carries
               the identity on its own and the bar stays uncluttered. */}
           <Link href="/" aria-label="Relay home" style={{ textDecoration: 'none', flexShrink: 0 }}>
-            <Logo size={62} showWordmark={false} />
+            <Logo size={LOGO_SIZES.nav} showWordmark={false} />
           </Link>
 
           <nav className="marketing-nav-links" style={{ display: 'flex', alignItems: 'center', gap: '22px' }}>

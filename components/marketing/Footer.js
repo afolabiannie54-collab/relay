@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
-import Logo from '@/components/marketing/Logo'
+import Logo, { LOGO_SIZES } from '@/components/marketing/Logo'
 import NotionDoodle from '@/components/shared/illustrations/NotionDoodle'
 import { USERS, BOOKMARK, BELL, INBOX, LAPTOP, COMMENT_SLASH } from '@/lib/doodles'
 
@@ -92,7 +92,7 @@ export default function Footer({ signedIn }) {
           alignItems: 'start',
         }}>
           <div style={{ gridColumn: 'span 1' }}>
-            <Logo size={54} showWordmark={false} />
+            <Logo size={LOGO_SIZES.footer} showWordmark={false} />
             <h2 style={{
               fontSize: 'clamp(2rem, 4.4vw, 3.25rem)',
               fontWeight: '900',

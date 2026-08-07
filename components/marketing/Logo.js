@@ -1,3 +1,13 @@
+// ─────────────────────────────────────────────────────────────
+//  LOGO SIZES — change these numbers to resize the logo.
+//  Values are pixels. Every place the logo appears reads from
+//  here, so editing one number updates that spot everywhere.
+// ─────────────────────────────────────────────────────────────
+export const LOGO_SIZES = {
+  nav: 72,      // top navigation bar
+  footer: 132,  // footer, above the headline
+}
+
 // Uses the SVGs, not the PNGs. The mark is a detailed line drawing, so a
 // raster version resampled down to nav size loses the thin strokes to
 // antialiasing — it read as blurry no matter the source resolution. The
