@@ -30,7 +30,10 @@ export async function proxy(request) {
   const { data: { user } } = await supabase.auth.getUser()
 
   // Public routes — anyone can access
-  const publicRoutes = ['/', '/login', '/signup', '/verify', '/reset-password', '/setup-username']
+  // '/', '/privacy' and '/terms' are the marketing pages — they must stay
+  // reachable signed out, since that's who they exist for. A link to the
+  // privacy policy that bounces to a login screen is worse than no link.
+  const publicRoutes = ['/', '/privacy', '/terms', '/login', '/signup', '/verify', '/reset-password', '/setup-username']
   // API routes handle their own auth internally and must never be redirected to
   // an HTML login page — a redirect turns a JSON POST into a broken 307/405 loop,
   // which is exactly what was breaking server-to-server push notification calls.
