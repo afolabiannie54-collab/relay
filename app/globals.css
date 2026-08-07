@@ -546,3 +546,33 @@ a, button, input, textarea, select {
 @media (max-width: 720px) {
   .marketing-nav-links { display: none; }
 }
+
+/* Footer link: the arrow slides forward on hover instead of the label
+   changing colour — it matches the drawn, physical feel of the rest of the
+   page better than a tint, and gives the columns a bit of life. */
+.marketing-arrowlink {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: color 0.14s var(--ease-out);
+}
+.marketing-arrowlink svg {
+  flex-shrink: 0;
+  transition: transform 0.18s var(--ease-out);
+}
+.marketing-arrowlink:hover { color: var(--text); }
+.marketing-arrowlink:hover svg { transform: translateX(4px); }
+
+/* Doodle tiles sit on a lifted card; nudging one on hover makes the row
+   feel hand-placed rather than evenly stamped out. */
+.marketing-doodle-tile {
+  transition: transform 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
+}
+.marketing-doodle-tile:hover {
+  transform: translate(-3px, -3px) rotate(var(--tile-rot, 0deg)) !important;
+  box-shadow: var(--shadow-hard-lg);
+}
