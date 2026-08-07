@@ -478,7 +478,22 @@ export default function ChatList({ onSelectConversation }) {
       return next
     })
 
-    const results = await Promise.all(ids.map(id => markConversationRead(id)))
+    // allSettled + try/catch, not a bare Promise.all: a server action that
+    // THROWS (rather than returning { error }) would reject the whole
+    // batch, kill this handler before it could revert anything, and leave
+    // the badges optimistically cleared until the next refetch put them
+    // back — a silent failure that looks exactly like success followed by
+    // a mysterious revert on refresh.
+    let results
+    try {
+      const settled = await Promise.allSettled(ids.map(id => markConversationRead(id)))
+      results = settled.map(s => s.status === 'fulfilled'
+        ? s.value
+        : { error: s.reason?.message || 'Request failed' })
+    } catch {
+      results = ids.map(() => ({ error: 'Request failed' }))
+    }
+
     const failed = results.filter(r => r?.error)
 
     if (failed.length > 0) {
