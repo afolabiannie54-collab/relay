@@ -1,6 +1,8 @@
 'use server'
 
+import { after } from 'next/server'
 import { sendPushNotification } from '@/lib/utils/sendPushNotification'
+import { transcribeAudio } from '@/lib/utils/transcribeAudio'
 import { createClient } from '@/lib/supabase/server'
 import { sanitizeText } from '@/lib/utils/sanitize'
 
@@ -377,7 +379,7 @@ export async function getMessages(conversationId, page = 0) {
       is_forwarded,
       edited_at,
       created_at,
-      media(url, filename, size, mime_type),
+      media(id, url, filename, size, mime_type, transcript, transcript_status),
       reply:reply_to_id(id, content, sender_id, sender_name_snapshot, type)
     `)
     .eq('conversation_id', conversationId)
@@ -396,10 +398,13 @@ export async function getMessages(conversationId, page = 0) {
     const mediaRow = Array.isArray(media) ? media[0] : media
     return {
       ...msg,
+      media_id: mediaRow?.id || null,
       media_url: mediaRow?.url || null,
       media_filename: mediaRow?.filename || null,
       media_size: mediaRow?.size || null,
       media_mime_type: mediaRow?.mime_type || null,
+      media_transcript: mediaRow?.transcript || null,
+      media_transcript_status: mediaRow?.transcript_status || 'none',
       reply: reply || null,
     }
   })
@@ -923,16 +928,45 @@ export async function uploadMedia(conversationId, formData) {
   // point, so losing this one silently produces an image/audio/file
   // message with nothing attached — a permanently broken bubble rather
   // than a failed upload the user could retry.
-  const { error: mediaError } = await supabase.from('media').insert({
+  // Voice notes are transcribed so they can be read rather than played —
+  // the sender decides, since it's their voice being sent to a third
+  // party. Marked 'pending' up front so the recipient sees "Transcribing…"
+  // instead of nothing while it runs.
+  let transcriptStatus = 'none'
+  if (messageType === 'audio') {
+    const { data: senderPrivacy } = await supabase
+      .from('privacy_settings')
+      .select('transcribe_voice_notes')
+      .eq('user_id', user.id)
+      .maybeSingle()
+
+    // No row means the user has never opened privacy settings; the column
+    // default is true, so match it rather than treating absence as off.
+    transcriptStatus = (senderPrivacy?.transcribe_voice_notes ?? true) ? 'pending' : 'skipped'
+  }
+
+  const { data: mediaRow, error: mediaError } = await supabase.from('media').insert({
     message_id: message.id,
     url: publicUrl,
     type: messageType,
     mime_type: file.type,
     filename: file.name,
     size: file.size,
-  })
+    transcript_status: transcriptStatus,
+  }).select('id').single()
 
   if (mediaError) return { error: mediaError.message }
+
+  // after() rather than a bare floating promise: this runs on serverless,
+  // where anything still pending when the response is returned gets killed
+  // mid-flight. after() defers it until the response has been sent and
+  // keeps the invocation alive for it, so the message still appears
+  // instantly but the transcription actually finishes.
+  if (transcriptStatus === 'pending' && mediaRow) {
+    after(async () => {
+      await transcribeAudio(mediaRow.id, publicUrl, file.type)
+    })
+  }
 
   return { success: true, data: message }
 }

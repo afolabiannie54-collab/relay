@@ -233,6 +233,20 @@ export default function PrivacySettingsForm({ initialSettings }) {
             />
           </SettingRow>
 
+          {/* Named plainly as your own voice leaving the app, because that
+              is what it is — the setting belongs to the sender even though
+              the transcript is for the recipient's benefit. */}
+          <SettingRow
+            label="Transcribe my voice notes"
+            description="Voice notes you send are transcribed by OpenAI so people can read them"
+          >
+            <Toggle
+              value={settings?.transcribe_voice_notes}
+              onChange={() => handleToggle('transcribe_voice_notes')}
+              saving={savingKey === 'transcribe_voice_notes'}
+            />
+          </SettingRow>
+
           <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
             <div>
               <p style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text)', marginBottom: '2px' }}>Discoverable</p>

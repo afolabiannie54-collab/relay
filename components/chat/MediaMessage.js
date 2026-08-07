@@ -6,6 +6,71 @@ import AudioPlayer from '@/components/chat/AudioPlayer'
 
 const iconProps = { strokeWidth: 2, strokeLinecap: 'square', strokeLinejoin: 'miter' }
 
+// Collapsed by default: a voice note is still primarily something you
+// play, and expanding every transcript inline would turn a compact bubble
+// into a wall of text. 'skipped' (sender turned transcription off) renders
+// nothing at all rather than advertising a setting that isn't the
+// recipient's to change.
+function AudioTranscript({ status, transcript, isOwn }) {
+  const [open, setOpen] = useState(false)
+
+  if (status === 'none' || status === 'skipped') return null
+
+  const subtle = isOwn ? 'var(--text-tertiary)' : 'var(--text-secondary)'
+
+  if (status === 'pending') {
+    return (
+      <p style={{ marginTop: '8px', fontSize: '11px', color: subtle, fontStyle: 'italic' }}>
+        Transcribing…
+      </p>
+    )
+  }
+
+  if (status === 'failed' || !transcript) {
+    return (
+      <p style={{ marginTop: '8px', fontSize: '11px', color: subtle }}>
+        Transcript unavailable
+      </p>
+    )
+  }
+
+  return (
+    <div style={{ marginTop: '8px' }}>
+      <button
+        onClick={() => setOpen(v => !v)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '4px',
+          background: 'none',
+          border: 'none',
+          padding: 0,
+          cursor: 'pointer',
+          fontFamily: 'inherit',
+          fontSize: '11px',
+          fontWeight: '700',
+          color: subtle,
+        }}
+      >
+        <FileText size={11} {...iconProps} />
+        {open ? 'Hide transcript' : 'Show transcript'}
+      </button>
+      {open && (
+        <p style={{
+          marginTop: '6px',
+          fontSize: '13px',
+          lineHeight: 1.5,
+          color: isOwn ? 'var(--background)' : 'var(--text)',
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word',
+        }}>
+          {transcript}
+        </p>
+      )}
+    </div>
+  )
+}
+
 export default function MediaMessage({ message, isOwn }) {
   const [imageError, setImageError] = useState(false)
   const [lightboxOpen, setLightboxOpen] = useState(false)
@@ -180,6 +245,11 @@ export default function MediaMessage({ message, isOwn }) {
           <Mic size={12} {...iconProps} /> {media.filename.startsWith('voice-') ? 'Voice message' : media.filename}
         </p>
         <AudioPlayer src={media.url} light={isOwn} />
+        <AudioTranscript
+          status={message.media_transcript_status}
+          transcript={message.media_transcript}
+          isOwn={isOwn}
+        />
       </div>
     )
   }

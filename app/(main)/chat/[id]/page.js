@@ -638,14 +638,17 @@ export default function ConversationPage() {
         if (['image', 'audio', 'file'].includes(payload.new.type)) {
           const { data: mediaRow } = await supabase
             .from('media')
-            .select('url, filename, size, mime_type')
+            .select('id, url, filename, size, mime_type, transcript, transcript_status')
             .eq('message_id', payload.new.id)
             .single()
           if (mediaRow) {
+            newMsg.media_id = mediaRow.id
             newMsg.media_url = mediaRow.url
             newMsg.media_filename = mediaRow.filename
             newMsg.media_size = mediaRow.size
             newMsg.media_mime_type = mediaRow.mime_type
+            newMsg.media_transcript = mediaRow.transcript
+            newMsg.media_transcript_status = mediaRow.transcript_status || 'none'
           }
         }
         setMessages(prev => {
@@ -815,6 +818,22 @@ export default function ConversationPage() {
           next[message_id] = new Set(existing).add(user_id)
           return next
         })
+      })
+      // A voice note's transcript arrives seconds AFTER the message it
+      // belongs to, since transcription runs once the upload response has
+      // already been sent. Without this the bubble would sit on
+      // "Transcribing…" until the conversation was reopened.
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'media',
+      }, (payload) => {
+        const row = payload.new
+        if (!messagesRef.current.some(m => m.id === row.message_id)) return
+        setMessages(prev => prev.map(m => m.id === row.message_id
+          ? { ...m, media_transcript: row.transcript, media_transcript_status: row.transcript_status }
+          : m
+        ))
       })
       .subscribe()
 
