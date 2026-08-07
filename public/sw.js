@@ -6,8 +6,12 @@ self.addEventListener('push', (event) => {
   event.waitUntil(
     self.registration.showNotification(data.title, {
       body: data.body,
-      icon: data.icon || '/icons/logo-light.png',
-      badge: '/icons/logo-light.png',
+      icon: data.icon || '/icons/icon-192.png',
+      // No `badge` on purpose. Android draws the badge as a monochrome
+      // silhouette taken from the image's alpha channel, and these icons
+      // are flat RGB with no transparency — so any of them would render
+      // as a solid filled square in the status bar. Omitting it lets
+      // Android fall back to the app icon instead.
       data: { url: data.url || '/' },
       vibrate: [200, 100, 200],
     })
