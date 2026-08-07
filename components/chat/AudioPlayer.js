@@ -27,18 +27,59 @@ export default function AudioPlayer({ src, light = false }) {
   useEffect(() => {
     const audio = audioRef.current
     if (!audio) return
+
     const onTime = () => setCurrentTime(audio.currentTime)
-    const onLoaded = () => setDuration(audio.duration || 0)
     const onEnded = () => { setPlaying(false); setCurrentTime(0) }
+    // Driven off the element's own events rather than assumed from the
+    // click, so a play() the browser refuses (autoplay policy, decode
+    // failure) can't leave a pause icon on something that isn't playing.
+    const onPlay = () => setPlaying(true)
+    const onPause = () => setPlaying(false)
+
+    // A clip recorded by MediaRecorder is written as a stream, so its
+    // container carries no duration in the header and the browser reports
+    // Infinity. That's why every voice note read 0:00 and the progress bar
+    // never moved: formatTime(Infinity) falls back to 0:00 and
+    // currentTime / Infinity is always 0. Seeking far past the end forces
+    // the browser to scan the file and emit a real duration, after which
+    // the position is put back. Applies to clips already uploaded too, so
+    // this fixes existing voice notes and not just new ones.
+    const onDurationChange = () => {
+      if (isFinite(audio.duration) && audio.duration > 0) {
+        setDuration(audio.duration)
+        audio.removeEventListener('durationchange', onDurationChange)
+        audio.currentTime = 0
+      }
+    }
+
+    const onLoaded = () => {
+      if (isFinite(audio.duration) && audio.duration > 0) {
+        setDuration(audio.duration)
+        return
+      }
+      audio.addEventListener('durationchange', onDurationChange)
+      try { audio.currentTime = 1e101 } catch {}
+    }
+
     audio.addEventListener('timeupdate', onTime)
     audio.addEventListener('loadedmetadata', onLoaded)
     audio.addEventListener('ended', onEnded)
+    audio.addEventListener('play', onPlay)
+    audio.addEventListener('pause', onPause)
+
+    // Metadata can already be loaded before this effect runs (a cached
+    // clip), in which case loadedmetadata has been and gone.
+    if (audio.readyState >= 1) onLoaded()
+
     return () => {
       audio.removeEventListener('timeupdate', onTime)
       audio.removeEventListener('loadedmetadata', onLoaded)
       audio.removeEventListener('ended', onEnded)
+      audio.removeEventListener('play', onPlay)
+      audio.removeEventListener('pause', onPause)
+      audio.removeEventListener('durationchange', onDurationChange)
     }
-  }, [])
+  }, [src])
 
   const togglePlay = () => {
     const audio = audioRef.current
@@ -46,9 +87,11 @@ export default function AudioPlayer({ src, light = false }) {
     if (playing) {
       audio.pause()
     } else {
-      audio.play()
+      // play() rejects on iOS if the media can't decode; swallowing it
+      // silently would leave the UI mid-state, so the pause/play listeners
+      // above own the icon and this only reports the failure.
+      audio.play().catch(() => setPlaying(false))
     }
-    setPlaying(!playing)
   }
 
   const handleSeek = (e) => {

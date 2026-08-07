@@ -11,6 +11,7 @@ export default function MediaRecorder({ onRecordingComplete, onCancel }) {
   const [duration, setDuration] = useState(0)
   const [audioUrl, setAudioUrl] = useState(null)
   const [audioBlob, setAudioBlob] = useState(null)
+  const [audioMimeType, setAudioMimeType] = useState('audio/webm')
   const [micError, setMicError] = useState(null)
   const mediaRecorderRef = useRef(null)
   const chunksRef = useRef([])
@@ -36,9 +37,20 @@ export default function MediaRecorder({ onRecordingComplete, onCancel }) {
       }
 
       recorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
+        // Use whatever the recorder ACTUALLY produced rather than assuming
+        // webm. Safari (so every iPhone) records audio/mp4, and labelling
+        // that data as audio/webm made the preview <audio> refuse to play
+        // it — the recording was fine, the container was just a lie.
+        //
+        // The codecs parameter is stripped because uploadMedia matches the
+        // MIME type against an exact allow-list, and "audio/webm;codecs=opus"
+        // matches nothing in it.
+        const rawType = recorder.mimeType || 'audio/webm'
+        const baseType = rawType.split(';')[0].trim() || 'audio/webm'
+        const blob = new Blob(chunksRef.current, { type: baseType })
         const url = URL.createObjectURL(blob)
         setAudioBlob(blob)
+        setAudioMimeType(baseType)
         setAudioUrl(url)
         stream.getTracks().forEach(t => t.stop())
       }
@@ -70,7 +82,15 @@ export default function MediaRecorder({ onRecordingComplete, onCancel }) {
 
   const handleSend = () => {
     if (!audioBlob) return
-    const file = new File([audioBlob], `voice-${Date.now()}.webm`, { type: 'audio/webm' })
+    // Extension has to match the real container too: Whisper picks its
+    // decoder from the filename, and a .webm name on MP4 data is exactly
+    // the kind of mismatch it rejects.
+    const ext = audioMimeType.includes('mp4') ? 'm4a'
+      : audioMimeType.includes('mpeg') ? 'mp3'
+      : audioMimeType.includes('ogg') ? 'ogg'
+      : audioMimeType.includes('wav') ? 'wav'
+      : 'webm'
+    const file = new File([audioBlob], `voice-${Date.now()}.${ext}`, { type: audioMimeType })
     onRecordingComplete(file)
   }
 
