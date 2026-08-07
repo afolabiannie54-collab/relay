@@ -486,3 +486,55 @@ a, button, input, textarea, select {
 .relay-plain-icon-btn:hover {
   background: var(--surface-hover);
 }
+/* ---------------------------------------------------------------
+   Marketing pages
+   --------------------------------------------------------------- */
+
+/* The logo is two artworks, not one recoloured file: logo-light.png is
+   drawn with black strokes for light backgrounds, logo-dark.png with white
+   ones for dark. A CSS filter can't fake that — inverting would take the
+   yellow signposts with it. So both ship and the wrong one is hidden,
+   mirroring the same three-state theme logic the tokens above use
+   (system-dark, forced-dark, forced-light). */
+.relay-logo-dark { display: none; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .relay-logo-light { display: none; }
+  :root:not([data-theme]) .relay-logo-dark { display: block; }
+}
+:root[data-theme="dark"] .relay-logo-light { display: none; }
+:root[data-theme="dark"] .relay-logo-dark { display: block; }
+:root[data-theme="light"] .relay-logo-light { display: block; }
+:root[data-theme="light"] .relay-logo-dark { display: none; }
+
+/* Nav links get a drawn-on underline rather than a colour change — the
+   accent bar wipes in from the left, which suits the hand-drawn logo more
+   than a fade would. */
+.marketing-navlink {
+  position: relative;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-decoration: none;
+  padding: 4px 0;
+  transition: color 0.14s var(--ease-out);
+}
+.marketing-navlink::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 3px;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.18s var(--ease-out);
+}
+.marketing-navlink:hover { color: var(--text); }
+.marketing-navlink:hover::after { transform: scaleX(1); }
+
+/* Privacy/Terms live in the footer too, so on narrow screens they drop out
+   of the nav rather than wrapping it onto two lines. */
+@media (max-width: 720px) {
+  .marketing-nav-links { display: none; }
+}

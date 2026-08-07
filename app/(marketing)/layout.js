@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import Logo from '@/components/marketing/Logo'
 
 // Marketing shell. Deliberately NOT the app shell: (main)/layout.js mounts
 // the bottom nav, the presence heartbeat, realtime subscriptions and the
@@ -24,86 +25,173 @@ export default async function MarketingLayout({ children }) {
         top: 0,
         zIndex: 50,
         background: 'var(--surface)',
-        borderBottom: '2px solid var(--border-strong)',
+        // 3px to match the section rules further down the page — a 1px
+        // hairline was the main thing making this read as a generic
+        // template header rather than part of a drawn, heavy-bordered UI.
+        borderBottom: '3px solid var(--border-strong)',
       }}>
         <div style={{
-          maxWidth: '1120px',
+          maxWidth: '1180px',
           margin: '0 auto',
-          padding: '14px 24px',
+          padding: '12px 24px',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '16px',
+          gap: '28px',
         }}>
-          <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none' }}>
-            {/* The icon ships as flat RGB with a white ground, so it's
-                framed as an app-icon chip rather than floated loose — in
-                dark mode a bare white square would read as a broken image. */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/icons/icon-96.png"
-              alt=""
-              width={32}
-              height={32}
-              style={{
-                borderRadius: '8px',
-                border: '2px solid var(--border-strong)',
-                display: 'block',
-              }}
-            />
-            <span style={{ fontSize: '19px', fontWeight: '900', letterSpacing: '-0.03em', color: 'var(--text)' }}>
-              Relay
-            </span>
+          <Link href="/" aria-label="Relay home" style={{ textDecoration: 'none', flexShrink: 0 }}>
+            <Logo size={38} />
           </Link>
 
-          <nav style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <nav className="marketing-nav-links" style={{ display: 'flex', alignItems: 'center', gap: '22px' }}>
+            <Link href="/privacy" className="marketing-navlink">Privacy</Link>
+            <Link href="/terms" className="marketing-navlink">Terms</Link>
+          </nav>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginLeft: 'auto' }}>
             {signedIn ? (
-              <Link href="/chat" className="relay-btn relay-btn--filled" style={{ textDecoration: 'none', padding: '9px 18px', fontSize: '14px' }}>
+              <Link href="/chat" className="relay-btn relay-btn--filled" style={{
+                textDecoration: 'none',
+                padding: '10px 20px',
+                fontSize: '14px',
+                boxShadow: 'var(--shadow-hard-accent)',
+              }}>
                 Open Relay
               </Link>
             ) : (
               <>
-                <Link href="/login" className="relay-btn" style={{ textDecoration: 'none', padding: '9px 16px', fontSize: '14px' }}>
+                <Link href="/login" className="marketing-navlink" style={{ marginRight: '4px' }}>
                   Log in
                 </Link>
-                <Link href="/signup" className="relay-btn relay-btn--filled" style={{ textDecoration: 'none', padding: '9px 18px', fontSize: '14px' }}>
+                <Link href="/signup" className="relay-btn relay-btn--filled" style={{
+                  textDecoration: 'none',
+                  padding: '10px 20px',
+                  fontSize: '14px',
+                  boxShadow: 'var(--shadow-hard-accent)',
+                }}>
                   Get Relay
                 </Link>
               </>
             )}
-          </nav>
+          </div>
         </div>
       </header>
 
       <main style={{ flex: 1 }}>{children}</main>
 
-      <footer style={{
+      <Footer signedIn={signedIn} />
+    </div>
+  )
+}
+
+function FooterColumn({ heading, links }) {
+  return (
+    <div>
+      <p style={{
+        fontSize: '12px',
+        fontWeight: '800',
+        letterSpacing: '0.1em',
+        textTransform: 'uppercase',
+        color: 'var(--text-tertiary)',
+        marginBottom: '14px',
+      }}>
+        {heading}
+      </p>
+      <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        {links.map(l => (
+          <li key={l.label}>
+            <Link
+              href={l.href}
+              style={{
+                fontSize: '14px',
+                fontWeight: '600',
+                color: 'var(--text-secondary)',
+                textDecoration: 'none',
+              }}
+            >
+              {l.label}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+function Footer({ signedIn }) {
+  return (
+    <footer style={{
+      borderTop: '3px solid var(--border-strong)',
+      background: 'var(--surface)',
+    }}>
+      <div style={{
+        maxWidth: '1180px',
+        margin: '0 auto',
+        padding: 'clamp(40px, 6vw, 64px) 24px clamp(24px, 3vw, 32px)',
+        display: 'grid',
+        // The brand column is given roughly twice the room of a link column
+        // so the tagline sits on two comfortable lines instead of one long
+        // one, and the whole thing collapses to a single column on phones.
+        gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
+        gap: '36px',
+      }}>
+        <div style={{ gridColumn: 'span 1', minWidth: '200px' }}>
+          <Logo size={40} />
+          <p style={{
+            fontSize: '14px',
+            lineHeight: 1.6,
+            color: 'var(--text-secondary)',
+            marginTop: '14px',
+            maxWidth: '30ch',
+          }}>
+            A messaging app built on usernames, not phone numbers.
+          </p>
+        </div>
+
+        <FooterColumn
+          heading="Product"
+          links={[
+            { label: 'Overview', href: '/' },
+            { label: signedIn ? 'Open Relay' : 'Get Relay', href: signedIn ? '/chat' : '/signup' },
+          ]}
+        />
+
+        <FooterColumn
+          heading="Legal"
+          links={[
+            { label: 'Privacy Policy', href: '/privacy' },
+            { label: 'Terms of Service', href: '/terms' },
+          ]}
+        />
+
+        <FooterColumn
+          heading="Account"
+          links={signedIn
+            ? [{ label: 'Your chats', href: '/chat' }, { label: 'Settings', href: '/settings' }]
+            : [{ label: 'Log in', href: '/login' }, { label: 'Sign up', href: '/signup' }]}
+        />
+      </div>
+
+      <div style={{
         borderTop: '2px solid var(--border-strong)',
-        background: 'var(--surface)',
-        padding: '32px 24px',
       }}>
         <div style={{
-          maxWidth: '1120px',
+          maxWidth: '1180px',
           margin: '0 auto',
+          padding: '18px 24px',
           display: 'flex',
           flexWrap: 'wrap',
-          gap: '16px',
+          gap: '10px',
           alignItems: 'center',
           justifyContent: 'space-between',
         }}>
           <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>
             © {new Date().getFullYear()} Relay
           </p>
-          <div style={{ display: 'flex', gap: '20px' }}>
-            <Link href="/privacy" style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-secondary)', textDecoration: 'none' }}>
-              Privacy
-            </Link>
-            <Link href="/terms" style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-secondary)', textDecoration: 'none' }}>
-              Terms
-            </Link>
-          </div>
+          <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>
+            Built as a student project.
+          </p>
         </div>
-      </footer>
-    </div>
+      </div>
+    </footer>
   )
 }
