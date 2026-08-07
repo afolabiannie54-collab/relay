@@ -1,3 +1,8 @@
+// Uses the SVGs, not the PNGs. The mark is a detailed line drawing, so a
+// raster version resampled down to nav size loses the thin strokes to
+// antialiasing — it read as blurry no matter the source resolution. The
+// vectors stay crisp at any size and are smaller over the wire.
+//
 // Both artworks ship and CSS hides the wrong one — see .relay-logo-* in
 // globals.css for why this can't be a single filtered image.
 //
@@ -17,7 +22,7 @@ export default function Logo({ size = 44, showWordmark = true }) {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           className="relay-logo-light"
-          src="/icons/logo-light.png"
+          src="/icons/logo-light.svg"
           alt=""
           width={size}
           height={size}
@@ -25,7 +30,7 @@ export default function Logo({ size = 44, showWordmark = true }) {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           className="relay-logo-dark"
-          src="/icons/logo-dark.png"
+          src="/icons/logo-dark.svg"
           alt=""
           width={size}
           height={size}

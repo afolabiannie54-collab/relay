@@ -44,7 +44,7 @@ export default async function MarketingLayout({ children }) {
           {/* Mark only, no wordmark — Notion's treatment. The logo carries
               the identity on its own and the bar stays uncluttered. */}
           <Link href="/" aria-label="Relay home" style={{ textDecoration: 'none', flexShrink: 0 }}>
-            <Logo size={46} showWordmark={false} />
+            <Logo size={62} showWordmark={false} />
           </Link>
 
           <nav className="marketing-nav-links" style={{ display: 'flex', alignItems: 'center', gap: '22px' }}>
