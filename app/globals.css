@@ -496,6 +496,14 @@ a, button, input, textarea, select {
    yellow signposts with it. So both ship and the wrong one is hidden,
    mirroring the same three-state theme logic the tokens above use
    (system-dark, forced-dark, forced-light). */
+.relay-logo-light,
+.relay-logo-dark {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
 .relay-logo-dark { display: none; }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) .relay-logo-light { display: none; }

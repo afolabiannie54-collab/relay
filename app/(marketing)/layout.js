@@ -33,13 +33,18 @@ export default async function MarketingLayout({ children }) {
         <div style={{
           maxWidth: '1180px',
           margin: '0 auto',
-          padding: '12px 24px',
+          // Taller bar: the mark is a full hand-drawn illustration, not a
+          // glyph, so at 38px it collapsed into unreadable scribble. It
+          // needs size to be legible, and the bar needs room around it.
+          padding: '16px 28px',
           display: 'flex',
           alignItems: 'center',
-          gap: '28px',
+          gap: '32px',
         }}>
+          {/* Mark only, no wordmark — Notion's treatment. The logo carries
+              the identity on its own and the bar stays uncluttered. */}
           <Link href="/" aria-label="Relay home" style={{ textDecoration: 'none', flexShrink: 0 }}>
-            <Logo size={38} />
+            <Logo size={46} showWordmark={false} />
           </Link>
 
           <nav className="marketing-nav-links" style={{ display: 'flex', alignItems: 'center', gap: '22px' }}>
@@ -188,7 +193,7 @@ function Footer({ signedIn }) {
             © {new Date().getFullYear()} Relay
           </p>
           <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>
-            Built as a student project.
+            Your people are one search away.
           </p>
         </div>
       </div>

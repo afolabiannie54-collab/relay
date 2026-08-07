@@ -38,7 +38,7 @@ function FeatureCard({ eyebrow, title, body, children }) {
       border: '3px solid var(--border-strong)',
       borderRadius: 'var(--radius-lg)',
       boxShadow: 'var(--shadow-hard-md)',
-      padding: '28px',
+      padding: '34px 30px',
       display: 'flex',
       flexDirection: 'column',
       gap: '16px',
@@ -181,11 +181,11 @@ export default async function LandingPage() {
   return (
     <>
       {/* ---------------- Hero ---------------- */}
-      <section style={{ ...SECTION, paddingTop: 'clamp(48px, 9vw, 96px)', paddingBottom: 'clamp(40px, 7vw, 80px)' }}>
+      <section style={{ ...SECTION, paddingTop: 'clamp(64px, 11vw, 140px)', paddingBottom: 'clamp(64px, 10vw, 128px)' }}>
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
-          gap: 'clamp(32px, 5vw, 64px)',
+          gap: 'clamp(48px, 7vw, 96px)',
           alignItems: 'center',
         }}>
           <div>
@@ -205,24 +205,45 @@ export default async function LandingPage() {
               </span>
             </div>
 
+            {/* The phrase was previously given a filled yellow background.
+                Across a wrap that renders as two offset slabs with ragged
+                edges — unavoidable, since a background box follows line
+                boxes. A drawn underline sits under the text instead of
+                behind it, so wrapping can't fragment it, and a wobbly
+                stroke belongs with the hand-drawn logo far more than a
+                rectangle does. nowrap keeps the phrase intact. */}
             <h1 style={{
-              fontSize: 'clamp(2.75rem, 7.5vw, 5rem)',
+              fontSize: 'clamp(2.5rem, 6.4vw, 4.5rem)',
               fontWeight: '900',
               letterSpacing: '-0.045em',
-              lineHeight: 0.98,
+              lineHeight: 1.02,
               color: 'var(--text)',
-              marginBottom: '20px',
+              marginBottom: '24px',
             }}>
               Your people are{' '}
-              <span style={{
-                background: 'var(--accent)',
-                padding: '0 0.12em',
-                borderRadius: '6px',
-                boxDecorationBreak: 'clone',
-                WebkitBoxDecorationBreak: 'clone',
-                color: 'var(--on-accent)',
-              }}>
+              <span style={{ position: 'relative', whiteSpace: 'nowrap' }}>
                 one search
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 300 16"
+                  preserveAspectRatio="none"
+                  style={{
+                    position: 'absolute',
+                    left: '-1%',
+                    bottom: '-0.16em',
+                    width: '102%',
+                    height: '0.22em',
+                    overflow: 'visible',
+                  }}
+                >
+                  <path
+                    d="M2 10.5C48 4.5 108 3.2 160 6.4C212 9.6 262 9.2 298 5"
+                    stroke="var(--accent)"
+                    strokeWidth="7"
+                    strokeLinecap="round"
+                    fill="none"
+                  />
+                </svg>
               </span>{' '}
               away.
             </h1>
@@ -284,7 +305,7 @@ export default async function LandingPage() {
         background: 'var(--bg-subtle)',
         borderTop: '3px solid var(--border-strong)',
         borderBottom: '3px solid var(--border-strong)',
-        padding: 'clamp(56px, 8vw, 96px) 0',
+        padding: 'clamp(72px, 10vw, 136px) 0',
       }}>
         <div style={SECTION}>
           <h2 style={{
@@ -293,7 +314,7 @@ export default async function LandingPage() {
             letterSpacing: '-0.04em',
             lineHeight: 1.02,
             color: 'var(--text)',
-            marginBottom: 'clamp(32px, 5vw, 56px)',
+            marginBottom: 'clamp(44px, 6vw, 72px)',
             maxWidth: '15ch',
           }}>
             Built around who reaches you.
@@ -301,8 +322,8 @@ export default async function LandingPage() {
 
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-            gap: '20px',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+            gap: '24px',
           }}>
             <FeatureCard
               eyebrow="Find people"
@@ -446,7 +467,7 @@ export default async function LandingPage() {
       </section>
 
       {/* ---------------- Install ---------------- */}
-      <section style={{ ...SECTION, padding: 'clamp(56px, 8vw, 96px) 24px' }}>
+      <section style={{ ...SECTION, padding: 'clamp(72px, 10vw, 136px) 24px' }}>
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
@@ -479,7 +500,7 @@ export default async function LandingPage() {
       <section style={{
         borderTop: '3px solid var(--border-strong)',
         background: 'var(--accent)',
-        padding: 'clamp(56px, 8vw, 96px) 24px',
+        padding: 'clamp(72px, 10vw, 136px) 24px',
       }}>
         <div style={{ ...SECTION, textAlign: 'center' }}>
           <h2 style={{
