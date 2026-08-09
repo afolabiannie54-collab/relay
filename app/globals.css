@@ -825,3 +825,11 @@ a, button, input, textarea, select {
   .marketing-feature-grid { grid-template-columns: 1fr; }
   .marketing-feature-card--wide { grid-column: span 1; }
 }
+
+/* Overlap with the hero above — a real breakpoint rather than a clamp(),
+   so mobile gets an exact, small, known value instead of whatever -13vw
+   happens to resolve to at that width. */
+.marketing-feature-overlap { margin-top: clamp(-180px, -13vw, -90px); }
+@media (max-width: 640px) {
+  .marketing-feature-overlap { margin-top: -8px; }
+}

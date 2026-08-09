@@ -250,11 +250,16 @@ export default async function LandingPage() {
       {/* Centered, Notion/Gumroad-style — a single stacked column instead
           of text-left/preview-right. The product preview moves to a later
           section instead of sharing the hero. */}
+      {/* Min bound of these clamps is what governs mobile, not the vw
+          term — 11vw/10vw are both well under 64px at phone widths, so
+          the clamp bottoms out at its floor. That floor being 64px (a
+          fairly small number to begin with) is why the hero felt short
+          on mobile no matter what the overlap below it was doing. */}
       <section style={{
         ...SECTION,
         position: 'relative',
-        paddingTop: 'clamp(64px, 11vw, 140px)',
-        paddingBottom: 'clamp(64px, 10vw, 128px)',
+        paddingTop: 'clamp(96px, 11vw, 140px)',
+        paddingBottom: 'clamp(88px, 10vw, 128px)',
       }}>
         <div style={{ position: 'relative', zIndex: 1, maxWidth: '860px', margin: '0 auto', textAlign: 'center' }}>
           {/* Just the signpost now, not the whole mascot — planted so it
@@ -383,16 +388,17 @@ export default async function LandingPage() {
           overlap slightly instead of sitting as two stacked blocks with a
           gap between — same as how Notion/Gumroad let a section bleed up
           under the one before it. */}
-      <section style={{
+      {/* Overlap amount is a CSS class + media query, not a clamp() —
+          clamp(-180px, -13vw, -10px) looked like it would pin to -10px on
+          phones, but the max end of a clamp only takes over once the
+          preferred value crosses past it, and -13vw doesn't cross -10px
+          until the viewport is ~77px wide. Below 640px it was still
+          resolving to roughly -13vw directly (~-55px on a typical phone),
+          nowhere near "barely." A real breakpoint says exactly what
+          happens on each side instead of relying on clamp's math. */}
+      <section className="marketing-feature-overlap" style={{
         position: 'relative',
         background: 'var(--background)',
-        // On phones the preferred -13vw value is already past the max end
-        // of this clamp, so mobile pins at whatever the max is regardless
-        // of -13vw — a fixed pull-up that size eats a much bigger share of
-        // a short mobile hero than it does a tall desktop one. Max is
-        // barely negative so mobile gets almost no overlap; desktop is
-        // still governed by the min, -180px.
-        marginTop: 'clamp(-180px, -13vw, -10px)',
         padding: 'clamp(72px, 10vw, 136px) 0',
       }}>
         <div style={SECTION}>
