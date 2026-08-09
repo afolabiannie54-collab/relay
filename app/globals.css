@@ -193,6 +193,16 @@ body {
   font-family: inherit;
 }
 
+/* Sitewide text-selection color — the browser default blue clashes with
+   the rest of the palette and was the one place on the page not on-brand.
+   The muted accent wash keeps selected text readable (still --text on
+   top) without competing with the bold full-strength accent used for
+   actual highlights/actions. */
+::selection {
+  background: var(--accent-light);
+  color: var(--text);
+}
+
 /* iOS Safari auto-zooms on focusing any input/textarea/select below 16px.
    Individual elements already set this explicitly; this is a backstop for
    anything missed. */
@@ -794,4 +804,24 @@ a, button, input, textarea, select {
 .marketing-footer-strip { flex-direction: column; align-items: stretch; }
 @media (min-width: 900px) {
   .marketing-footer-strip { flex-direction: row; align-items: center; }
+}
+
+/* Feature grid — asymmetric wide/narrow cards (Gumroad reference) rather
+   than a uniform auto-fit grid. 3-column base, wide = 2-of-3, narrow =
+   1-of-3, and the wide card swaps sides each row (left, right, left) —
+   every row still sums to exactly 3 so there's never a gap for
+   grid-auto-flow to fight over, but it doesn't read as a mechanical
+   repeat the way "wide alone, then two narrows" did. Collapses to a
+   single column on narrow screens, where wide/narrow stops mattering. */
+.marketing-feature-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+.marketing-feature-card--wide {
+  grid-column: span 2;
+}
+@media (max-width: 720px) {
+  .marketing-feature-grid { grid-template-columns: 1fr; }
+  .marketing-feature-card--wide { grid-column: span 1; }
 }

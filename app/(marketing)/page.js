@@ -35,18 +35,25 @@ function Eyebrow({ children }) {
   )
 }
 
-function FeatureCard({ eyebrow, title, body, children }) {
+// Same card style as before (bordered, hard-shadowed, our own tokens) —
+// the only thing borrowed from the Gumroad reference is the layout: wide
+// cards next to narrow ones instead of a uniform grid. See
+// .marketing-feature-grid / --wide in globals.css for the span mechanics.
+function FeatureCard({ eyebrow, title, body, wide = false, children }) {
   return (
-    <div style={{
-      background: 'var(--surface)',
-      border: '3px solid var(--border-strong)',
-      borderRadius: 'var(--radius-lg)',
-      boxShadow: 'var(--shadow-hard-md)',
-      padding: '34px 30px',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '16px',
-    }}>
+    <div
+      className={`marketing-feature-card${wide ? ' marketing-feature-card--wide' : ''}`}
+      style={{
+        background: 'var(--surface)',
+        border: '3px solid var(--border-strong)',
+        borderRadius: 'var(--radius-lg)',
+        boxShadow: 'var(--shadow-hard-md)',
+        padding: '34px 30px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '16px',
+      }}
+    >
       <div>
         <Eyebrow>{eyebrow}</Eyebrow>
         <h3 style={{
@@ -360,31 +367,35 @@ export default async function LandingPage() {
       </section>
 
       {/* ---------------- Feature grid ---------------- */}
+      {/* Our own surfaces/borders/shadows throughout — the Gumroad
+          reference is borrowed for one thing only: wide cards mixed with
+          narrow ones (.marketing-feature-grid) instead of a uniform grid.
+          A 3-column base with 2-of-3 vs 1-of-3 spans, and the wide column
+          swapping sides each row (left, right, left) rather than every
+          "wide" card being alone on its own row — that alternating-side
+          pattern is what actually reads as loosely arranged instead of a
+          repeating checkerboard.
+          White background, no section headline, and pulled up over the
+          hero's bottom padding (negative margin) so the two sections
+          overlap slightly instead of sitting as two stacked blocks with a
+          gap between — same as how Notion/Gumroad let a section bleed up
+          under the one before it. */}
       <section style={{
-        background: 'var(--bg-subtle)',
-        borderTop: '3px solid var(--border-strong)',
-        borderBottom: '3px solid var(--border-strong)',
+        position: 'relative',
+        background: 'var(--background)',
+        // On phones the preferred -13vw value is already past the max end
+        // of this clamp, so mobile was pinned at -90px regardless — a
+        // fixed pull-up that size eats a much bigger share of a short
+        // mobile hero than it does a tall desktop one. Lowering the max
+        // end to -40px gives mobile room to breathe without touching the
+        // desktop end (still governed by the min, -180px).
+        marginTop: 'clamp(-180px, -13vw, -40px)',
         padding: 'clamp(72px, 10vw, 136px) 0',
       }}>
         <div style={SECTION}>
-          <h2 style={{
-            fontSize: 'clamp(2.25rem, 5.5vw, 3.75rem)',
-            fontWeight: '800',
-            letterSpacing: '-0.04em',
-            lineHeight: 1.02,
-            color: 'var(--text)',
-            marginBottom: 'clamp(44px, 6vw, 72px)',
-            maxWidth: '15ch',
-          }}>
-            Built around who reaches you.
-          </h2>
-
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-            gap: '24px',
-          }}>
+          <div className="marketing-feature-grid">
             <FeatureCard
+              wide
               eyebrow="Find people"
               title="A handle, not a number."
               body="Search @usernames to start a conversation. Nothing to hand over, no contact list to upload, and no way for someone to find you just because they have your number."
@@ -428,15 +439,12 @@ export default async function LandingPage() {
               </div>
             </FeatureCard>
 
+            {/* Wide column swaps to the right side here (row 2) — the same
+                span pattern as row 1 but mirrored, so the grid doesn't
+                read as a mechanical repeat of "big card always on the
+                left." */}
             <FeatureCard
-              eyebrow="Read receipts"
-              title="Ticks that tell the truth."
-              body="Sent, delivered, read — and if you turn your read receipts off, you stop seeing everyone else's too. It works both ways or not at all."
-            >
-              <TicksDemo />
-            </FeatureCard>
-
-            <FeatureCard
+              wide
               eyebrow="Groups"
               title="Rooms with real roles."
               body="Owners and admins, invites for people you haven't met, pinned messages everyone sees, and starred ones only you do."
@@ -475,6 +483,15 @@ export default async function LandingPage() {
                   </div>
                 ))}
               </div>
+            </FeatureCard>
+
+            <FeatureCard
+              wide
+              eyebrow="Read receipts"
+              title="Ticks that tell the truth."
+              body="Sent, delivered, read — and if you turn your read receipts off, you stop seeing everyone else's too. It works both ways or not at all."
+            >
+              <TicksDemo />
             </FeatureCard>
 
             <FeatureCard
@@ -557,7 +574,6 @@ export default async function LandingPage() {
 
       {/* ---------------- Closing CTA ---------------- */}
       <section style={{
-        borderTop: '3px solid var(--border-strong)',
         background: 'var(--accent)',
         padding: 'clamp(72px, 10vw, 136px) 24px',
       }}>
