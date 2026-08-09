@@ -47,7 +47,7 @@ function FeatureCard({ eyebrow, title, body, children }) {
         <Eyebrow>{eyebrow}</Eyebrow>
         <h3 style={{
           fontSize: 'clamp(1.5rem, 2.6vw, 2rem)',
-          fontWeight: '900',
+          fontWeight: '800',
           letterSpacing: '-0.03em',
           lineHeight: 1.1,
           color: 'var(--text)',
@@ -214,7 +214,7 @@ export default async function LandingPage() {
                 rectangle does. nowrap keeps the phrase intact. */}
             <h1 style={{
               fontSize: 'clamp(2.5rem, 6.4vw, 4.5rem)',
-              fontWeight: '900',
+              fontWeight: '800',
               letterSpacing: '-0.045em',
               lineHeight: 1.02,
               color: 'var(--text)',
@@ -310,7 +310,7 @@ export default async function LandingPage() {
         <div style={SECTION}>
           <h2 style={{
             fontSize: 'clamp(2.25rem, 5.5vw, 3.75rem)',
-            fontWeight: '900',
+            fontWeight: '800',
             letterSpacing: '-0.04em',
             lineHeight: 1.02,
             color: 'var(--text)',
@@ -478,7 +478,7 @@ export default async function LandingPage() {
             <Eyebrow>Install</Eyebrow>
             <h2 style={{
               fontSize: 'clamp(2rem, 4.5vw, 3.25rem)',
-              fontWeight: '900',
+              fontWeight: '800',
               letterSpacing: '-0.04em',
               lineHeight: 1.05,
               color: 'var(--text)',
@@ -505,7 +505,7 @@ export default async function LandingPage() {
         <div style={{ ...SECTION, textAlign: 'center' }}>
           <h2 style={{
             fontSize: 'clamp(2.25rem, 6vw, 4rem)',
-            fontWeight: '900',
+            fontWeight: '800',
             letterSpacing: '-0.04em',
             lineHeight: 1.02,
             color: 'var(--on-accent)',

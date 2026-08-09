@@ -1,7 +1,8 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import Logo, { LOGO_SIZES } from '@/components/marketing/Logo'
 import Footer from '@/components/marketing/Footer'
+import NavLinks from '@/components/marketing/NavLinks'
+import MobileNav from '@/components/marketing/MobileNav'
 
 // Marketing shell. Deliberately NOT the app shell: (main)/layout.js mounts
 // the bottom nav, the presence heartbeat, realtime subscriptions and the
@@ -21,61 +22,49 @@ export default async function MarketingLayout({ children }) {
       background: 'var(--background)',
       fontFamily: "'Inter', -apple-system, sans-serif",
     }}>
+      {/* No background fill or bottom rule — those made sense when the bar
+          was a full-width strip of plain content that needed a line to
+          separate it from the page. Now the nav is a self-contained
+          bordered pill floating in the corner; a full-width band under it
+          would just be a disconnected leftover shape with nothing to
+          explain it. */}
       <header style={{
         position: 'sticky',
         top: 0,
         zIndex: 50,
-        background: 'var(--surface)',
-        // 3px to match the section rules further down the page — a 1px
-        // hairline was the main thing making this read as a generic
-        // template header rather than part of a drawn, heavy-bordered UI.
-        borderBottom: '3px solid var(--border-strong)',
       }}>
         <div style={{
           maxWidth: '1180px',
           margin: '0 auto',
-          // Taller bar: the mark is a full hand-drawn illustration, not a
-          // glyph, so at 38px it collapsed into unreadable scribble. It
-          // needs size to be legible, and the bar needs room around it.
-          padding: '16px 28px',
+          padding: '12px 28px',
           display: 'flex',
           alignItems: 'center',
-          gap: '32px',
         }}>
-          {/* Mark only, no wordmark — Notion's treatment. The logo carries
-              the identity on its own and the bar stays uncluttered. */}
-          <Link href="/" aria-label="Relay home" style={{ textDecoration: 'none', flexShrink: 0 }}>
-            <Logo size={LOGO_SIZES.nav} showWordmark={false} />
-          </Link>
-
-          <nav className="marketing-nav-links" style={{ display: 'flex', alignItems: 'center', gap: '22px' }}>
-            <Link href="/privacy" className="marketing-navlink">Privacy</Link>
-            <Link href="/terms" className="marketing-navlink">Terms</Link>
-          </nav>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginLeft: 'auto' }}>
+          {/* No logo here — text-only nav. "Home" covers what the mark
+              used to link to; it wasn't reading well at nav scale, a
+              delicate line drawing next to plain text just looked like
+              clutter, not identity.
+              Links, divider, and CTA all live inside one bordered pill
+              (marginLeft: auto keeps it pinned right) rather than two
+              separate clusters — with only 3 links + 2 buttons, splitting
+              them left/right just stretched sparse content across the
+              full bar with dead space in the middle. */}
+          <div className="marketing-navbar-pill" style={{ marginLeft: 'auto' }}>
+            <NavLinks />
+            <span className="marketing-navbar-divider" aria-hidden="true" />
+            {/* Below 720px, NavLinks/divider disappear and this takes
+                over — Home/Privacy/Terms (and Log in) move into its
+                dropdown instead of vanishing outright. */}
+            <MobileNav signedIn={signedIn} />
             {signedIn ? (
-              <Link href="/chat" className="relay-btn relay-btn--filled" style={{
-                textDecoration: 'none',
-                padding: '10px 20px',
-                fontSize: '14px',
-                boxShadow: 'var(--shadow-hard-accent)',
-              }}>
-                Open Relay
-              </Link>
+              <Link href="/chat" className="marketing-navbar-cta">Open Relay</Link>
             ) : (
               <>
-                <Link href="/login" className="marketing-navlink" style={{ marginRight: '4px' }}>
-                  Log in
-                </Link>
-                <Link href="/signup" className="relay-btn relay-btn--filled" style={{
-                  textDecoration: 'none',
-                  padding: '10px 20px',
-                  fontSize: '14px',
-                  boxShadow: 'var(--shadow-hard-accent)',
-                }}>
-                  Get Relay
-                </Link>
+                {/* marketing-desktop-only: MobileNav's dropdown already
+                    carries "Log in" below 720px, so this copy hides there
+                    instead of doubling up next to the hamburger. */}
+                <Link href="/login" className="marketing-navtab marketing-desktop-only">Log in</Link>
+                <Link href="/signup" className="marketing-navbar-cta">Get Relay</Link>
               </>
             )}
           </div>

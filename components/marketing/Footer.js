@@ -4,6 +4,15 @@ import Logo, { LOGO_SIZES } from '@/components/marketing/Logo'
 import NotionDoodle from '@/components/shared/illustrations/NotionDoodle'
 import { USERS, BOOKMARK, BELL, INBOX, LAPTOP, COMMENT_SLASH } from '@/lib/doodles'
 
+// ─────────────────────────────────────────────────────────────
+//  DOODLE TILE SIZE — change this to resize the footer tiles.
+//  clamp(MIN, PREFERRED, MAX): smallest on phones, largest on
+//  desktop. The drawing inside is a percentage of the tile, so
+//  it scales with it automatically.
+// ─────────────────────────────────────────────────────────────
+const TILE_SIZE = 'clamp(52px, 11vw, 68px)'
+const TILE_ART = '56%'
+
 // The tiles are deliberately not a uniform row: each carries its own
 // rotation and vertical offset so the strip reads as hand-placed rather
 // than stamped out on a grid — the same reason the logo is a drawing and
@@ -27,19 +36,22 @@ function DoodleTile({ d, label, rot, dy }) {
       style={{
         '--tile-rot': `${rot}deg`,
         transform: `rotate(${rot}deg) translateY(${dy}px)`,
-        width: '84px',
-        height: '84px',
+        width: TILE_SIZE,
+        height: TILE_SIZE,
         flexShrink: 0,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'var(--surface)',
+        background: 'var(--footer-tile-bg)',
         border: '2.5px solid var(--border-strong)',
         borderRadius: 'var(--radius-md)',
         boxShadow: 'var(--shadow-hard-sm)',
       }}
     >
-      <NotionDoodle d={d} size={42} color="var(--text)" />
+      {/* Percentage rather than a pixel value, so the drawing tracks the
+          tile as TILE_SIZE clamps down on smaller screens instead of
+          staying fixed and crowding the edges. */}
+      <NotionDoodle d={d} size={TILE_ART} color="var(--text)" />
     </div>
   )
 }
@@ -75,7 +87,7 @@ export default function Footer({ signedIn }) {
   return (
     <footer style={{
       borderTop: '3px solid var(--border-strong)',
-      background: 'var(--bg-subtle)',
+      background: 'var(--footer-bg)',
     }}>
       <div style={{
         maxWidth: '1180px',
@@ -92,14 +104,12 @@ export default function Footer({ signedIn }) {
           alignItems: 'start',
         }}>
           <div style={{ gridColumn: 'span 1' }}>
-            <Logo size={LOGO_SIZES.footer} showWordmark={false} />
             <h2 style={{
               fontSize: 'clamp(2rem, 4.4vw, 3.25rem)',
-              fontWeight: '900',
+              fontWeight: '800',
               letterSpacing: '-0.04em',
               lineHeight: 1.02,
               color: 'var(--text)',
-              marginTop: '22px',
               maxWidth: '13ch',
             }}>
               Your people are one search away.
@@ -132,21 +142,38 @@ export default function Footer({ signedIn }) {
           </div>
         </div>
 
-        {/* Illustration strip. Scrolls sideways rather than wrapping on
-            narrow screens — a scattered row that reflows into a grid loses
-            the whole effect. */}
-        <div style={{
+        {/* Tiles left, logo right. The logo sat above the headline before,
+            which left the whole bottom-right corner empty while stacking
+            two heavy elements in one column. Out here it fills that gap and
+            balances the tile strip, and the figure reads as flying up out
+            of the footer. */}
+        <div className="marketing-footer-strip" style={{
           display: 'flex',
-          gap: 'clamp(14px, 2.5vw, 26px)',
-          alignItems: 'center',
-          marginTop: 'clamp(48px, 7vw, 84px)',
-          paddingTop: '18px',
-          paddingBottom: '18px',
-          overflowX: 'auto',
-          WebkitOverflowScrolling: 'touch',
-          scrollbarWidth: 'none',
+          justifyContent: 'space-between',
+          gap: 'clamp(24px, 4vw, 56px)',
+          flexWrap: 'wrap',
         }}>
-          {TILES.map(t => <DoodleTile key={t.label} {...t} />)}
+          {/* Wrapping (not scrolling) is handled in globals.css — see
+              .marketing-footer-tiles for why. Padding keeps the hover lift
+              from being clipped by the tiles' own bounds. */}
+          <div className="marketing-footer-tiles" style={{
+            display: 'flex',
+            gap: 'clamp(14px, 2.5vw, 26px)',
+            alignItems: 'center',
+            paddingTop: '18px',
+            paddingBottom: '18px',
+            flex: '1 1 auto',
+            minWidth: 0,
+          }}>
+            {TILES.map(t => <DoodleTile key={t.label} {...t} />)}
+          </div>
+
+          {/* Flipped so he flies back into the page rather than off the
+              right edge. Hidden below the stacking breakpoint — see
+              .marketing-footer-logo. */}
+          <div className="marketing-footer-logo" style={{ flexShrink: 0 }}>
+            <Logo size={LOGO_SIZES.footer} showWordmark={false} flip />
+          </div>
         </div>
       </div>
 

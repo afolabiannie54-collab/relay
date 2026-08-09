@@ -6,7 +6,7 @@ export default function LegalPage({ title, updated, children }) {
     <article style={{ maxWidth: '760px', margin: '0 auto', padding: 'clamp(40px, 7vw, 80px) 24px' }}>
       <h1 style={{
         fontSize: 'clamp(2.25rem, 6vw, 3.5rem)',
-        fontWeight: '900',
+        fontWeight: '800',
         letterSpacing: '-0.04em',
         lineHeight: 1.03,
         color: 'var(--text)',
@@ -27,7 +27,7 @@ export function Section({ heading, children }) {
     <section style={{ marginBottom: '32px' }}>
       <h2 style={{
         fontSize: 'clamp(1.25rem, 2.4vw, 1.6rem)',
-        fontWeight: '900',
+        fontWeight: '800',
         letterSpacing: '-0.02em',
         color: 'var(--text)',
         marginBottom: '12px',

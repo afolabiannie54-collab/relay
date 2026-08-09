@@ -89,11 +89,11 @@
    declaration list across a media query and a plain selector. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) {
-    --background: #0A0A0A;
-    --bg-subtle: #0A0A0A;
-    --surface: #161615;
-    --surface-hover: #1F1F1D;
-    --surface-active: #262624;
+    --background: #131312;
+    --bg-subtle: #131312;
+    --surface: #1D1D1B;
+    --surface-hover: #262624;
+    --surface-active: #2D2D2A;
 
     --foreground: #F2F1EE;
     --text: #F2F1EE;
@@ -115,14 +115,14 @@
     --success-light: rgba(34, 197, 94, 0.14);
     --error-light: rgba(239, 68, 68, 0.14);
 
-    --gray-100: #1F1F1D;
-    --gray-200: #2A2A28;
+    --gray-100: #262624;
+    --gray-200: #313130;
     --gray-400: #77756F;
     --gray-600: #A3A199;
 
-    --border: #2A2A28;
-    --border-light: #212120;
-    --border-strong: #3A3A37;
+    --border: #313130;
+    --border-light: #282827;
+    --border-strong: #44443F;
 
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
     --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
@@ -132,11 +132,11 @@
 }
 
 :root[data-theme="dark"] {
-  --background: #0A0A0A;
-  --bg-subtle: #0A0A0A;
-  --surface: #161615;
-  --surface-hover: #1F1F1D;
-  --surface-active: #262624;
+  --background: #131312;
+  --bg-subtle: #131312;
+  --surface: #1D1D1B;
+  --surface-hover: #262624;
+  --surface-active: #2D2D2A;
 
   --foreground: #F2F1EE;
   --text: #F2F1EE;
@@ -152,14 +152,14 @@
   --success-light: rgba(34, 197, 94, 0.14);
   --error-light: rgba(239, 68, 68, 0.14);
 
-  --gray-100: #1F1F1D;
-  --gray-200: #2A2A28;
+  --gray-100: #262624;
+  --gray-200: #313130;
   --gray-400: #77756F;
   --gray-600: #A3A199;
 
-  --border: #2A2A28;
-  --border-light: #212120;
-  --border-strong: #3A3A37;
+  --border: #313130;
+  --border-light: #282827;
+  --border-strong: #44443F;
 
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
@@ -514,17 +514,21 @@ a, button, input, textarea, select {
 :root[data-theme="light"] .relay-logo-light { display: block; }
 :root[data-theme="light"] .relay-logo-dark { display: none; }
 
-/* Nav links get a drawn-on underline rather than a colour change — the
-   accent bar wipes in from the left, which suits the hand-drawn logo more
-   than a fade would. */
+/* Plain sentence-case text at full ink, no letter-spacing games — that
+   uppercase/tracked treatment read as a "label" (like the footer's eyebrow
+   headings) glued onto a clickable nav item. Full color at rest rather
+   than dimmed: an opacity fade reads as "grayed out until you touch it,"
+   which isn't a real hover state, just an animated version of looking
+   unfinished. Hover is the drawn-on underline instead of a color swap —
+   the accent bar wipes in from the left, which suits the hand-drawn brand
+   more than a tint would. */
 .marketing-navlink {
   position: relative;
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--text-secondary);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
   text-decoration: none;
   padding: 4px 0;
-  transition: color 0.14s var(--ease-out);
 }
 .marketing-navlink::after {
   content: '';
@@ -532,31 +536,172 @@ a, button, input, textarea, select {
   left: 0;
   bottom: 0;
   width: 100%;
-  height: 3px;
+  height: 2px;
   background: var(--accent);
   transform: scaleX(0);
   transform-origin: left;
   transition: transform 0.18s var(--ease-out);
 }
-.marketing-navlink:hover { color: var(--text); }
 .marketing-navlink:hover::after { transform: scaleX(1); }
 
-/* Privacy/Terms live in the footer too, so on narrow screens they drop out
-   of the nav rather than wrapping it onto two lines. */
-@media (max-width: 720px) {
-  .marketing-nav-links { display: none; }
+/* display lives here, not as an inline style on the <nav> — an inline
+   display would beat the media query below no matter what it says
+   (inline styles always win over stylesheet rules for the properties
+   they set), which is exactly the bug that made this not collapse on
+   mobile the first time. */
+.marketing-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
-/* Footer link: the arrow slides forward on hover instead of the label
-   changing colour — it matches the drawn, physical feel of the rest of the
-   page better than a tint, and gives the columns a bit of life. */
+/* Privacy/Terms live in the footer too, so on narrow screens they drop out
+   of the nav rather than wrapping it onto two lines — the mobile
+   hamburger (MobileNav) picks up the same links below this breakpoint. */
+@media (max-width: 720px) {
+  .marketing-nav-links { display: none; }
+  .marketing-desktop-only { display: none; }
+}
+
+/* Whole-nav shape: links, divider, and CTA all sit inside one bordered
+   pill instead of two loose clusters with dead space between them — with
+   only 3 links + 2 buttons, splitting them left/right stretched sparse
+   content across the full bar. One object reads as considered; a scatter
+   of small floating elements read as unfinished. */
+.marketing-navbar-pill {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 7px;
+  border: 2px solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  box-shadow: var(--shadow-hard-sm);
+}
+
+.marketing-navbar-divider {
+  width: 2px;
+  height: 26px;
+  background: var(--border-light);
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+@media (max-width: 720px) {
+  .marketing-navbar-divider { display: none; }
+}
+
+/* Nav tabs — no border/shadow of their own now; the pill they live inside
+   already draws the boundary. Plain bold text at rest, a warm accent fill
+   on hover, and the current page as a solid black chip for a real active
+   state (not just a hover reaction). */
+.marketing-navtab {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+  text-decoration: none;
+  padding: 12px 22px;
+  border-radius: var(--radius-pill);
+  transition: background 0.14s var(--ease-out), color 0.14s var(--ease-out);
+}
+.marketing-navtab:hover { background: var(--accent-light); }
+.marketing-navtab--active,
+.marketing-navtab--active:hover {
+  background: var(--text);
+  color: var(--background);
+}
+
+/* Plain solid black at rest — no shadow, no border. On hover it picks up
+   the same offset gold hard-shadow as the hero/closing-CTA buttons
+   (var(--shadow-hard-accent), a layered block behind the button, not a
+   flush border ring), just gated to hover instead of shown permanently. */
+.marketing-navbar-cta {
+  display: inline-flex;
+  align-items: center;
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--background);
+  background: var(--text);
+  text-decoration: none;
+  padding: 12px 24px;
+  border-radius: var(--radius-pill);
+  transition: box-shadow 0.14s var(--ease-out), transform 0.14s var(--ease-out);
+}
+.marketing-navbar-cta:hover { box-shadow: var(--shadow-hard-accent); transform: translate(-2px, -2px); }
+.marketing-navbar-cta:active { transform: translate(0, 0); box-shadow: none; }
+
+/* Mobile: hamburger replaces the link tabs + divider (hidden below
+   720px), opening a bordered dropdown with the same hard-shadow card
+   language as everything else on the page. Hidden above 720px since the
+   tabs are visible there instead.
+   No position: relative here — the panel needs to anchor to the whole
+   pill (.marketing-navbar-pill has that), not just this button's own
+   small box, or it opens off to the side of the hamburger instead of
+   dropping cleanly out from under the pill as one shape. */
+.marketing-mobile-nav { display: none; }
+@media (max-width: 720px) {
+  .marketing-mobile-nav { display: flex; align-items: center; }
+}
+.marketing-mobile-menu-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: background 0.14s var(--ease-out);
+}
+.marketing-mobile-menu-btn:hover { background: var(--accent-light); }
+.marketing-mobile-menu-panel {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  min-width: 190px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px;
+  background: var(--surface);
+  border: 2px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-hard-md);
+}
+.marketing-mobile-menu-link {
+  padding: 11px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  text-decoration: none;
+  transition: background 0.12s var(--ease-out), color 0.12s var(--ease-out);
+}
+.marketing-mobile-menu-link:hover { background: var(--accent-light); }
+.marketing-mobile-menu-link--active { background: var(--text); color: var(--background); }
+
+/* Log in sits in the same list as Home/Privacy/Terms but isn't a nav
+   destination the way they are — it's an account action, like Get Relay
+   is on desktop. Accent-gold text (not a fill; the list rows are plain
+   until interacted with) marks it as a different kind of item without
+   needing a divider or a second visual section inside a small dropdown. */
+.marketing-mobile-menu-link--login { color: var(--accent-hover); }
+.marketing-mobile-menu-link--login:hover { color: var(--accent-hover); background: var(--accent-light); }
+
+/* Footer link: full ink at rest, same reasoning as .marketing-navlink —
+   a muted default color reads as grayed-out/unfinished rather than a
+   considered resting state. The arrow slides forward and the label shifts
+   to the accent on hover, matching the drawn, physical feel of the rest
+   of the page better than a plain tint would. */
 .marketing-arrowlink {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   font-size: 15px;
   font-weight: 600;
-  color: var(--text-secondary);
+  color: var(--text);
   text-decoration: none;
   transition: color 0.14s var(--ease-out);
 }
@@ -564,7 +709,7 @@ a, button, input, textarea, select {
   flex-shrink: 0;
   transition: transform 0.18s var(--ease-out);
 }
-.marketing-arrowlink:hover { color: var(--text); }
+.marketing-arrowlink:hover { color: var(--accent-hover); }
 .marketing-arrowlink:hover svg { transform: translateX(4px); }
 
 /* Doodle tiles sit on a lifted card; nudging one on hover makes the row
@@ -575,4 +720,64 @@ a, button, input, textarea, select {
 .marketing-doodle-tile:hover {
   transform: translate(-3px, -3px) rotate(var(--tile-rot, 0deg)) !important;
   box-shadow: var(--shadow-hard-lg);
+}
+
+/* Footer surfaces.
+   --bg-subtle resolves to the SAME value as --background in dark mode
+   (both #0A0A0A), so a footer painted with it had literally no separation
+   from the page — the 3px rule was doing all the work. These two tokens
+   pick whichever surface actually contrasts in each theme, and keep the
+   tiles distinct from the footer they sit on:
+     light  footer #FAFAF9 on #ffffff page, tiles #ffffff (lighter)
+     dark   footer #1D1D1B on #131312 page, tiles #131312 (darker) */
+:root {
+  --footer-bg: var(--bg-subtle);
+  --footer-tile-bg: var(--surface);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --footer-bg: var(--surface);
+    --footer-tile-bg: var(--background);
+  }
+}
+:root[data-theme="dark"] {
+  --footer-bg: var(--surface);
+  --footer-tile-bg: var(--background);
+}
+:root[data-theme="light"] {
+  --footer-bg: var(--bg-subtle);
+  --footer-tile-bg: var(--surface);
+}
+
+/* The tiles are lifted into the dead space the taller link column leaves
+   beneath the headline. That only makes sense while the two are actually
+   side by side — once the grid stacks, the links sit directly above the
+   tiles and the same pull would drag them into each other. */
+.marketing-footer-tiles {
+  /* Wrap, never scroll. A horizontally scrolling strip cut tiles in half
+     at whatever width the container happened to be, which reads as a
+     broken layout rather than as "there is more this way" — there's no
+     scrollbar or fade to signal otherwise. Wrapped, the rotations and
+     vertical offsets still keep it from looking like a grid. row-gap is
+     generous because each tile is nudged up to 14px off its baseline. */
+  flex-wrap: wrap;
+  row-gap: 26px;
+  margin-top: 0;
+}
+@media (min-width: 900px) {
+  .marketing-footer-tiles { margin-top: clamp(-84px, -6vw, -16px); }
+}
+
+/* Below the stacking point the logo is dropped entirely. Once the columns
+   stack there is nowhere for it to sit that isn't beside or under the
+   links, where it reads as a stray illustration rather than a sign-off —
+   and the mark is already in the header on the same screen. */
+.marketing-footer-logo { display: none; }
+@media (min-width: 900px) {
+  .marketing-footer-logo { display: block; }
+}
+
+.marketing-footer-strip { flex-direction: column; align-items: stretch; }
+@media (min-width: 900px) {
+  .marketing-footer-strip { flex-direction: row; align-items: center; }
 }
