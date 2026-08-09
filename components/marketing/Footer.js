@@ -1,17 +1,8 @@
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
 import Logo, { LOGO_SIZES } from '@/components/marketing/Logo'
-import NotionDoodle from '@/components/shared/illustrations/NotionDoodle'
+import DoodleTile from '@/components/marketing/DoodleTile'
 import { USERS, BOOKMARK, BELL, INBOX, LAPTOP, COMMENT_SLASH } from '@/lib/doodles'
-
-// ─────────────────────────────────────────────────────────────
-//  DOODLE TILE SIZE — change this to resize the footer tiles.
-//  clamp(MIN, PREFERRED, MAX): smallest on phones, largest on
-//  desktop. The drawing inside is a percentage of the tile, so
-//  it scales with it automatically.
-// ─────────────────────────────────────────────────────────────
-const TILE_SIZE = 'clamp(52px, 11vw, 68px)'
-const TILE_ART = '56%'
 
 // The tiles are deliberately not a uniform row: each carries its own
 // rotation and vertical offset so the strip reads as hand-placed rather
@@ -27,34 +18,6 @@ const TILES = [
   { d: COMMENT_SLASH, label: 'Hidden chats', rot: -5, dy: 10 },
   { d: LAPTOP, label: 'Works on every device', rot: 3, dy: -8 },
 ]
-
-function DoodleTile({ d, label, rot, dy }) {
-  return (
-    <div
-      className="marketing-doodle-tile"
-      title={label}
-      style={{
-        '--tile-rot': `${rot}deg`,
-        transform: `rotate(${rot}deg) translateY(${dy}px)`,
-        width: TILE_SIZE,
-        height: TILE_SIZE,
-        flexShrink: 0,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'var(--footer-tile-bg)',
-        border: '2.5px solid var(--border-strong)',
-        borderRadius: 'var(--radius-md)',
-        boxShadow: 'var(--shadow-hard-sm)',
-      }}
-    >
-      {/* Percentage rather than a pixel value, so the drawing tracks the
-          tile as TILE_SIZE clamps down on smaller screens instead of
-          staying fixed and crowding the edges. */}
-      <NotionDoodle d={d} size={TILE_ART} color="var(--text)" />
-    </div>
-  )
-}
 
 function Column({ heading, links }) {
   return (

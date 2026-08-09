@@ -9,6 +9,7 @@
 export const LOGO_SIZES = {
   nav: 'clamp(36px, 5.5vw, 50px)',
   footer: 'clamp(132px, 20vw, 260px)',
+  hero: 'clamp(84px, 10vw, 150px)',
 }
 
 // The source SVGs are a 2500x2500 canvas with the drawing occupying only

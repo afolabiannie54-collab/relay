@@ -514,6 +514,20 @@ a, button, input, textarea, select {
 :root[data-theme="light"] .relay-logo-light { display: block; }
 :root[data-theme="light"] .relay-logo-dark { display: none; }
 
+/* Hero mascot: decorative, so it's hidden below the point where the
+   centered text column stops having side margin to float in — otherwise
+   it sits on top of the headline/CTA instead of beside them. */
+@media (max-width: 640px) {
+  .hero-mascot { display: none; }
+}
+
+/* Hero subtitle: one line above 640px, where the phrase comfortably fits;
+   wraps normally below that so a phone doesn't get pushed into horizontal
+   scroll trying to fit it on a single line with no room to shrink. */
+@media (min-width: 640px) {
+  .hero-subtitle { white-space: nowrap; }
+}
+
 /* Plain sentence-case text at full ink, no letter-spacing games — that
    uppercase/tracked treatment read as a "label" (like the footer's eyebrow
    headings) glued onto a clickable nav item. Full color at rest rather

@@ -2,7 +2,11 @@ import Link from 'next/link'
 import { AtSign, ShieldCheck, Mic, Users, Check, CheckCheck, Inbox, Star } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import InstallRelay from '@/components/marketing/InstallRelay'
-import ChatPreview from '@/components/marketing/ChatPreview'
+import Logo from '@/components/marketing/Logo'
+import Signpost from '@/components/marketing/Signpost'
+import NotionDoodle from '@/components/shared/illustrations/NotionDoodle'
+import { BELL, USERS, INBOX } from '@/lib/doodles'
+// ChatPreview moves to a later section (not the hero) — see LandingPage.
 
 const iconProps = { strokeWidth: 2, strokeLinecap: 'square', strokeLinejoin: 'miter' }
 
@@ -144,6 +148,58 @@ function RequestDemo() {
   )
 }
 
+// Hero CTA — the same "message request" UI as RequestDemo below, but a
+// real, functional instance of it rather than a pointer-events:none
+// mockup: the avatar is the Relay mark instead of a stranger's icon (the
+// request is "from Relay" itself), and Accept/Log in actually route
+// signup/login rather than illustrating what accepting a request looks
+// like. Reusing the product's own UI as the hero's CTA does double duty
+// as both the conversion action and a piece of product illustration,
+// instead of a plain button pair or a second preview competing with
+// ChatPreview's spot later on the page.
+function HeroRequestCTA() {
+  return (
+    <div style={{
+      maxWidth: '460px',
+      margin: '0 auto',
+      textAlign: 'left',
+      background: 'var(--surface)',
+      border: '3px solid var(--border-strong)',
+      borderRadius: 'var(--radius-lg)',
+      boxShadow: 'var(--shadow-hard-lg)',
+      padding: '28px',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '22px' }}>
+        <div style={{
+          width: '54px',
+          height: '54px',
+          borderRadius: '50%',
+          background: 'var(--accent-light)',
+          border: '2.5px solid var(--border-strong)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+        }}>
+          <Logo size="30px" showWordmark={false} />
+        </div>
+        <div>
+          <p style={{ fontSize: '18px', fontWeight: '800', color: 'var(--text)' }}>Message request</p>
+          <p style={{ fontSize: '14px', color: 'var(--text-tertiary)' }}>from @relay</p>
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: '12px' }}>
+        <Link href="/signup" className="relay-btn relay-btn--filled" style={{ flex: 1, justifyContent: 'center', textDecoration: 'none', padding: '13px 20px', fontSize: '15px' }}>
+          Accept
+        </Link>
+        <Link href="/login" className="relay-btn" style={{ flex: 1, justifyContent: 'center', textDecoration: 'none', padding: '13px 20px', fontSize: '15px' }}>
+          Log in
+        </Link>
+      </div>
+    </div>
+  )
+}
+
 function TicksDemo() {
   const rows = [
     { label: 'Sent', icon: <Check size={14} {...iconProps} color="var(--text-tertiary)" /> },
@@ -181,122 +237,125 @@ export default async function LandingPage() {
   return (
     <>
       {/* ---------------- Hero ---------------- */}
-      <section style={{ ...SECTION, paddingTop: 'clamp(64px, 11vw, 140px)', paddingBottom: 'clamp(64px, 10vw, 128px)' }}>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
-          gap: 'clamp(48px, 7vw, 96px)',
-          alignItems: 'center',
-        }}>
-          <div>
-            <div style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              background: 'var(--accent-light)',
-              border: '2px solid var(--border-strong)',
-              borderRadius: 'var(--radius-pill)',
-              padding: '6px 14px',
-              marginBottom: '24px',
-            }}>
-              <AtSign size={14} strokeWidth={2.5} color="var(--accent-text)" />
-              <span style={{ fontSize: '13px', fontWeight: '800', color: 'var(--text)' }}>
-                No phone number required
-              </span>
-            </div>
-
-            {/* The phrase was previously given a filled yellow background.
-                Across a wrap that renders as two offset slabs with ragged
-                edges — unavoidable, since a background box follows line
-                boxes. A drawn underline sits under the text instead of
-                behind it, so wrapping can't fragment it, and a wobbly
-                stroke belongs with the hand-drawn logo far more than a
-                rectangle does. nowrap keeps the phrase intact. */}
-            <h1 style={{
-              fontSize: 'clamp(2.5rem, 6.4vw, 4.5rem)',
-              fontWeight: '800',
-              letterSpacing: '-0.045em',
-              lineHeight: 1.02,
-              color: 'var(--text)',
-              marginBottom: '24px',
-            }}>
-              Your people are{' '}
-              <span style={{ position: 'relative', whiteSpace: 'nowrap' }}>
-                one search
-                <svg
-                  aria-hidden="true"
-                  viewBox="0 0 300 16"
-                  preserveAspectRatio="none"
-                  style={{
-                    position: 'absolute',
-                    left: '-1%',
-                    bottom: '-0.16em',
-                    width: '102%',
-                    height: '0.22em',
-                    overflow: 'visible',
-                  }}
-                >
-                  <path
-                    d="M2 10.5C48 4.5 108 3.2 160 6.4C212 9.6 262 9.2 298 5"
-                    stroke="var(--accent)"
-                    strokeWidth="7"
-                    strokeLinecap="round"
-                    fill="none"
-                  />
-                </svg>
-              </span>{' '}
-              away.
-            </h1>
-
-            <p style={{
-              fontSize: 'clamp(1rem, 1.6vw, 1.2rem)',
-              lineHeight: 1.6,
-              color: 'var(--text-secondary)',
-              maxWidth: '480px',
-              marginBottom: '28px',
-            }}>
-              Relay is a messaging app built on usernames. Share a handle, not your
-              number — and decide for yourself who gets to reach you.
-            </p>
-
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
-              {signedIn ? (
-                <Link href="/chat" className="relay-btn relay-btn--filled" style={{
-                  textDecoration: 'none',
-                  padding: '16px 30px',
-                  fontSize: '16px',
-                  borderRadius: 'var(--radius-md)',
-                  boxShadow: 'var(--shadow-hard-accent)',
-                }}>
-                  Open Relay
-                </Link>
-              ) : (
-                <>
-                  <Link href="/signup" className="relay-btn relay-btn--filled" style={{
-                    textDecoration: 'none',
-                    padding: '16px 30px',
-                    fontSize: '16px',
-                    borderRadius: 'var(--radius-md)',
-                    boxShadow: 'var(--shadow-hard-accent)',
-                  }}>
-                    Get Relay free
-                  </Link>
-                  <Link href="/login" className="relay-btn" style={{
-                    textDecoration: 'none',
-                    padding: '16px 26px',
-                    fontSize: '16px',
-                    borderRadius: 'var(--radius-md)',
-                  }}>
-                    Log in
-                  </Link>
-                </>
-              )}
-            </div>
+      {/* Centered, Notion/Gumroad-style — a single stacked column instead
+          of text-left/preview-right. The product preview moves to a later
+          section instead of sharing the hero. */}
+      <section style={{
+        ...SECTION,
+        position: 'relative',
+        paddingTop: 'clamp(64px, 11vw, 140px)',
+        paddingBottom: 'clamp(64px, 10vw, 128px)',
+      }}>
+        <div style={{ position: 'relative', zIndex: 1, maxWidth: '860px', margin: '0 auto', textAlign: 'center' }}>
+          {/* Just the signpost now, not the whole mascot — planted so it
+              looks like it's sticking straight up out of the Y rather than
+              flying in beside it. The pole's base overlaps the letter's
+              top; the arrows float above it. */}
+          <div
+            className="hero-mascot"
+            aria-hidden="true"
+            style={{
+              position: 'absolute',
+              left: 'clamp(-4px, 0.2vw, 8px)',
+              top: 'clamp(-78px, -6vw, -46px)',
+              transform: 'rotate(-4deg)',
+              pointerEvents: 'none',
+              zIndex: 0,
+            }}
+          >
+            <Signpost size="clamp(74px, 8.5vw, 116px)" />
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'center' }}>
-            <ChatPreview />
+          {/* A few tiny scattered doodles to balance the signpost's weight
+              on the left — bare line icons, no tile/border, muted color,
+              so they read as light background texture (Gumroad's scattered
+              marks, Notion's small floating accents) rather than another
+              thing competing for attention. */}
+          <div className="hero-mascot" aria-hidden="true" style={{
+            position: 'absolute', right: 'clamp(-16px, 1vw, 24px)', top: 'clamp(-22px, -1.5vw, 4px)',
+            transform: 'rotate(13deg)', pointerEvents: 'none', zIndex: 0,
+          }}>
+            <NotionDoodle d={BELL} size={30} color="var(--text-tertiary)" />
           </div>
+          <div className="hero-mascot" aria-hidden="true" style={{
+            position: 'absolute', right: 'clamp(-48px, -3vw, -16px)', top: '52%',
+            transform: 'rotate(-11deg)', pointerEvents: 'none', zIndex: 0,
+          }}>
+            <NotionDoodle d={USERS} size={26} color="var(--text-tertiary)" />
+          </div>
+          <div className="hero-mascot" aria-hidden="true" style={{
+            position: 'absolute', left: 'clamp(-36px, -2.5vw, -6px)', bottom: 'clamp(48px, 6vw, 88px)',
+            transform: 'rotate(9deg)', pointerEvents: 'none', zIndex: 0,
+          }}>
+            <NotionDoodle d={INBOX} size={24} color="var(--text-tertiary)" />
+          </div>
+
+          {/* The phrase was previously given a filled yellow background.
+              Across a wrap that renders as two offset slabs with ragged
+              edges — unavoidable, since a background box follows line
+              boxes. A drawn underline sits under the text instead of
+              behind it, so wrapping can't fragment it, and a wobbly
+              stroke belongs with the hand-drawn logo far more than a
+              rectangle does. nowrap keeps the phrase intact. */}
+          <h1 style={{
+            fontSize: 'clamp(2.75rem, 7vw, 5.75rem)',
+            fontWeight: '800',
+            letterSpacing: '-0.045em',
+            lineHeight: 1.0,
+            color: 'var(--text)',
+            marginBottom: '28px',
+          }}>
+            Your people are{' '}
+            <span style={{ position: 'relative', whiteSpace: 'nowrap' }}>
+              one search
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 300 16"
+                preserveAspectRatio="none"
+                style={{
+                  position: 'absolute',
+                  left: '-1%',
+                  bottom: '-0.16em',
+                  width: '102%',
+                  height: '0.22em',
+                  overflow: 'visible',
+                }}
+              >
+                <path
+                  d="M2 10.5C48 4.5 108 3.2 160 6.4C212 9.6 262 9.2 298 5"
+                  stroke="var(--accent)"
+                  strokeWidth="7"
+                  strokeLinecap="round"
+                  fill="none"
+                />
+              </svg>
+            </span>{' '}
+            away.
+          </h1>
+
+          {/* nowrap only kicks in above 640px (see .hero-subtitle) — forcing
+              it always would push this phrase past a phone's viewport
+              width and cause horizontal scroll, since there's no room left
+              to shrink the font enough to fit it on one line that small. */}
+          <p className="hero-subtitle" style={{
+            fontSize: 'clamp(1rem, 1.4vw, 1.15rem)',
+            lineHeight: 1.6,
+            color: 'var(--text-secondary)',
+            margin: '0 auto 36px',
+          }}>
+            Find people by handle, and decide who reaches you.
+          </p>
+
+          {/* Signed-in visitors already have "Open Relay" sitting right in
+              the sticky nav above — repeating it here would just be the
+              same button twice on screen at once, so the hero has no CTA
+              of its own for that case.
+              Signed-out gets the app's own message-request UI instead of
+              plain buttons — it's a real, recognizable piece of the
+              product (see the matching mockup in the feature grid below)
+              doing double duty as the hero's CTA, not a second, unrelated
+              preview competing with ChatPreview's spot later on the page. */}
+          {!signedIn && <HeroRequestCTA />}
         </div>
       </section>
 
