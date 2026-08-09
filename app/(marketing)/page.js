@@ -174,12 +174,15 @@ function HeroRequestCTA() {
       border: '3px solid var(--border-strong)',
       borderRadius: 'var(--radius-lg)',
       boxShadow: 'var(--shadow-hard-lg)',
-      padding: '28px',
+      // Every size below is clamp()-based rather than fixed — at 460px
+      // fixed this card was a large, heavy block on a phone screen where
+      // the rest of the hero has already scaled way down.
+      padding: 'clamp(18px, 5vw, 28px)',
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '22px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(10px, 3vw, 14px)', marginBottom: 'clamp(14px, 4vw, 22px)' }}>
         <div style={{
-          width: '54px',
-          height: '54px',
+          width: 'clamp(40px, 10vw, 54px)',
+          height: 'clamp(40px, 10vw, 54px)',
           borderRadius: '50%',
           background: 'var(--accent-light)',
           border: '2.5px solid var(--border-strong)',
@@ -188,18 +191,18 @@ function HeroRequestCTA() {
           justifyContent: 'center',
           flexShrink: 0,
         }}>
-          <Logo size="30px" showWordmark={false} />
+          <Logo size="clamp(22px, 6vw, 30px)" showWordmark={false} />
         </div>
         <div>
-          <p style={{ fontSize: '18px', fontWeight: '800', color: 'var(--text)' }}>Message request</p>
-          <p style={{ fontSize: '14px', color: 'var(--text-tertiary)' }}>from @relay</p>
+          <p style={{ fontSize: 'clamp(15px, 4vw, 18px)', fontWeight: '800', color: 'var(--text)' }}>Message request</p>
+          <p style={{ fontSize: 'clamp(12px, 3vw, 14px)', color: 'var(--text-tertiary)' }}>from @relay</p>
         </div>
       </div>
-      <div style={{ display: 'flex', gap: '12px' }}>
-        <Link href="/signup" className="relay-btn relay-btn--filled" style={{ flex: 1, justifyContent: 'center', textDecoration: 'none', padding: '13px 20px', fontSize: '15px' }}>
+      <div style={{ display: 'flex', gap: 'clamp(8px, 2vw, 12px)' }}>
+        <Link href="/signup" className="relay-btn relay-btn--filled" style={{ flex: 1, justifyContent: 'center', textDecoration: 'none', padding: 'clamp(10px, 3vw, 13px) clamp(14px, 4vw, 20px)', fontSize: 'clamp(13px, 3.5vw, 15px)' }}>
           Accept
         </Link>
-        <Link href="/login" className="relay-btn" style={{ flex: 1, justifyContent: 'center', textDecoration: 'none', padding: '13px 20px', fontSize: '15px' }}>
+        <Link href="/login" className="relay-btn" style={{ flex: 1, justifyContent: 'center', textDecoration: 'none', padding: 'clamp(10px, 3vw, 13px) clamp(14px, 4vw, 20px)', fontSize: 'clamp(13px, 3.5vw, 15px)' }}>
           Log in
         </Link>
       </div>
@@ -384,12 +387,12 @@ export default async function LandingPage() {
         position: 'relative',
         background: 'var(--background)',
         // On phones the preferred -13vw value is already past the max end
-        // of this clamp, so mobile was pinned at -90px regardless — a
-        // fixed pull-up that size eats a much bigger share of a short
-        // mobile hero than it does a tall desktop one. Lowering the max
-        // end to -40px gives mobile room to breathe without touching the
-        // desktop end (still governed by the min, -180px).
-        marginTop: 'clamp(-180px, -13vw, -40px)',
+        // of this clamp, so mobile pins at whatever the max is regardless
+        // of -13vw — a fixed pull-up that size eats a much bigger share of
+        // a short mobile hero than it does a tall desktop one. Max is
+        // barely negative so mobile gets almost no overlap; desktop is
+        // still governed by the min, -180px.
+        marginTop: 'clamp(-180px, -13vw, -10px)',
         padding: 'clamp(72px, 10vw, 136px) 0',
       }}>
         <div style={SECTION}>
