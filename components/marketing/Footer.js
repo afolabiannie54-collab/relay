@@ -48,17 +48,23 @@ function Column({ heading, links }) {
 
 export default function Footer({ signedIn }) {
   return (
-    // No top rule — the footer's own surface colour is the separation now,
-    // same as every other section boundary on the page. The top-right
-    // corner is cut on the diagonal and backed by a shaded flap, so the
-    // gold CTA above reads as a page whose corner has been turned up to
-    // reveal the footer underneath. See .marketing-footer-fold.
-    <footer className="marketing-footer-fold" style={{ background: 'var(--footer-bg)' }}>
-      <div style={{
-        maxWidth: '1180px',
-        margin: '0 auto',
-        padding: 'clamp(56px, 8vw, 96px) 28px clamp(48px, 6vw, 72px)',
-      }}>
+    // Two elements, not one: CSS applies `filter` before `clip-path`, so a
+    // drop-shadow on the clipped element itself gets generated and then
+    // clipped straight back off — same fate as a box-shadow. The wrapper
+    // carries the shadow and the footer carries the clip, so the shadow is
+    // cast from the already-cut silhouette and follows the folded corner.
+    <div className="marketing-footer-shadow">
+      {/* No top rule — the footer's own surface colour is the separation
+          now, same as every other section boundary on the page. The
+          top-right corner is cut on the diagonal and backed by a shaded
+          flap, so the gold CTA above reads as a page whose corner has been
+          turned up to reveal the footer underneath. */}
+      <footer className="marketing-footer-fold" style={{ background: 'var(--footer-bg)' }}>
+        <div style={{
+          maxWidth: '1180px',
+          margin: '0 auto',
+          padding: 'clamp(56px, 8vw, 96px) 28px clamp(48px, 6vw, 72px)',
+        }}>
         {/* Statement + links. The headline is the point of the footer, so
             it gets roughly twice the width of the link area and the links
             sit alongside it rather than under it. */}
@@ -139,8 +145,9 @@ export default function Footer({ signedIn }) {
           <div className="marketing-footer-logo" style={{ flexShrink: 0 }}>
             <Logo size={LOGO_SIZES.footer} showWordmark={false} flip />
           </div>
+          </div>
         </div>
-      </div>
-    </footer>
+      </footer>
+    </div>
   )
 }

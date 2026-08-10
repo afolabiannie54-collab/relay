@@ -916,22 +916,28 @@ button.marketing-navtab {
    The triangle has to be ::before on the footer itself rather than a
    sibling: it sits entirely within the kept region, so the same clip-path
    that cuts the corner leaves it untouched. */
+/* The shadow has to sit on a wrapper, not on the clipped element itself:
+   CSS applies filter *before* clip-path, so a drop-shadow declared here
+   alongside the clip would be generated and then immediately clipped away
+   — the exact thing that makes box-shadow useless on a clipped element.
+   From the parent, the filter sees the already-clipped child, so the
+   shadow traces the cut corner instead of a straight edge.
+   Two layers and heavier than it seems it should need to be: in light
+   mode --footer-bg (#FAFAF9) is a hair off the page's #ffffff, so there's
+   essentially no colour edge for a faint shadow to sit on — it's doing
+   all of the separating by itself. Soft rather than the site's usual hard
+   offset, since what it stands in for is the shadow a lifted sheet of
+   paper casts. */
+.marketing-footer-shadow {
+  filter:
+    drop-shadow(0 -2px 4px rgba(0, 0, 0, 0.28))
+    drop-shadow(0 -14px 30px rgba(0, 0, 0, 0.22));
+}
+
 .marketing-footer-fold {
   --fold: clamp(52px, 8vw, 108px);
   position: relative;
   clip-path: polygon(0 0, calc(100% - var(--fold)) 0, 100% var(--fold), 100% 100%, 0 100%);
-  /* drop-shadow, not box-shadow: clip-path cuts a box-shadow away with the
-     corner, while a filter shadow traces the clipped silhouette — so this
-     one bends around the fold instead of running straight across it. Soft
-     rather than the site's usual hard offset, because what it's standing
-     in for is the shadow a lifted sheet of paper actually casts.
-     Two layers, and stronger than it looks like it needs to be: in light
-     mode --footer-bg (#FAFAF9) is a hair off the page's #ffffff, so there
-     is essentially no colour edge here for a faint shadow to sit on — the
-     shadow is doing all of the separating by itself. */
-  filter:
-    drop-shadow(0 -2px 4px rgba(0, 0, 0, 0.28))
-    drop-shadow(0 -14px 30px rgba(0, 0, 0, 0.22));
 }
 .marketing-footer-fold::before {
   content: '';
