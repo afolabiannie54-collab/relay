@@ -48,14 +48,16 @@ function Column({ heading, links }) {
 
 export default function Footer({ signedIn }) {
   return (
-    <footer style={{
-      borderTop: '3px solid var(--border-strong)',
-      background: 'var(--footer-bg)',
-    }}>
+    // No top rule — the footer's own surface colour is the separation now,
+    // same as every other section boundary on the page. The top-right
+    // corner is cut on the diagonal and backed by a shaded flap, so the
+    // gold CTA above reads as a page whose corner has been turned up to
+    // reveal the footer underneath. See .marketing-footer-fold.
+    <footer className="marketing-footer-fold" style={{ background: 'var(--footer-bg)' }}>
       <div style={{
         maxWidth: '1180px',
         margin: '0 auto',
-        padding: 'clamp(56px, 8vw, 96px) 28px clamp(32px, 4vw, 48px)',
+        padding: 'clamp(56px, 8vw, 96px) 28px clamp(48px, 6vw, 72px)',
       }}>
         {/* Statement + links. The headline is the point of the footer, so
             it gets roughly twice the width of the link area and the links
@@ -113,7 +115,7 @@ export default function Footer({ signedIn }) {
         <div className="marketing-footer-strip" style={{
           display: 'flex',
           justifyContent: 'space-between',
-          gap: 'clamp(24px, 4vw, 56px)',
+          gap: '  clamp(24px, 4vw, 56px)',
           flexWrap: 'wrap',
         }}>
           {/* Wrapping (not scrolling) is handled in globals.css — see
@@ -136,27 +138,6 @@ export default function Footer({ signedIn }) {
               .marketing-footer-logo. */}
           <div className="marketing-footer-logo" style={{ flexShrink: 0 }}>
             <Logo size={LOGO_SIZES.footer} showWordmark={false} flip />
-          </div>
-        </div>
-      </div>
-
-      <div style={{ borderTop: '2px solid var(--border-strong)' }}>
-        <div style={{
-          maxWidth: '1180px',
-          margin: '0 auto',
-          padding: '20px 28px',
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: '12px',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        }}>
-          <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>
-            © {new Date().getFullYear()} Relay
-          </p>
-          <div style={{ display: 'flex', gap: '22px' }}>
-            <Link href="/privacy" className="marketing-navlink" style={{ fontSize: '13px' }}>Privacy</Link>
-            <Link href="/terms" className="marketing-navlink" style={{ fontSize: '13px' }}>Terms</Link>
           </div>
         </div>
       </div>

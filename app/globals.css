@@ -538,6 +538,40 @@ a, button, input, textarea, select {
   .hero-subtitle { white-space: nowrap; }
 }
 
+/* Decorative scattered doodles in any section — dropped once the viewport
+   is too narrow for them to sit beside the content instead of on top of
+   it. Same rule .hero-mascot uses, under a name other sections can opt
+   into without inheriting a hero-specific one. */
+@media (max-width: 640px) {
+  .marketing-scatter { display: none; }
+}
+
+/* Notebook ruling. The horizontal lines are a repeating gradient layered
+   over whatever background the section already sets, so a section opts in
+   by adding the class without giving up its own colour. Black at very low
+   alpha rather than a fixed grey — it has to sit on saturated gold here
+   and would go muddy as a solid tone. */
+.marketing-ruled {
+  background-color: var(--accent);
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0 39px,
+    rgba(0, 0, 0, 0.085) 39px 41px
+  );
+}
+.marketing-ruled-margin {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: clamp(28px, 8vw, 104px);
+  width: 2px;
+  background: rgba(0, 0, 0, 0.2);
+  pointer-events: none;
+}
+@media (max-width: 640px) {
+  .marketing-ruled-margin { display: none; }
+}
+
 /* Plain sentence-case text at full ink, no letter-spacing games — that
    uppercase/tracked treatment read as a "label" (like the footer's eyebrow
    headings) glued onto a clickable nav item. Full color at rest rather
@@ -626,6 +660,11 @@ a, button, input, textarea, select {
   text-decoration: none;
   padding: 12px 22px;
   border-radius: var(--radius-pill);
+  /* Declared on the base class, not on the button-qualified rule below:
+     `button.marketing-navtab` would out-specify .marketing-navtab--active
+     and permanently clear the active chip's fill. Here it's equal
+     specificity, so --active still wins on source order. */
+  background: transparent;
   transition: background 0.14s var(--ease-out), color 0.14s var(--ease-out);
 }
 .marketing-navtab:hover { background: var(--accent-light); }
@@ -739,6 +778,11 @@ a, button, input, textarea, select {
 /* Doodle tiles sit on a lifted card; nudging one on hover makes the row
    feel hand-placed rather than evenly stamped out. */
 .marketing-doodle-tile {
+  /* Here rather than inline on the component so a breakpoint can override
+     display — see the mobile rule that drops the last two tiles. */
+  display: flex;
+  align-items: center;
+  justify-content: center;
   transition: transform 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
 }
 .marketing-doodle-tile:hover {
@@ -806,6 +850,14 @@ a, button, input, textarea, select {
   .marketing-footer-strip { flex-direction: row; align-items: center; }
 }
 
+/* Six tiles wrap to a ragged 3 + 3 or 4 + 2 on a phone depending on the
+   exact width; four sit as two even rows instead. Hidden here rather than
+   forking the TILES array, so the desktop strip is untouched and there's
+   only one list to edit. */
+@media (max-width: 640px) {
+  .marketing-footer-tiles > :nth-child(n + 5) { display: none; }
+}
+
 /* Feature grid — asymmetric wide/narrow cards (Gumroad reference) rather
    than a uniform auto-fit grid. 3-column base, wide = 2-of-3, narrow =
    1-of-3, and the wide card swaps sides each row (left, right, left) —
@@ -832,4 +884,101 @@ a, button, input, textarea, select {
 .marketing-feature-overlap { margin-top: clamp(-180px, -13vw, -90px); }
 @media (max-width: 640px) {
   .marketing-feature-overlap { margin-top: -8px; }
+}
+
+/* The install section reuses .marketing-navbar-pill / .marketing-navtab
+   for its platform switcher — it's a subnav, so it should be the same
+   control as the header rather than a second tab style. Buttons don't
+   inherit font or shed their chrome the way the nav's anchors do, so
+   that's reset here rather than duplicating the whole tab rule. */
+button.marketing-navtab {
+  font-family: inherit;
+  border: none;
+  cursor: pointer;
+}
+
+/* All three tabs share one height so switching between them doesn't
+   resize the section and shove the rest of the page around — iPhone
+   carries two mockups, Android/desktop a single button. Only above the
+   stacking breakpoint: on a phone the panel is already the full column
+   and a floor that tall would just add dead space. */
+.marketing-install-panel { display: flex; flex-direction: column; }
+@media (min-width: 720px) {
+  .marketing-install-panel { min-height: 600px; }
+}
+
+/* Footer page-fold. The top-right corner is clipped off on the diagonal
+   so the gold CTA above shows through the gap, and ::before fills the
+   space just inside the cut with a shaded triangle — the underside of the
+   turned-up corner. Reads as the gold section being a sheet of paper
+   whose corner has been peeled back, which is the same notebook idea the
+   ruled CTA above is built on.
+   The triangle has to be ::before on the footer itself rather than a
+   sibling: it sits entirely within the kept region, so the same clip-path
+   that cuts the corner leaves it untouched. */
+.marketing-footer-fold {
+  --fold: clamp(52px, 8vw, 108px);
+  position: relative;
+  clip-path: polygon(0 0, calc(100% - var(--fold)) 0, 100% var(--fold), 100% 100%, 0 100%);
+  /* drop-shadow, not box-shadow: clip-path cuts a box-shadow away with the
+     corner, while a filter shadow traces the clipped silhouette — so this
+     one bends around the fold instead of running straight across it. Soft
+     rather than the site's usual hard offset, because what it's standing
+     in for is the shadow a lifted sheet of paper actually casts.
+     Two layers, and stronger than it looks like it needs to be: in light
+     mode --footer-bg (#FAFAF9) is a hair off the page's #ffffff, so there
+     is essentially no colour edge here for a faint shadow to sit on — the
+     shadow is doing all of the separating by itself. */
+  filter:
+    drop-shadow(0 -2px 4px rgba(0, 0, 0, 0.28))
+    drop-shadow(0 -14px 30px rgba(0, 0, 0, 0.22));
+}
+.marketing-footer-fold::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: var(--fold);
+  height: var(--fold);
+  /* Top-left → bottom-right → bottom-left: the half of the box on the
+     inner side of the diagonal, i.e. the flap lying on the footer. */
+  clip-path: polygon(0 0, 100% 100%, 0 100%);
+  /* Gold, because the flap is the back of the gold page — darkened along
+     the diagonal so it reads as a surface catching less light rather than
+     a flat shape pasted on. */
+  background: linear-gradient(225deg, var(--accent) 0%, var(--accent-hover) 55%, rgba(0, 0, 0, 0.35) 100%);
+  pointer-events: none;
+}
+
+/* Final CTA button — the loudest thing on the page, so the usual single
+   hard shadow becomes a stack of them. Layers alternate white/black
+   rather than repeating one colour: four black offsets on gold would
+   merge into a single wedge, while alternating keeps each step visible
+   and the button reads as genuinely extruded off the page.
+   Compound selectors (.relay-btn.marketing-cta-stack) because .relay-btn
+   already defines its own :hover/:active shadow and transform — these
+   have to outrank those, not race them on source order. */
+.marketing-cta-stack {
+  box-shadow:
+    4px 4px 0 var(--surface),
+    8px 8px 0 var(--text),
+    12px 12px 0 var(--surface),
+    16px 16px 0 var(--text);
+  transition: transform 0.16s var(--ease-out), box-shadow 0.16s var(--ease-out);
+}
+.relay-btn.marketing-cta-stack:hover {
+  background: var(--text);
+  transform: translate(-6px, -6px);
+  box-shadow:
+    6px 6px 0 var(--surface),
+    12px 12px 0 var(--text),
+    18px 18px 0 var(--surface),
+    24px 24px 0 var(--text),
+    30px 30px 0 var(--surface);
+}
+/* Collapses flat on press — the stack is "height", so removing it reads
+   as the button being pushed down into the page. */
+.relay-btn.marketing-cta-stack:active {
+  transform: translate(0, 0) scale(0.99);
+  box-shadow: none;
 }

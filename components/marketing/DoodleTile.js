@@ -18,15 +18,17 @@ export default function DoodleTile({
     <div
       className="marketing-doodle-tile"
       title={label}
+      // display/alignment deliberately live in .marketing-doodle-tile, not
+      // here: an inline `display` outranks every stylesheet rule, so the
+      // media query that drops the last two tiles on mobile could never
+      // beat it. Anything a breakpoint might need to override has to stay
+      // out of this object.
       style={{
         '--tile-rot': `${rot}deg`,
         transform: `rotate(${rot}deg) translateY(${dy}px)`,
         width: size,
         height: size,
         flexShrink: 0,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
         background: 'var(--footer-tile-bg)',
         border: '2.5px solid var(--border-strong)',
         borderRadius: 'var(--radius-md)',

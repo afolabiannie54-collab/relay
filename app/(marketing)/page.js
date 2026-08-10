@@ -184,7 +184,7 @@ function HeroRequestCTA() {
           width: 'clamp(40px, 10vw, 54px)',
           height: 'clamp(40px, 10vw, 54px)',
           borderRadius: '50%',
-          background: 'var(--accent-light)',
+          background: 'var(--surface)',
           border: '2.5px solid var(--border-strong)',
           display: 'flex',
           alignItems: 'center',
@@ -552,71 +552,111 @@ export default async function LandingPage() {
       </section>
 
       {/* ---------------- Install ---------------- */}
-      <section style={{ ...SECTION, padding: 'clamp(72px, 10vw, 136px) 24px' }}>
+      {/* An inset rounded block rather than another edge-to-edge band —
+          the Gumroad treatment, where a section sits *on* the page as its
+          own object instead of being another horizontal stripe. The warm
+          accent wash also steps the page up toward the solid-gold closing
+          CTA below rather than jumping straight from white to full gold. */}
+      <section style={{ padding: 'clamp(32px, 5vw, 64px) clamp(16px, 2.5vw, 32px)' }}>
         <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-          gap: 'clamp(28px, 5vw, 56px)',
-          alignItems: 'center',
+          // Wider than the 1120px the rest of the page uses — running
+          // closer to the viewport edges is what makes it read as a slab
+          // laid on the page rather than another column of content.
+          maxWidth: '1400px',
+          margin: '0 auto',
+          background: 'var(--accent-light)',
+          border: '3px solid var(--border-strong)',
+          borderRadius: 'clamp(28px, 4vw, 48px)',
+          boxShadow: 'var(--shadow-hard-lg)',
+          padding: 'clamp(32px, 6vw, 72px)',
         }}>
-          <div>
-            <Eyebrow>Install</Eyebrow>
-            <h2 style={{
-              fontSize: 'clamp(2rem, 4.5vw, 3.25rem)',
-              fontWeight: '800',
-              letterSpacing: '-0.04em',
-              lineHeight: 1.05,
-              color: 'var(--text)',
-              marginBottom: '16px',
-            }}>
-              Put it on your home screen.
-            </h2>
-            <p style={{ fontSize: '16px', lineHeight: 1.6, color: 'var(--text-secondary)', maxWidth: '440px' }}>
-              Relay installs like a normal app — its own icon, its own window, and
-              push notifications when someone messages you. No app store, nothing
-              to download.
-            </p>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+            gap: 'clamp(28px, 5vw, 56px)',
+            alignItems: 'start',
+          }}>
+            <div>
+              <Eyebrow>Install</Eyebrow>
+              <h2 style={{
+                fontSize: 'clamp(2rem, 4.5vw, 3.25rem)',
+                fontWeight: '800',
+                letterSpacing: '-0.04em',
+                lineHeight: 1.05,
+                color: 'var(--text)',
+                marginBottom: '16px',
+              }}>
+                Put it on your home screen.
+              </h2>
+              <p style={{ fontSize: '16px', lineHeight: 1.6, color: 'var(--text-secondary)', maxWidth: '440px' }}>
+                No app store, no download — just add it to your home screen.
+              </p>
+            </div>
+            <InstallRelay />
           </div>
-          <InstallRelay />
         </div>
       </section>
 
       {/* ---------------- Closing CTA ---------------- */}
-      <section style={{
-        background: 'var(--accent)',
-        padding: 'clamp(72px, 10vw, 136px) 24px',
-      }}>
-        <div style={{ ...SECTION, textAlign: 'center' }}>
+      {/* Full-bleed rather than another inset slab — after the cream block
+          above, a solid edge-to-edge band is the harder stop, and the last
+          thing before the footer should feel like an ending.
+          Ruled like notebook paper: the page's whole illustration language
+          is hand-drawn (the doodles, the mascot, the wobbly underline in
+          the hero), and paper is the surface all of that gets drawn on —
+          so the scattered doodles below read as margin sketches rather
+          than floating decoration. Texture, not a soft gradient: a fade
+          would be the only soft edge on a site built from hard ones. */}
+      {/* The gold lives in .marketing-ruled alongside the ruling, not as an
+          inline style here: `background` is a shorthand, so an inline one
+          resets background-image to none and — inline beating the
+          stylesheet — silently deleted the lines. */}
+      <section
+        className="marketing-ruled"
+        style={{
+          position: 'relative',
+          overflow: 'hidden',
+          padding: 'clamp(72px, 10vw, 136px) 24px',
+        }}
+      >
+        {/* The margin rule. Drawn as its own element rather than part of
+            the repeating background so it can drop out on narrow screens,
+            where there's no margin left for it to sit in. */}
+        <span className="marketing-ruled-margin" aria-hidden="true" />
+
+
+        <div style={{ ...SECTION, position: 'relative', zIndex: 1, textAlign: 'center' }}>
           <h2 style={{
-            fontSize: 'clamp(2.25rem, 6vw, 4rem)',
+            fontSize: 'clamp(2.5rem, 6.5vw, 4.25rem)',
             fontWeight: '800',
-            letterSpacing: '-0.04em',
-            lineHeight: 1.02,
+            letterSpacing: '-0.045em',
+            lineHeight: 1.0,
             color: 'var(--on-accent)',
-            marginBottom: '20px',
+            marginBottom: '18px',
           }}>
             Start with a username.
           </h2>
           <p style={{
-            fontSize: 'clamp(1rem, 1.8vw, 1.15rem)',
+            fontSize: 'clamp(1rem, 1.5vw, 1.15rem)',
             color: 'var(--on-accent)',
-            opacity: 0.85,
-            maxWidth: '46ch',
-            margin: '0 auto 32px',
+            opacity: 0.8,
+            margin: '0 auto 34px',
             lineHeight: 1.6,
           }}>
-            Free, takes a minute, and nobody needs your phone number to say hello.
+            Free, and it takes about a minute.
           </p>
+          {/* Black, not white — on gold, the filled dark button is the
+              site's primary treatment and far the stronger of the two.
+              The stacked extrusion lives entirely in .marketing-cta-stack
+              (no inline boxShadow) so hover/active can own it too. */}
           <Link
             href={signedIn ? '/chat' : '/signup'}
-            className="relay-btn"
+            className="relay-btn relay-btn--filled marketing-cta-stack"
             style={{
               textDecoration: 'none',
-              padding: '17px 34px',
-              fontSize: '17px',
+              padding: '19px 38px',
+              fontSize: '18px',
               borderRadius: 'var(--radius-md)',
-              background: 'var(--surface)',
-              boxShadow: 'var(--shadow-hard-md)',
             }}
           >
             {signedIn ? 'Open Relay' : 'Get Relay free'}
