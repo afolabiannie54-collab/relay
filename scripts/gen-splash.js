@@ -14,7 +14,7 @@ const ROOT = process.argv[2]
 // resolve against the scratchpad and miss. Resolve from the project root.
 const sharp = createRequire(path.join(ROOT, 'package.json'))('sharp')
 const OUT = path.join(ROOT, 'public/splash')
-const ICON = path.join(ROOT, 'public/icons/icon-1024.png')
+// ICON no longer used — the logo SVGs in THEMES replaced it (see note there).
 
 // CSS px + device pixel ratio. Grouped by identical dimensions — devices
 // sharing a size share one image.
@@ -39,12 +39,19 @@ const DEVICES = [
   { w: 768, h: 1024, r: 2, name: 'ipad-9-7' },
 ]
 
-// Matched to --background in globals.css, not to manifest's background_color
-// (#FFFFFF) — the dark value there would be wrong, and the splash should be
-// the colour the app shell actually paints on launch.
+// Backgrounds match --background in globals.css, not manifest's
+// background_color (#FFFFFF) — that has no dark variant, and the splash
+// should be the colour the app shell actually paints on launch.
+//
+// The mark is the logo SVG, NOT icon-1024.png. That icon is opaque with its
+// own near-white background baked in, so on the white light-mode splash it
+// was a white square on white — invisible apart from a few dark strokes.
+// The logo ships in two variants precisely so each one has contrast against
+// its own theme: logo-light.svg is the dark-stroked drawing meant to sit on
+// light, logo-dark.svg the light-stroked one for dark.
 const THEMES = {
-  light: { bg: '#ffffff' },
-  dark: { bg: '#131312' },
+  light: { bg: '#ffffff', logo: 'public/icons/logo-light.svg' },
+  dark: { bg: '#131312', logo: 'public/icons/logo-dark.svg' },
 }
 
 async function main() {
@@ -56,21 +63,17 @@ async function main() {
       const pxW = Math.round((orient === 'portrait' ? d.w : d.h) * d.r)
       const pxH = Math.round((orient === 'portrait' ? d.h : d.w) * d.r)
 
-      for (const [theme, { bg }] of Object.entries(THEMES)) {
-        // A quarter of the short edge: large enough to read as the app's
-        // mark, small enough that it never crowds a landscape phone.
-        const icon = Math.round(Math.min(pxW, pxH) * 0.25)
-        // iOS's own icon corner radius is ~22.37% of the icon's width.
-        // Without it the opaque square icon reads as a pasted rectangle
-        // rather than an app icon, which is very obvious on dark.
-        const radius = Math.round(icon * 0.2237)
-        const mask = Buffer.from(
-          `<svg width="${icon}" height="${icon}"><rect width="${icon}" height="${icon}" rx="${radius}" ry="${radius}"/></svg>`
-        )
+      for (const [theme, { bg, logo }] of Object.entries(THEMES)) {
+        // Sized off the short edge so it stays proportionate in landscape
+        // too. Height drives it because the mark is a tall figure; width
+        // follows from the artwork's own aspect.
+        const markH = Math.round(Math.min(pxW, pxH) * 0.30)
 
-        const rounded = await sharp(ICON)
-          .resize(icon, icon, { fit: 'cover' })
-          .composite([{ input: mask, blend: 'dest-in' }])
+        // density scales SVG rasterisation — without raising it, sharp
+        // renders at the file's nominal size first and the result is soft
+        // when that's smaller than the target.
+        const rounded = await sharp(path.join(ROOT, logo), { density: 400 })
+          .resize({ height: markH, fit: 'inside' })
           .png()
           .toBuffer()
 
