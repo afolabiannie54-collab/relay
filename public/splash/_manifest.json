@@ -1,0 +1,578 @@
+[
+  {
+    "file": "iphone-16-pro-max-portrait-light.png",
+    "theme": "light",
+    "orient": "portrait",
+    "w": 440,
+    "h": 956,
+    "r": 3
+  },
+  {
+    "file": "iphone-16-pro-max-portrait-dark.png",
+    "theme": "dark",
+    "orient": "portrait",
+    "w": 440,
+    "h": 956,
+    "r": 3
+  },
+  {
+    "file": "iphone-16-pro-max-landscape-light.png",
+    "theme": "light",
+    "orient": "landscape",
+    "w": 440,
+    "h": 956,
+    "r": 3
+  },
+  {
+    "file": "iphone-16-pro-max-landscape-dark.png",
+    "theme": "dark",
+    "orient": "landscape",
+    "w": 440,
+    "h": 956,
+    "r": 3
+  },
+  {
+    "file": "iphone-15-pro-max-portrait-light.png",
+    "theme": "light",
+    "orient": "portrait",
+    "w": 430,
+    "h": 932,
+    "r": 3
+  },
+  {
+    "file": "iphone-15-pro-max-portrait-dark.png",
+    "theme": "dark",
+    "orient": "portrait",
+    "w": 430,
+    "h": 932,
+    "r": 3
+  },
+  {
+    "file": "iphone-15-pro-max-landscape-light.png",
+    "theme": "light",
+    "orient": "landscape",
+    "w": 430,
+    "h": 932,
+    "r": 3
+  },
+  {
+    "file": "iphone-15-pro-max-landscape-dark.png",
+    "theme": "dark",
+    "orient": "landscape",
+    "w": 430,
+    "h": 932,
+    "r": 3
+  },
+  {
+    "file": "iphone-13-pro-max-portrait-light.png",
+    "theme": "light",
+    "orient": "portrait",
+    "w": 428,
+    "h": 926,
+    "r": 3
+  },
+  {
+    "file": "iphone-13-pro-max-portrait-dark.png",
+    "theme": "dark",
+    "orient": "portrait",
+    "w": 428,
+    "h": 926,
+    "r": 3
+  },
+  {
+    "file": "iphone-13-pro-max-landscape-light.png",
+    "theme": "light",
+    "orient": "landscape",
+    "w": 428,
+    "h": 926,
+    "r": 3
+  },
+  {
+    "file": "iphone-13-pro-max-landscape-dark.png",
+    "theme": "dark",
+    "orient": "landscape",
+    "w": 428,
+    "h": 926,
+    "r": 3
+  },
+  {
+    "file": "iphone-16-pro-portrait-light.png",
+    "theme": "light",
+    "orient": "portrait",
+    "w": 402,
+    "h": 874,
+    "r": 3
+  },
+  {
+    "file": "iphone-16-pro-portrait-dark.png",
+    "theme": "dark",
+    "orient": "portrait",
+    "w": 402,
+    "h": 874,
+    "r": 3
+  },
+  {
+    "file": "iphone-16-pro-landscape-light.png",
+    "theme": "light",
+    "orient": "landscape",
+    "w": 402,
+    "h": 874,
+    "r": 3
+  },
+  {
+    "file": "iphone-16-pro-landscape-dark.png",
+    "theme": "dark",
+    "orient": "landscape",
+    "w": 402,
+    "h": 874,
+    "r": 3
+  },
+  {
+    "file": "iphone-15-pro-portrait-light.png",
+    "theme": "light",
+    "orient": "portrait",
+    "w": 393,
+    "h": 852,
+    "r": 3
+  },
+  {
+    "file": "iphone-15-pro-portrait-dark.png",
+    "theme": "dark",
+    "orient": "portrait",
+    "w": 393,
+    "h": 852,
+    "r": 3
+  },
+  {
+    "file": "iphone-15-pro-landscape-light.png",
+    "theme": "light",
+    "orient": "landscape",
+    "w": 393,
+    "h": 852,
+    "r": 3
+  },
+  {
+    "file": "iphone-15-pro-landscape-dark.png",
+    "theme": "dark",
+    "orient": "landscape",
+    "w": 393,
+    "h": 852,
+    "r": 3
+  },
+  {
+    "file": "iphone-13-portrait-light.png",
+    "theme": "light",
+    "orient": "portrait",
+    "w": 390,
+    "h": 844,
+    "r": 3
+  },
+  {
+    "file": "iphone-13-portrait-dark.png",
+    "theme": "dark",
+    "orient": "portrait",
+    "w": 390,
+    "h": 844,
+    "r": 3
+  },
+  {
+    "file": "iphone-13-landscape-light.png",
+    "theme": "light",
+    "orient": "landscape",
+    "w": 390,
+    "h": 844,
+    "r": 3
+  },
+  {
+    "file": "iphone-13-landscape-dark.png",
+    "theme": "dark",
+    "orient": "landscape",
+    "w": 390,
+    "h": 844,
+    "r": 3
+  },
+  {
+    "file": "iphone-x-portrait-light.png",
+    "theme": "light",
+    "orient": "portrait",
+    "w": 375,
+    "h": 812,
+    "r": 3
+  },
+  {
+    "file": "iphone-x-portrait-dark.png",
+    "theme": "dark",
+    "orient": "portrait",
+    "w": 375,
+    "h": 812,
+    "r": 3
+  },
+  {
+    "file": "iphone-x-landscape-light.png",
+    "theme": "light",
+    "orient": "landscape",
+    "w": 375,
+    "h": 812,
+    "r": 3
+  },
+  {
+    "file": "iphone-x-landscape-dark.png",
+    "theme": "dark",
+    "orient": "landscape",
+    "w": 375,
+    "h": 812,
+    "r": 3
+  },
+  {
+    "file": "iphone-11-pro-max-portrait-light.png",
+    "theme": "light",
+    "orient": "portrait",
+    "w": 414,
+    "h": 896,
+    "r": 3
+  },
+  {
+    "file": "iphone-11-pro-max-portrait-dark.png",
+    "theme": "dark",
+    "orient": "portrait",
+    "w": 414,
+    "h": 896,
+    "r": 3
+  },
+  {
+    "file": "iphone-11-pro-max-landscape-light.png",
+    "theme": "light",
+    "orient": "landscape",
+    "w": 414,
+    "h": 896,
+    "r": 3
+  },
+  {
+    "file": "iphone-11-pro-max-landscape-dark.png",
+    "theme": "dark",
+    "orient": "landscape",
+    "w": 414,
+    "h": 896,
+    "r": 3
+  },
+  {
+    "file": "iphone-11-portrait-light.png",
+    "theme": "light",
+    "orient": "portrait",
+    "w": 414,
+    "h": 896,
+    "r": 2
+  },
+  {
+    "file": "iphone-11-portrait-dark.png",
+    "theme": "dark",
+    "orient": "portrait",
+    "w": 414,
+    "h": 896,
+    "r": 2
+  },
+  {
+    "file": "iphone-11-landscape-light.png",
+    "theme": "light",
+    "orient": "landscape",
+    "w": 414,
+    "h": 896,
+    "r": 2
+  },
+  {
+    "file": "iphone-11-landscape-dark.png",
+    "theme": "dark",
+    "orient": "landscape",
+    "w": 414,
+    "h": 896,
+    "r": 2
+  },
+  {
+    "file": "iphone-8-plus-portrait-light.png",
+    "theme": "light",
+    "orient": "portrait",
+    "w": 414,
+    "h": 736,
+    "r": 3
+  },
+  {
+    "file": "iphone-8-plus-portrait-dark.png",
+    "theme": "dark",
+    "orient": "portrait",
+    "w": 414,
+    "h": 736,
+    "r": 3
+  },
+  {
+    "file": "iphone-8-plus-landscape-light.png",
+    "theme": "light",
+    "orient": "landscape",
+    "w": 414,
+    "h": 736,
+    "r": 3
+  },
+  {
+    "file": "iphone-8-plus-landscape-dark.png",
+    "theme": "dark",
+    "orient": "landscape",
+    "w": 414,
+    "h": 736,
+    "r": 3
+  },
+  {
+    "file": "iphone-8-portrait-light.png",
+    "theme": "light",
+    "orient": "portrait",
+    "w": 375,
+    "h": 667,
+    "r": 2
+  },
+  {
+    "file": "iphone-8-portrait-dark.png",
+    "theme": "dark",
+    "orient": "portrait",
+    "w": 375,
+    "h": 667,
+    "r": 2
+  },
+  {
+    "file": "iphone-8-landscape-light.png",
+    "theme": "light",
+    "orient": "landscape",
+    "w": 375,
+    "h": 667,
+    "r": 2
+  },
+  {
+    "file": "iphone-8-landscape-dark.png",
+    "theme": "dark",
+    "orient": "landscape",
+    "w": 375,
+    "h": 667,
+    "r": 2
+  },
+  {
+    "file": "iphone-se-portrait-light.png",
+    "theme": "light",
+    "orient": "portrait",
+    "w": 320,
+    "h": 568,
+    "r": 2
+  },
+  {
+    "file": "iphone-se-portrait-dark.png",
+    "theme": "dark",
+    "orient": "portrait",
+    "w": 320,
+    "h": 568,
+    "r": 2
+  },
+  {
+    "file": "iphone-se-landscape-light.png",
+    "theme": "light",
+    "orient": "landscape",
+    "w": 320,
+    "h": 568,
+    "r": 2
+  },
+  {
+    "file": "iphone-se-landscape-dark.png",
+    "theme": "dark",
+    "orient": "landscape",
+    "w": 320,
+    "h": 568,
+    "r": 2
+  },
+  {
+    "file": "ipad-pro-12-portrait-light.png",
+    "theme": "light",
+    "orient": "portrait",
+    "w": 1024,
+    "h": 1366,
+    "r": 2
+  },
+  {
+    "file": "ipad-pro-12-portrait-dark.png",
+    "theme": "dark",
+    "orient": "portrait",
+    "w": 1024,
+    "h": 1366,
+    "r": 2
+  },
+  {
+    "file": "ipad-pro-12-landscape-light.png",
+    "theme": "light",
+    "orient": "landscape",
+    "w": 1024,
+    "h": 1366,
+    "r": 2
+  },
+  {
+    "file": "ipad-pro-12-landscape-dark.png",
+    "theme": "dark",
+    "orient": "landscape",
+    "w": 1024,
+    "h": 1366,
+    "r": 2
+  },
+  {
+    "file": "ipad-pro-11-portrait-light.png",
+    "theme": "light",
+    "orient": "portrait",
+    "w": 834,
+    "h": 1194,
+    "r": 2
+  },
+  {
+    "file": "ipad-pro-11-portrait-dark.png",
+    "theme": "dark",
+    "orient": "portrait",
+    "w": 834,
+    "h": 1194,
+    "r": 2
+  },
+  {
+    "file": "ipad-pro-11-landscape-light.png",
+    "theme": "light",
+    "orient": "landscape",
+    "w": 834,
+    "h": 1194,
+    "r": 2
+  },
+  {
+    "file": "ipad-pro-11-landscape-dark.png",
+    "theme": "dark",
+    "orient": "landscape",
+    "w": 834,
+    "h": 1194,
+    "r": 2
+  },
+  {
+    "file": "ipad-air-10-9-portrait-light.png",
+    "theme": "light",
+    "orient": "portrait",
+    "w": 820,
+    "h": 1180,
+    "r": 2
+  },
+  {
+    "file": "ipad-air-10-9-portrait-dark.png",
+    "theme": "dark",
+    "orient": "portrait",
+    "w": 820,
+    "h": 1180,
+    "r": 2
+  },
+  {
+    "file": "ipad-air-10-9-landscape-light.png",
+    "theme": "light",
+    "orient": "landscape",
+    "w": 820,
+    "h": 1180,
+    "r": 2
+  },
+  {
+    "file": "ipad-air-10-9-landscape-dark.png",
+    "theme": "dark",
+    "orient": "landscape",
+    "w": 820,
+    "h": 1180,
+    "r": 2
+  },
+  {
+    "file": "ipad-pro-10-5-portrait-light.png",
+    "theme": "light",
+    "orient": "portrait",
+    "w": 834,
+    "h": 1112,
+    "r": 2
+  },
+  {
+    "file": "ipad-pro-10-5-portrait-dark.png",
+    "theme": "dark",
+    "orient": "portrait",
+    "w": 834,
+    "h": 1112,
+    "r": 2
+  },
+  {
+    "file": "ipad-pro-10-5-landscape-light.png",
+    "theme": "light",
+    "orient": "landscape",
+    "w": 834,
+    "h": 1112,
+    "r": 2
+  },
+  {
+    "file": "ipad-pro-10-5-landscape-dark.png",
+    "theme": "dark",
+    "orient": "landscape",
+    "w": 834,
+    "h": 1112,
+    "r": 2
+  },
+  {
+    "file": "ipad-10-2-portrait-light.png",
+    "theme": "light",
+    "orient": "portrait",
+    "w": 810,
+    "h": 1080,
+    "r": 2
+  },
+  {
+    "file": "ipad-10-2-portrait-dark.png",
+    "theme": "dark",
+    "orient": "portrait",
+    "w": 810,
+    "h": 1080,
+    "r": 2
+  },
+  {
+    "file": "ipad-10-2-landscape-light.png",
+    "theme": "light",
+    "orient": "landscape",
+    "w": 810,
+    "h": 1080,
+    "r": 2
+  },
+  {
+    "file": "ipad-10-2-landscape-dark.png",
+    "theme": "dark",
+    "orient": "landscape",
+    "w": 810,
+    "h": 1080,
+    "r": 2
+  },
+  {
+    "file": "ipad-9-7-portrait-light.png",
+    "theme": "light",
+    "orient": "portrait",
+    "w": 768,
+    "h": 1024,
+    "r": 2
+  },
+  {
+    "file": "ipad-9-7-portrait-dark.png",
+    "theme": "dark",
+    "orient": "portrait",
+    "w": 768,
+    "h": 1024,
+    "r": 2
+  },
+  {
+    "file": "ipad-9-7-landscape-light.png",
+    "theme": "light",
+    "orient": "landscape",
+    "w": 768,
+    "h": 1024,
+    "r": 2
+  },
+  {
+    "file": "ipad-9-7-landscape-dark.png",
+    "theme": "dark",
+    "orient": "landscape",
+    "w": 768,
+    "h": 1024,
+    "r": 2
+  }
+]

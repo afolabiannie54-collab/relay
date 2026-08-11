@@ -1,5 +1,6 @@
 import { Inter } from 'next/font/google'
 import { themeInitScript } from '@/lib/theme'
+import { APPLE_SPLASH_SCREENS } from '@/lib/splashScreens'
 import './globals.css'
 
 const inter = Inter({
@@ -41,6 +42,12 @@ export const metadata = {
     capable: true,
     statusBarStyle: 'default',
     title: 'Relay',
+    // iOS is the only platform that needs these: installed to the home
+    // screen it shows a launch image while the app boots, and with none
+    // declared it shows a blank white screen — jarring on a dark-mode
+    // device. Android/desktop derive their splash from the manifest's
+    // icon and background_color instead, so nothing is needed there.
+    startupImage: APPLE_SPLASH_SCREENS,
   },
   openGraph: {
     title: 'Relay',
