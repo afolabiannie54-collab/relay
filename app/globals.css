@@ -299,8 +299,16 @@ a, button, input, textarea, select {
   border-radius: 8px;
   transition: background 0.1s ease;
 }
-.relay-menu-row:hover {
-  background: var(--surface-hover);
+/* Every :hover in this file is gated behind (hover: hover). A touch
+   device has no pointer to move away, so tapping applies :hover and the
+   browser leaves it applied until something else is tapped — every
+   control in the app was keeping its desktop hover state after a tap.
+   :active is deliberately left ungated: it fires and releases correctly
+   on touch, so it stays as the press feedback on phones. */
+@media (hover: hover) {
+  .relay-menu-row:hover {
+    background: var(--surface-hover);
+  }
 }
 .relay-menu-row:active {
   background: var(--surface-active);
@@ -351,10 +359,12 @@ a, button, input, textarea, select {
    button lifts toward the corner the shadow is cast in, revealing a
    solid accent block behind it — no blur, no border recolor. Pressing
    snaps it back flat, like the shadow got pushed underneath. */
-.relay-icon-btn:hover {
-  background: var(--surface-hover);
-  transform: translate(-2px, -2px);
-  box-shadow: var(--shadow-hard-accent);
+@media (hover: hover) {
+  .relay-icon-btn:hover {
+    background: var(--surface-hover);
+    transform: translate(-2px, -2px);
+    box-shadow: var(--shadow-hard-accent);
+  }
 }
 .relay-icon-btn:active {
   transform: translate(0, 0) scale(0.96);
@@ -366,9 +376,11 @@ a, button, input, textarea, select {
   color: var(--on-accent);
   box-shadow: var(--shadow-hard-sm);
 }
-.relay-icon-btn--accent:hover {
-  background: var(--accent-hover);
-  border-color: var(--border-strong);
+@media (hover: hover) {
+  .relay-icon-btn--accent:hover {
+    background: var(--accent-hover);
+    border-color: var(--border-strong);
+  }
 }
 
 /* Bordered text button — the rectangular/pill counterpart to
@@ -394,10 +406,12 @@ a, button, input, textarea, select {
   cursor: pointer;
   transition: background 0.12s ease, transform 0.12s var(--ease-out), box-shadow 0.12s var(--ease-out);
 }
-.relay-btn:hover {
-  background: var(--surface-hover);
-  transform: translate(-2px, -2px);
-  box-shadow: var(--shadow-hard-accent);
+@media (hover: hover) {
+  .relay-btn:hover {
+    background: var(--surface-hover);
+    transform: translate(-2px, -2px);
+    box-shadow: var(--shadow-hard-accent);
+  }
 }
 .relay-btn:active {
   transform: translate(0, 0) scale(0.97);
@@ -407,8 +421,10 @@ a, button, input, textarea, select {
   background: var(--text);
   color: var(--background);
 }
-.relay-btn--filled:hover {
-  background: var(--text);
+@media (hover: hover) {
+  .relay-btn--filled:hover {
+    background: var(--text);
+  }
 }
 
 /* pointer-events: none (not just cursor/opacity) so disabled buttons
@@ -493,8 +509,10 @@ a, button, input, textarea, select {
   cursor: pointer;
   transition: background 0.12s ease;
 }
-.relay-plain-icon-btn:hover {
-  background: var(--surface-hover);
+@media (hover: hover) {
+  .relay-plain-icon-btn:hover {
+    background: var(--surface-hover);
+  }
 }
 /* ---------------------------------------------------------------
    Marketing pages
@@ -600,7 +618,9 @@ a, button, input, textarea, select {
   transform-origin: left;
   transition: transform 0.18s var(--ease-out);
 }
-.marketing-navlink:hover::after { transform: scaleX(1); }
+@media (hover: hover) {
+  .marketing-navlink:hover::after { transform: scaleX(1); }
+}
 
 /* display lives here, not as an inline style on the <nav> — an inline
    display would beat the media query below no matter what it says
@@ -667,7 +687,9 @@ a, button, input, textarea, select {
   background: transparent;
   transition: background 0.14s var(--ease-out), color 0.14s var(--ease-out);
 }
-.marketing-navtab:hover { background: var(--accent-light); }
+@media (hover: hover) {
+  .marketing-navtab:hover { background: var(--accent-light); }
+}
 .marketing-navtab--active,
 .marketing-navtab--active:hover {
   background: var(--text);
@@ -690,7 +712,9 @@ a, button, input, textarea, select {
   border-radius: var(--radius-pill);
   transition: box-shadow 0.14s var(--ease-out), transform 0.14s var(--ease-out);
 }
-.marketing-navbar-cta:hover { box-shadow: var(--shadow-hard-accent); transform: translate(-2px, -2px); }
+@media (hover: hover) {
+  .marketing-navbar-cta:hover { box-shadow: var(--shadow-hard-accent); transform: translate(-2px, -2px); }
+}
 .marketing-navbar-cta:active { transform: translate(0, 0); box-shadow: none; }
 
 /* Mobile: hamburger replaces the link tabs + divider (hidden below
@@ -718,7 +742,13 @@ a, button, input, textarea, select {
   cursor: pointer;
   transition: background 0.14s var(--ease-out);
 }
-.marketing-mobile-menu-btn:hover { background: var(--accent-light); }
+/* This menu only exists below 720px, i.e. on the very devices where
+   :hover misbehaves — so it gets an :active press instead, rather than
+   being left with no tap feedback at all once hover is gated off. */
+@media (hover: hover) {
+  .marketing-mobile-menu-btn:hover { background: var(--accent-light); }
+}
+.marketing-mobile-menu-btn:active { background: var(--accent-light); }
 .marketing-mobile-menu-panel {
   position: absolute;
   top: calc(100% + 12px);
@@ -742,7 +772,10 @@ a, button, input, textarea, select {
   text-decoration: none;
   transition: background 0.12s var(--ease-out), color 0.12s var(--ease-out);
 }
-.marketing-mobile-menu-link:hover { background: var(--accent-light); }
+@media (hover: hover) {
+  .marketing-mobile-menu-link:hover { background: var(--accent-light); }
+}
+.marketing-mobile-menu-link:active { background: var(--accent-light); }
 .marketing-mobile-menu-link--active { background: var(--text); color: var(--background); }
 
 /* Log in sits in the same list as Home/Privacy/Terms but isn't a nav
@@ -751,7 +784,10 @@ a, button, input, textarea, select {
    until interacted with) marks it as a different kind of item without
    needing a divider or a second visual section inside a small dropdown. */
 .marketing-mobile-menu-link--login { color: var(--accent-hover); }
-.marketing-mobile-menu-link--login:hover { color: var(--accent-hover); background: var(--accent-light); }
+@media (hover: hover) {
+  .marketing-mobile-menu-link--login:hover { color: var(--accent-hover); background: var(--accent-light); }
+}
+.marketing-mobile-menu-link--login:active { color: var(--accent-hover); background: var(--accent-light); }
 
 /* Footer link: full ink at rest, same reasoning as .marketing-navlink —
    a muted default color reads as grayed-out/unfinished rather than a
@@ -772,8 +808,10 @@ a, button, input, textarea, select {
   flex-shrink: 0;
   transition: transform 0.18s var(--ease-out);
 }
-.marketing-arrowlink:hover { color: var(--accent-hover); }
-.marketing-arrowlink:hover svg { transform: translateX(4px); }
+@media (hover: hover) {
+  .marketing-arrowlink:hover { color: var(--accent-hover); }
+  .marketing-arrowlink:hover svg { transform: translateX(4px); }
+}
 
 /* Doodle tiles sit on a lifted card; nudging one on hover makes the row
    feel hand-placed rather than evenly stamped out. */
@@ -785,9 +823,11 @@ a, button, input, textarea, select {
   justify-content: center;
   transition: transform 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
 }
-.marketing-doodle-tile:hover {
-  transform: translate(-3px, -3px) rotate(var(--tile-rot, 0deg)) !important;
-  box-shadow: var(--shadow-hard-lg);
+@media (hover: hover) {
+  .marketing-doodle-tile:hover {
+    transform: translate(-3px, -3px) rotate(var(--tile-rot, 0deg)) !important;
+    box-shadow: var(--shadow-hard-lg);
+  }
 }
 
 /* Footer surfaces.
@@ -971,15 +1011,17 @@ button.marketing-navtab {
     16px 16px 0 var(--text);
   transition: transform 0.16s var(--ease-out), box-shadow 0.16s var(--ease-out);
 }
-.relay-btn.marketing-cta-stack:hover {
-  background: var(--text);
-  transform: translate(-6px, -6px);
-  box-shadow:
-    6px 6px 0 var(--surface),
-    12px 12px 0 var(--text),
-    18px 18px 0 var(--surface),
-    24px 24px 0 var(--text),
-    30px 30px 0 var(--surface);
+@media (hover: hover) {
+  .relay-btn.marketing-cta-stack:hover {
+    background: var(--text);
+    transform: translate(-6px, -6px);
+    box-shadow:
+      6px 6px 0 var(--surface),
+      12px 12px 0 var(--text),
+      18px 18px 0 var(--surface),
+      24px 24px 0 var(--text),
+      30px 30px 0 var(--surface);
+  }
 }
 /* Collapses flat on press — the stack is "height", so removing it reads
    as the button being pushed down into the page. */

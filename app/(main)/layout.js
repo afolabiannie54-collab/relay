@@ -13,6 +13,7 @@ import { getUnreadChatsCount, markConversationDelivered } from '@/actions/messag
 import { createClient } from '@/lib/supabase/client'
 import { usePushNotifications } from '@/hooks/usePushNotifications'
 import { cache } from '@/lib/cache'
+import { canHover } from '@/lib/hover'
 
 export default function MainLayout({ children }) {
   const pathname = usePathname()
@@ -360,7 +361,7 @@ export default function MainLayout({ children }) {
                 cursor: 'pointer',
                 transition: 'background 0.12s ease',
               }}
-              onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-hover)'}
+              onMouseEnter={e => { if (canHover()) e.currentTarget.style.background = 'var(--surface-hover)' }}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
             >
               <Avatar src={profile?.avatar_url} name={profile?.display_name} size={36} />

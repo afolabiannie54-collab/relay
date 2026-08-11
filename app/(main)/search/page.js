@@ -15,6 +15,7 @@ import { getExistingConversation } from '@/actions/messages'
 import { blockUser } from '@/actions/blocks'
 import { cache } from '@/lib/cache'
 import { useProfileSheet } from '@/lib/profile-sheet-context'
+import { canHover } from '@/lib/hover'
 
 const iconProps = { strokeWidth: 2, strokeLinecap: 'square', strokeLinejoin: 'miter' }
 
@@ -279,6 +280,7 @@ export default function SearchPage() {
                   transition: 'background 0.1s, border-color 0.1s',
                 }}
                 onMouseEnter={e => {
+                  if (!canHover()) return
                   e.currentTarget.style.background = 'var(--surface-hover)'
                   e.currentTarget.style.borderLeftColor = 'var(--accent)'
                 }}

@@ -7,6 +7,7 @@ import Avatar from '@/components/shared/Avatar'
 import { updateProfile, uploadAvatar, changeUsername } from '@/actions/users'
 import { checkUsernameAvailable } from '@/actions/auth'
 import { useProfileSheet } from '@/lib/profile-sheet-context'
+import { canHover } from '@/lib/hover'
 
 const iconProps = { strokeWidth: 2, strokeLinecap: 'square', strokeLinejoin: 'miter' }
 
@@ -527,7 +528,7 @@ export default function EditProfileForm({ initialProfile }) {
             fontFamily: 'inherit',
             transition: 'background 0.12s ease',
           }}
-          onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-hover)'}
+          onMouseEnter={e => { if (canHover()) e.currentTarget.style.background = 'var(--surface-hover)' }}
           onMouseLeave={e => e.currentTarget.style.background = 'none'}
         >
           <User size={16} {...iconProps} color="var(--text-secondary)" />

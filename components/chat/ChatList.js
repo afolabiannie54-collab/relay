@@ -18,6 +18,7 @@ import { getMutedConversationIds, muteConversation, deleteConversationForUser } 
 import { getUnreadCount as getUnreadNotificationCount, getRequestsCount } from '@/actions/notifications'
 import { createClient } from '@/lib/supabase/client'
 import { cache } from '@/lib/cache'
+import { canHover } from '@/lib/hover'
 
 const LONG_PRESS_MS = 400
 const LONG_PRESS_MOVE_TOLERANCE = 10
@@ -919,7 +920,7 @@ export default function ChatList({ onSelectConversation }) {
               background: 'var(--surface)',
               transition: 'background 0.12s ease',
             }}
-            onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-hover)'}
+            onMouseEnter={e => { if (canHover()) e.currentTarget.style.background = 'var(--surface-hover)' }}
             onMouseLeave={e => e.currentTarget.style.background = 'var(--surface)'}
           >
             <div style={{
@@ -1051,7 +1052,10 @@ export default function ChatList({ onSelectConversation }) {
                     transition: 'background 0.1s, border-color 0.1s',
                   }}
                     onMouseEnter={e => {
-                      if (!isSelected) {
+                      // Styling is gated; the prefetch below deliberately
+                      // isn't — it's just as worth doing on touch, and
+                      // onTouchStart fires it there too.
+                      if (!isSelected && canHover()) {
                         e.currentTarget.style.background = 'var(--surface-hover)'
                         e.currentTarget.style.borderLeftColor = 'var(--accent)'
                       }
@@ -1182,7 +1186,7 @@ export default function ChatList({ onSelectConversation }) {
               background: 'var(--surface)',
               transition: 'background 0.12s ease',
             }}
-            onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-hover)'}
+            onMouseEnter={e => { if (canHover()) e.currentTarget.style.background = 'var(--surface-hover)' }}
             onMouseLeave={e => e.currentTarget.style.background = 'var(--surface)'}
           >
             <div style={{
