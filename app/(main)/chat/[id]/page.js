@@ -64,6 +64,22 @@ function mergeReceiptsMaps(prev, incoming) {
   return next
 }
 
+// Folds a freshly-fetched "most recent 50" back into a list that may hold
+// far more than that, because the reader scrolled back through older
+// pages. Assigning the fetch directly would drop every one of those pages
+// on the floor. Anything older than the refetched window is kept as-is and
+// the window itself is replaced, so edits/deletes inside it still land.
+function mergeRecentWindow(prev, fresh) {
+  if (!prev.length) return fresh
+  if (!fresh.length) return prev
+  const freshIds = new Set(fresh.map(m => m.id))
+  const boundary = fresh[0].created_at
+  // Keep older-than-window rows, and drop any duplicate of a row the
+  // window already carries so an id can't appear on both sides of the seam.
+  const older = prev.filter(m => m.created_at < boundary && !freshIds.has(m.id))
+  return [...older, ...fresh]
+}
+
 // A reply quoting a media message previously showed that message's raw
 // `content` — for images/files that's often empty or a caption, but for
 // a voice note it's the literal generated filename ("voice-<timestamp>.
@@ -257,7 +273,6 @@ export default function ConversationPage() {
   // render's closure is calling.
   const hasMoreMessagesRef = useRef(true)
   const loadingOlderRef = useRef(false)
-  const pageRef = useRef(0)
   const [showLoadingOlder, setShowLoadingOlder] = useState(false)
   const [selectMode, setSelectMode] = useState(false)
   const [selectedMsgIds, setSelectedMsgIds] = useState(new Set())
@@ -362,6 +377,14 @@ export default function ConversationPage() {
       setConversation(null)
       setGroupInfo(null)
       lastMessageIdRef.current = null
+      // Pagination state has to reset per conversation. Navigating between
+      // two chats reuses this component rather than remounting it, so
+      // these refs carry over: arriving from a conversation whose history
+      // had been fully read to the top started the new one with
+      // pagination already switched off, and an in-flight load from the
+      // previous one left it wedged as permanently "busy".
+      hasMoreMessagesRef.current = true
+      loadingOlderRef.current = false
       // statusRatchet is deliberately NOT reset here — message ids are
       // globally unique (UUIDs), so nothing from a previous conversation
       // could ever collide with this one. Resetting it just forces every
@@ -709,7 +732,13 @@ export default function ConversationPage() {
             wasDisconnectedRef.current = false
             getMessages(id).then(result => {
               if (Array.isArray(result.data)) {
-                setMessages(result.data)
+                // Merge, don't replace. This refetch only returns the most
+                // recent page, so assigning it wholesale threw away every
+                // older page the reader had already scrolled back through
+                // — history visibly vanishing mid-session. Keep everything
+                // older than the refetched window and swap in the window
+                // itself, which is what actually needs refreshing.
+                setMessages(prev => mergeRecentWindow(prev, result.data))
                 cache.set(`messages:${id}`, result.data, 20000)
               }
             })
@@ -877,27 +906,51 @@ export default function ConversationPage() {
     const el = messagesContainerRef.current
     if (!el) return
 
+    // Cursor comes from the oldest row currently rendered, read off the
+    // ref rather than the `messages` closure: the scroll listener that
+    // calls this is attached once per load and holds whichever copy of
+    // this function existed then, so a captured `messages` would be
+    // permanently stale.
+    const oldest = messagesRef.current[0]
+    if (!oldest) return
+
     loadingOlderRef.current = true
     setShowLoadingOlder(true)
-
-    const nextPage = pageRef.current + 1
     const scrollHeightBefore = el.scrollHeight
-    const result = await getMessages(id, nextPage)
 
-    if (Array.isArray(result.data) && result.data.length > 0) {
-      pageRef.current = nextPage
-      setMessages(prev => [...result.data, ...prev])
-      loadReactions(result.data)
+    try {
+      const result = await getMessages(id, { before: oldest.created_at, beforeId: oldest.id })
+
+      // A failed request is not the same as "there's nothing older". The
+      // two used to share a branch, so one network blip mid-scroll set
+      // hasMore to false for the rest of the session and the top of the
+      // list became a permanent dead end that looked like the start of
+      // the conversation. Leaving hasMore alone lets the next scroll retry.
+      if (!Array.isArray(result.data)) return
+
+      if (result.data.length === 0) {
+        hasMoreMessagesRef.current = false
+        return
+      }
+
       hasMoreMessagesRef.current = result.data.length >= 50
+      setMessages(prev => {
+        const seen = new Set(prev.map(m => m.id))
+        const fresh = result.data.filter(m => !seen.has(m.id))
+        if (fresh.length === 0) return prev
+        return [...fresh, ...prev]
+      })
+      loadReactions(result.data)
       requestAnimationFrame(() => {
         el.scrollTop += el.scrollHeight - scrollHeightBefore
       })
-    } else {
-      hasMoreMessagesRef.current = false
+    } finally {
+      // In a finally so a thrown request can't strand these — previously
+      // an exception left loadingOlderRef stuck true, which silently
+      // disabled pagination for good and left the spinner up forever.
+      loadingOlderRef.current = false
+      setShowLoadingOlder(false)
     }
-
-    loadingOlderRef.current = false
-    setShowLoadingOlder(false)
   }
 
   const handleTyping = async () => {

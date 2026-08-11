@@ -344,14 +344,38 @@ export async function getConversation(conversationId) {
   }
 }
 
-export async function getMessages(conversationId, page = 0) {
+// Cursor values are interpolated into a PostgREST `or` filter below, which
+// is a raw string rather than a bound parameter — so they're validated
+// here and the request is refused outright if they don't match. Anything
+// else would let a caller inject filter syntax.
+const CURSOR_TS_RE = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(\.\d+)?([+-]\d{2}:?\d{2}|Z)?$/
+const CURSOR_ID_RE = /^[0-9a-fA-F-]{36}$/
+
+// Paginates by cursor, not by page number. An OFFSET window is computed
+// against the live table, so every message that arrives while someone is
+// reading shifts it by one and the next page re-serves a row already on
+// screen (or, after a delete, skips one). A cursor anchored to the oldest
+// row already loaded can't drift.
+//
+// The tiebreaker on `id` matters: forwardMessages inserts a whole batch in
+// one statement, and Postgres stamps every row in a statement with the
+// same now(), so `created_at` alone is not unique. Ordering and comparing
+// on (created_at, id) makes the sequence total, so a forwarded batch that
+// straddles a page boundary can't be half-skipped.
+export async function getMessages(conversationId, options = {}) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) return { error: 'Not authenticated' }
 
+  const { before = null, beforeId = null } = options
+  if (before !== null || beforeId !== null) {
+    if (!CURSOR_TS_RE.test(String(before)) || !CURSOR_ID_RE.test(String(beforeId))) {
+      return { error: 'Invalid pagination cursor' }
+    }
+  }
+
   const limit = 50
-  const offset = page * limit
 
   // If this user deleted the conversation, only messages sent after that
   // point are visible to them — older history stays hidden even though
@@ -384,7 +408,15 @@ export async function getMessages(conversationId, page = 0) {
     `)
     .eq('conversation_id', conversationId)
     .order('created_at', { ascending: false })
-    .range(offset, offset + limit - 1)
+    .order('id', { ascending: false })
+    .limit(limit)
+
+  // "Strictly older than the cursor row" in (created_at, id) order.
+  if (before) {
+    query = query.or(
+      `created_at.lt."${before}",and(created_at.eq."${before}",id.lt."${beforeId}")`
+    )
+  }
 
   if (deletedRow?.deleted_at) {
     query = query.gt('created_at', deletedRow.deleted_at)
