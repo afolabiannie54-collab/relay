@@ -43,6 +43,15 @@ export async function proxy(request) {
   const authRoutes = ['/login', '/signup', '/verify', '/reset-password']
   const isAuthRoute = authRoutes.some(route => pathname === route)
 
+  // The landing page is a pitch, and someone already signed in has been
+  // sold. Sending them to the app is both what they came for and what
+  // removes a whole class of "what does this section look like when
+  // signed in" decisions from every marketing section.
+  // Deliberately '/' only — /privacy and /terms stay reachable while
+  // signed in, since those are reference pages someone may well want to
+  // reread from inside the app.
+  const isMarketingHome = pathname === '/'
+
   if (!user && !isPublicRoute) {
     // Not logged in, trying to access protected page → redirect to login,
     // preserving where they were headed so a PWA re-opened after the
@@ -53,8 +62,8 @@ export async function proxy(request) {
     return NextResponse.redirect(url)
   }
 
-  if (user && isAuthRoute) {
-    // Logged in, trying to access auth page → redirect to chat
+  if (user && (isAuthRoute || isMarketingHome)) {
+    // Logged in, on an auth page or the landing page → redirect to chat
     const url = request.nextUrl.clone()
     url.pathname = '/chat'
     return NextResponse.redirect(url)

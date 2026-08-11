@@ -42,6 +42,7 @@ function Eyebrow({ children }) {
 function FeatureCard({ eyebrow, title, body, wide = false, children }) {
   return (
     <div
+      data-reveal
       className={`marketing-feature-card${wide ? ' marketing-feature-card--wide' : ''}`}
       style={{
         background: 'var(--surface)',
@@ -255,7 +256,7 @@ export default async function LandingPage() {
           the clamp bottoms out at its floor. That floor being 64px (a
           fairly small number to begin with) is why the hero felt short
           on mobile no matter what the overlap below it was doing. */}
-      <section style={{
+      <section data-parallax-root style={{
         ...SECTION,
         position: 'relative',
         paddingTop: 'clamp(96px, 11vw, 140px)',
@@ -266,14 +267,19 @@ export default async function LandingPage() {
               looks like it's sticking straight up out of the Y rather than
               flying in beside it. The pole's base overlaps the letter's
               top; the arrows float above it. */}
+          {/* Each decoration composes --parallax-y into its own transform
+              rather than letting Parallax assign transform directly —
+              otherwise the drift would overwrite these rotations. The
+              fallback of 0px is what renders before (or without) JS. */}
           <div
             className="hero-mascot"
             aria-hidden="true"
+            data-parallax="0.24"
             style={{
               position: 'absolute',
               left: 'clamp(-4px, 0.2vw, 8px)',
               top: 'clamp(-78px, -6vw, -46px)',
-              transform: 'rotate(-4deg)',
+              transform: 'rotate(-4deg) translate3d(0, var(--parallax-y, 0px), 0)',
               pointerEvents: 'none',
               zIndex: 0,
             }}
@@ -286,21 +292,21 @@ export default async function LandingPage() {
               so they read as light background texture (Gumroad's scattered
               marks, Notion's small floating accents) rather than another
               thing competing for attention. */}
-          <div className="hero-mascot" aria-hidden="true" style={{
+          <div className="hero-mascot" aria-hidden="true" data-parallax="0.34" style={{
             position: 'absolute', right: 'clamp(-16px, 1vw, 24px)', top: 'clamp(-22px, -1.5vw, 4px)',
-            transform: 'rotate(13deg)', pointerEvents: 'none', zIndex: 0,
+            transform: 'rotate(13deg) translate3d(0, var(--parallax-y, 0px), 0)', pointerEvents: 'none', zIndex: 0,
           }}>
             <NotionDoodle d={BELL} size={30} color="var(--text-tertiary)" />
           </div>
-          <div className="hero-mascot" aria-hidden="true" style={{
+          <div className="hero-mascot" aria-hidden="true" data-parallax="0.28" style={{
             position: 'absolute', right: 'clamp(-48px, -3vw, -16px)', top: '52%',
-            transform: 'rotate(-11deg)', pointerEvents: 'none', zIndex: 0,
+            transform: 'rotate(-11deg) translate3d(0, var(--parallax-y, 0px), 0)', pointerEvents: 'none', zIndex: 0,
           }}>
             <NotionDoodle d={USERS} size={26} color="var(--text-tertiary)" />
           </div>
-          <div className="hero-mascot" aria-hidden="true" style={{
+          <div className="hero-mascot" aria-hidden="true" data-parallax="0.38" style={{
             position: 'absolute', left: 'clamp(-36px, -2.5vw, -6px)', bottom: 'clamp(48px, 6vw, 88px)',
-            transform: 'rotate(9deg)', pointerEvents: 'none', zIndex: 0,
+            transform: 'rotate(9deg) translate3d(0, var(--parallax-y, 0px), 0)', pointerEvents: 'none', zIndex: 0,
           }}>
             <NotionDoodle d={INBOX} size={24} color="var(--text-tertiary)" />
           </div>
@@ -576,7 +582,7 @@ export default async function LandingPage() {
             gap: 'clamp(28px, 5vw, 56px)',
             alignItems: 'start',
           }}>
-            <div>
+            <div data-reveal>
               <Eyebrow>Install</Eyebrow>
               <h2 style={{
                 fontSize: 'clamp(2rem, 4.5vw, 3.25rem)',
@@ -592,7 +598,11 @@ export default async function LandingPage() {
                 No app store, no download — just add it to your home screen.
               </p>
             </div>
-            <InstallRelay />
+            {/* Trails the copy beside it rather than arriving together —
+                the eye lands on the headline first either way. */}
+            <div data-reveal style={{ '--reveal-delay': '0.1s' }}>
+              <InstallRelay />
+            </div>
           </div>
         </div>
       </section>
@@ -611,8 +621,15 @@ export default async function LandingPage() {
           inline style here: `background` is a shorthand, so an inline one
           resets background-image to none and — inline beating the
           stylesheet — silently deleted the lines. */}
+      {/* Its own parallax root: the ruling slides against the section it
+          belongs to, so progress is measured from this section rather
+          than inheriting the hero's accumulated scroll. Safe to be both
+          root and target because the effect shifts background-position,
+          which doesn't move the box being measured. */}
       <section
         className="marketing-ruled"
+        data-parallax-root
+        data-parallax="0.28"
         style={{
           position: 'relative',
           overflow: 'hidden',
@@ -625,7 +642,7 @@ export default async function LandingPage() {
         <span className="marketing-ruled-margin" aria-hidden="true" />
 
 
-        <div style={{ ...SECTION, position: 'relative', zIndex: 1, textAlign: 'center' }}>
+        <div data-reveal style={{ ...SECTION, position: 'relative', zIndex: 1, textAlign: 'center' }}>
           <h2 style={{
             fontSize: 'clamp(2.5rem, 6.5vw, 4.25rem)',
             fontWeight: '800',

@@ -576,6 +576,11 @@ a, button, input, textarea, select {
     transparent 0 39px,
     rgba(0, 0, 0, 0.085) 39px 41px
   );
+  /* Parallax slides the ruling under the content instead of moving the
+     text. Because the gradient repeats every 41px, the absolute offset is
+     invisible — only the motion reads — so this needs no starting value
+     and can't drift out of place. Falls back to a static 0 without JS. */
+  background-position: 0 var(--parallax-y, 0px);
 }
 .marketing-ruled-margin {
   position: absolute;
@@ -1028,4 +1033,44 @@ button.marketing-navtab {
 .relay-btn.marketing-cta-stack:active {
   transform: translate(0, 0) scale(0.99);
   box-shadow: none;
+}
+
+/* ---------------------------------------------------------------
+   Scroll reveal
+   --------------------------------------------------------------- */
+
+/* Hidden only while `reveal-ready` is present, which ScrollReveal adds on
+   mount — see that component for why the gate exists rather than hiding
+   these outright. `:not(.is-visible)` rather than a separate shown rule
+   so revealing needs no !important to beat this.
+   Elements can stagger within a group by setting --reveal-delay. */
+[data-reveal] {
+  transition:
+    opacity 0.55s var(--ease-out) var(--reveal-delay, 0s),
+    transform 0.55s var(--ease-out) var(--reveal-delay, 0s);
+}
+.reveal-ready [data-reveal]:not(.is-visible) {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+/* Feature cards stagger by position rather than all landing together.
+   Done in CSS by nth-child so the cards don't need an index prop threaded
+   through purely for presentation. Kept short — this is meant to read as
+   one group settling, not as six separate arrivals. */
+.marketing-feature-grid > :nth-child(2) { --reveal-delay: 0.07s; }
+.marketing-feature-grid > :nth-child(3) { --reveal-delay: 0.14s; }
+.marketing-feature-grid > :nth-child(4) { --reveal-delay: 0.07s; }
+.marketing-feature-grid > :nth-child(5) { --reveal-delay: 0.14s; }
+.marketing-feature-grid > :nth-child(6) { --reveal-delay: 0.21s; }
+
+/* Anyone who's asked for less motion gets the content, not the movement.
+   The elements still have to end up visible, so this neutralises the
+   hidden state as well as the transition. */
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal] { transition: none; }
+  .reveal-ready [data-reveal]:not(.is-visible) {
+    opacity: 1;
+    transform: none;
+  }
 }

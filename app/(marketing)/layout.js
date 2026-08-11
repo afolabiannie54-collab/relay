@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import Footer from '@/components/marketing/Footer'
 import NavLinks from '@/components/marketing/NavLinks'
 import MobileNav from '@/components/marketing/MobileNav'
+import ScrollReveal from '@/components/marketing/ScrollReveal'
+import Parallax from '@/components/marketing/Parallax'
 
 // Marketing shell. Deliberately NOT the app shell: (main)/layout.js mounts
 // the bottom nav, the presence heartbeat, realtime subscriptions and the
@@ -70,6 +72,10 @@ export default async function MarketingLayout({ children }) {
           </div>
         </div>
       </header>
+
+      {/* Watch for [data-reveal] / [data-parallax] below; render nothing. */}
+      <ScrollReveal />
+      <Parallax />
 
       <main style={{ flex: 1 }}>{children}</main>
 
