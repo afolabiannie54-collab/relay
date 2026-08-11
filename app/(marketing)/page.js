@@ -574,11 +574,14 @@ export default async function LandingPage() {
           border: '3px solid var(--border-strong)',
           borderRadius: 'clamp(28px, 4vw, 48px)',
           boxShadow: 'var(--shadow-hard-lg)',
-          padding: 'clamp(32px, 6vw, 72px)',
+          // 6vw is under the old 32px floor on any phone, so that floor was
+          // what actually applied there — 64px of the ~390px screen spent on
+          // padding, squeezing the tab row and mockups inside it.
+          padding: 'clamp(20px, 6vw, 72px)',
         }}>
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))',
             gap: 'clamp(28px, 5vw, 56px)',
             alignItems: 'start',
           }}>

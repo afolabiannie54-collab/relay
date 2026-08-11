@@ -88,7 +88,7 @@ export default function InstallRelay() {
       {/* Same bordered pill + filled-active tab as the header nav — this
           is a subnav, so it should read as the same kind of control
           rather than inventing a second tab style for one section. */}
-      <div className="marketing-navbar-pill" style={{ marginBottom: '28px', width: 'fit-content' }}>
+      <div className="marketing-navbar-pill marketing-install-tabs" style={{ marginBottom: '28px', width: 'fit-content' }}>
         {[
           { id: 'ios', label: 'iPhone' },
           { id: 'android', label: 'Android' },

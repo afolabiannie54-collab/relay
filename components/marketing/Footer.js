@@ -70,7 +70,7 @@ export default function Footer({ signedIn }) {
             sit alongside it rather than under it. */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))',
           gap: 'clamp(36px, 6vw, 72px)',
           alignItems: 'start',
         }}>
@@ -89,7 +89,7 @@ export default function Footer({ signedIn }) {
 
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(150px, 100%), 1fr))',
             gap: '32px',
             gridColumn: 'span 1',
           }}>

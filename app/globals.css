@@ -942,6 +942,21 @@ button.marketing-navtab {
   cursor: pointer;
 }
 
+/* These tabs borrow .marketing-navtab from the header, which is sized for
+   a desktop nav bar (17px text, 22px of side padding). Three of them plus
+   the pill's own padding runs ~347px, against roughly 278px of usable
+   width on a 390px phone once the section and card padding come off — so
+   the last tab was cut off and the card was forced wider than the screen.
+   Shrunk here rather than in .marketing-navtab itself so the header keeps
+   its own scale; the header's copy of this class is hidden below 720px
+   anyway, but scoping it keeps the two independent. */
+@media (max-width: 560px) {
+  .marketing-install-tabs .marketing-navtab {
+    font-size: 14px;
+    padding: 9px 13px;
+  }
+}
+
 /* All three tabs share one height so switching between them doesn't
    resize the section and shove the rest of the page around — iPhone
    carries two mockups, Android/desktop a single button. Only above the
