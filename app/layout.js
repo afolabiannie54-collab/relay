@@ -70,13 +70,16 @@ export const viewport = {
   initialScale: 1,
   viewportFit: 'cover',
   interactiveWidget: 'resizes-content',
-  // Matched to --surface in globals.css (#ffffff light, #161615 dark) so
+  // Matched to --surface in globals.css (#ffffff light, #1D1D1B dark) so
   // the status bar reads as part of the app header rather than a band
   // sitting on top of it. A single flat dark value would put a black bar
   // directly above a white header in light mode.
+  // Keep these in step with --surface: the dark value sat at #161615 after
+  // that token was lifted to #1D1D1B, which put a subtly different dark
+  // immediately above the header — the exact seam this is meant to avoid.
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: '#FFFFFF' },
-    { media: '(prefers-color-scheme: dark)', color: '#161615' },
+    { media: '(prefers-color-scheme: dark)', color: '#1D1D1B' },
   ],
 }
 
