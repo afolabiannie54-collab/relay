@@ -155,14 +155,33 @@ export async function acceptMessageRequest(requestId) {
 
   // Remove from hidden conversations for BOTH sides — create_message_request
   // hides it for the sender too (not just the receiver calling this), and
-  // nothing else ever un-hides the sender's copy once accepted. Scoped to
-  // just this conversation_id, not just `user.id`, so acceptance clears
-  // the automatic pending-hide for whoever it applied to.
-  await supabase
+  // nothing else ever un-hides the sender's copy once accepted.
+  //
+  // Must use the service role. conversation_hidden's RLS only lets a user
+  // touch their own rows, so running this on the caller's client cleared
+  // the receiver's row and silently dropped the sender's — a delete that
+  // RLS filters returns success with zero rows affected, so it looked like
+  // it had worked. The sender was then left permanently hidden: their chat
+  // list stayed empty no matter how many messages were exchanged, because
+  // get_user_conversations excludes anything in conversation_hidden, while
+  // get_hidden_conversations showed it (a hidden conversation with no
+  // pending request). Same reason sendPushNotification needs it.
+  const { createClient: createServiceClient } = await import('@supabase/supabase-js')
+  const serviceClient = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  )
+
+  const { error: unhideError } = await serviceClient
     .from('conversation_hidden')
     .delete()
     .eq('conversation_id', request.conversation_id)
     .in('user_id', [user.id, request.sender_id])
+
+  // Surfaced rather than ignored: if this fails the request is already
+  // accepted, but the conversation is invisible to at least one side,
+  // which is indistinguishable from the app being broken.
+  if (unhideError) return { error: unhideError.message }
 
   return { success: true, conversationId: request.conversation_id }
 }
