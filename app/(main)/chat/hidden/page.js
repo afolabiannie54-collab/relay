@@ -46,6 +46,43 @@ export default function HiddenConversationsPage() {
     load()
   }, [])
 
+  // No realtime here previously — this screen only ever refreshed on
+  // mount. ChatList.js's own chat-list-all channel already listens to
+  // conversation_hidden and messages INSERT for exactly this data (it
+  // just refetches a COUNT rather than the list, for the sidebar badge),
+  // so this mirrors that pattern rather than inventing a new one.
+  // Without it: accepting a message request elsewhere unhides a
+  // conversation (see acceptMessageRequest in actions/messages.js) and it
+  // wouldn't disappear from here until a manual back-navigation: and a
+  // message arriving in a still-hidden conversation wouldn't update its
+  // preview/unread count live either.
+  useEffect(() => {
+    if (!userId) return
+
+    const supabase = createClient()
+    const channel = supabase
+      .channel(`chat-hidden:${userId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'conversation_hidden',
+        filter: `user_id=eq.${userId}`,
+      }, refreshHidden)
+      // No filter possible on messages (conversation_id isn't known up
+      // front) — same as chat-list-all's identical binding, RLS already
+      // scopes delivery to conversations this user participates in, so
+      // this can only ever fire for messages the hidden list could
+      // actually contain.
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages',
+      }, refreshHidden)
+      .subscribe()
+
+    return () => supabase.removeChannel(channel)
+  }, [userId])
+
   const handleRowTouchStart = (conv) => (e) => {
     const touch = e.touches[0]
     if (!touch) return

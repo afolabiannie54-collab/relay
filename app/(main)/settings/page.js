@@ -12,6 +12,7 @@ import AccountSecuritySheet from '@/components/settings/AccountSecuritySheet'
 import BlockedUsersSheet from '@/components/settings/BlockedUsersSheet'
 import ActiveSessionsSheet from '@/components/settings/ActiveSessionsSheet'
 import NotificationSettingsSheet from '@/components/settings/NotificationSettingsSheet'
+import Skeleton from '@/components/shared/Skeleton'
 import { cache } from '@/lib/cache'
 
 export default function SettingsPage() {
@@ -29,7 +30,13 @@ export default function SettingsPage() {
     load()
   }, [])
 
-  if (!profile) return null
+  // No early `if (!profile) return null` — this page's only actually
+  // async data is the profile card below; the header, appearance section
+  // and settings list are static and don't need to wait on it. Gating the
+  // whole page meant a cold load (every reopen, cache.peek() finds
+  // nothing) showed a fully blank screen with no loading indication at
+  // all, the one place in Settings that didn't follow the skeleton
+  // pattern every sibling sheet (Blocked, Sessions, Notifications) uses.
 
   return (
     <div style={{
@@ -52,8 +59,37 @@ export default function SettingsPage() {
 
       <div style={{ maxWidth: '600px', margin: '0 auto', padding: '32px 24px' }}>
 
-        {/* Profile card */}
-        <Link href="/settings/profile" style={{ textDecoration: 'none' }}>
+        {/* Profile card — the only genuinely async thing on this page, so
+            it's the only part that skeletons. Not wrapped in the Link
+            while loading: Avatar with an undefined src/name would render
+            its bare "?" fallback rather than a placeholder shape, and a
+            still-loading row shouldn't be tappable to /settings/profile
+            yet anyway. */}
+        {profile ? (
+          <Link href="/settings/profile" style={{ textDecoration: 'none' }}>
+            <div style={{
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-lg)',
+              padding: '20px',
+              boxShadow: 'var(--shadow-md)',
+              marginBottom: '20px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '16px',
+              cursor: 'pointer',
+            }}>
+              <Avatar src={profile?.avatar_url} name={profile?.display_name} size={56} />
+              <div style={{ flex: 1 }}>
+                <p style={{ fontSize: '16px', fontWeight: '800', color: 'var(--text)', marginBottom: '2px' }}>
+                  {profile?.display_name}
+                </p>
+                <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>@{profile?.username}</p>
+              </div>
+              <ChevronRight size={17} strokeWidth={2.25} color="var(--text-tertiary)" />
+            </div>
+          </Link>
+        ) : (
           <div style={{
             background: 'var(--surface)',
             border: '1px solid var(--border)',
@@ -64,18 +100,14 @@ export default function SettingsPage() {
             display: 'flex',
             alignItems: 'center',
             gap: '16px',
-            cursor: 'pointer',
           }}>
-            <Avatar src={profile?.avatar_url} name={profile?.display_name} size={56} />
-            <div style={{ flex: 1 }}>
-              <p style={{ fontSize: '16px', fontWeight: '800', color: 'var(--text)', marginBottom: '2px' }}>
-                {profile?.display_name}
-              </p>
-              <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>@{profile?.username}</p>
+            <Skeleton width="56px" height="56px" borderRadius="50%" />
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <Skeleton width="140px" height="16px" />
+              <Skeleton width="90px" height="13px" />
             </div>
-            <ChevronRight size={17} strokeWidth={2.25} color="var(--text-tertiary)" />
           </div>
-        </Link>
+        )}
 
         {/* Appearance */}
         <div style={{ marginBottom: '20px' }}>

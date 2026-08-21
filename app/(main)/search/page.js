@@ -6,6 +6,7 @@ import {
   Search as SearchIcon, Users, MoreHorizontal, MessageCircle, Send, User, Share2, UserX,
 } from 'lucide-react'
 import Avatar from '@/components/shared/Avatar'
+import Skeleton from '@/components/shared/Skeleton'
 import BottomSheet from '@/components/shared/BottomSheet'
 import ConfirmSheet from '@/components/shared/ConfirmSheet'
 import NewConversationSheet from '@/components/chat/NewConversationSheet'
@@ -211,10 +212,30 @@ export default function SearchPage() {
           </button>
         )}
 
-        {/* Loading */}
+        {/* Loading — three rows shaped like an actual result (48px avatar
+            + two lines) rather than plain "Searching..." text, matching
+            how every other list in the app (ChatListSkeleton,
+            MessagesSkeleton) shows a loading state as the shape of what's
+            coming instead of a sentence. */}
         {loading && (
-          <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-tertiary)', fontSize: '14px' }}>
-            Searching...
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {[0, 1, 2].map(i => (
+              <div key={i} style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                margin: '0 -20px',
+                padding: '13px 20px 13px 17px',
+                borderLeft: '3px solid transparent',
+                borderBottom: '1px solid var(--border-light)',
+              }}>
+                <Skeleton width="48px" height="48px" borderRadius="50%" />
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '7px' }}>
+                  <Skeleton width={i === 1 ? '110px' : '150px'} height="14px" />
+                  <Skeleton width={i === 1 ? '80px' : '100px'} height="12px" />
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
