@@ -401,15 +401,36 @@ export default function MainLayout({ children }) {
         overflow: 'hidden',
         minWidth: 0,
       }}>
+        {/* Nothing anywhere in the app applied safe-area-inset-top — every
+            page's own sticky header (chat list, settings, a conversation)
+            sat flush at y:0 of this scroll container, which in standalone
+            display mode is genuinely behind the notch/Dynamic Island, not
+            just close to it. box-sizing:border-box (set globally) is what
+            keeps this from double-counting: the padding is carved out of
+            this flex child's own 100%-of-remaining-space height rather
+            than added on top of it, so chat/layout.js's absolutely
+            positioned mobile panels — which sit at top:0 of THIS box, not
+            of the viewport — inherit the offset for free with no change
+            needed there. One fix here covers every page instead of
+            patching each header individually. */}
         <div style={{
           flex: 1,
           overflowY: 'auto',
           overflowX: 'hidden',
+          paddingTop: 'env(safe-area-inset-top)',
         }}>
           {children}
         </div>
 
-        {/* Mobile bottom nav */}
+        {/* Mobile bottom nav. Previously flat padding with no allowance
+            for the home indicator — on a Face ID iPhone that's not just
+            close to the edge, the gesture bar overlaps the nav's own
+            bottom padding, so the row visually crowded it and the bottom
+            few pixels of each tap target sat inside the strip iOS reserves
+            for its own swipe-up gesture. max(), not a plain env(): on a
+            device with no inset (an old home-button iPhone, Android,
+            desktop-as-PWA) env() resolves to 0 and the row would lose the
+            breathing room the 8px was providing on every other device. */}
         <div
           className={(isConversationPage || bulkSelectActive) ? 'mobile-nav hide-mobile-nav' : 'mobile-nav'}
           style={{
@@ -417,6 +438,7 @@ export default function MainLayout({ children }) {
             borderTop: '2px solid var(--border-strong)',
             background: 'var(--surface)',
             padding: '8px 10px',
+            paddingBottom: 'max(8px, env(safe-area-inset-bottom))',
             gap: '8px',
           }}
         >
