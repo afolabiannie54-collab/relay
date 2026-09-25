@@ -12,11 +12,17 @@ const USER_SLASH_PATH = "M11.3034 9.40148C11.5053 9.37414 16.394 8.7794 16.1904 
 export default function BlockedUsersSheet({ isOpen, onClose }) {
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     if (!isOpen) return
     setLoading(true)
+    setError(null)
     getBlockedUsers().then(result => {
+      // A fetch failure previously fell through to the same "No blocked
+      // users" empty state as genuinely having none — indistinguishable
+      // from the user's actual blocklist, with no error and no retry.
+      if (result.error) setError(result.error)
       setUsers(result.data || [])
       setLoading(false)
     })
@@ -25,6 +31,20 @@ export default function BlockedUsersSheet({ isOpen, onClose }) {
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose} title="Blocked users">
       <div style={{ fontFamily: "'Inter', -apple-system, sans-serif" }}>
+        {error && (
+          <div style={{
+            background: 'var(--error-light)',
+            border: '1.5px solid var(--error)',
+            borderRadius: 'var(--radius-sm)',
+            padding: '10px 14px',
+            margin: '12px 20px 0',
+            fontSize: '13px',
+            color: 'var(--error)',
+          }}>
+            {error}
+          </div>
+        )}
+
         {loading ? (
           <div style={{ padding: '4px 0' }}>
             <RowSkeleton />

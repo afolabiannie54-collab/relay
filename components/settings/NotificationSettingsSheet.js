@@ -36,6 +36,7 @@ export default function NotificationSettingsSheet({ isOpen, onClose }) {
   }, [isOpen])
 
   const handleToggle = async (key) => {
+    const previousSettings = settings
     const updatedSettings = { ...settings, [key]: !settings[key] }
     setSettings(updatedSettings)
 
@@ -45,6 +46,10 @@ export default function NotificationSettingsSheet({ isOpen, onClose }) {
     })
     const result = await updatePrivacySettings(data)
     if (result.error) {
+      // Without this the toggle stayed flipped even though the save
+      // failed — the UI silently disagreed with the DB (which still had
+      // the old value) until the sheet was closed and reopened.
+      setSettings(previousSettings)
       setError(result.error)
     } else {
       setSuccess('Saved')

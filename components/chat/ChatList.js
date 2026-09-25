@@ -31,6 +31,13 @@ const iconProps = { strokeWidth: 2, strokeLinecap: 'square', strokeLinejoin: 'mi
 export default function ChatList({ onSelectConversation }) {
   const router = useRouter()
   const [conversations, setConversations] = useState([])
+  // Mirrors `conversations` for the realtime message-UPDATE handler below,
+  // which needs to read the current list inside a subscription callback
+  // set up once on mount — reading `conversations` there directly would
+  // close over whatever it was at mount time, not what's actually on
+  // screen when an edit/delete event arrives later.
+  const conversationsRef = useRef([])
+  useEffect(() => { conversationsRef.current = conversations }, [conversations])
   const [userId, setUserId] = useState(null)
   const [mutedIds, setMutedIds] = useState([])
   const [loading, setLoading] = useState(true)
@@ -270,6 +277,34 @@ export default function ChatList({ onSelectConversation }) {
           const next = prev.some(c => c.conversation_id === convId)
             ? prev.map(c => c.conversation_id === convId ? updated : c)
             : [updated, ...prev]
+          cache.set('conversations', next, 10000)
+          return next
+        })
+      })
+      // Editing or deleting a message is an UPDATE (edited content, or
+      // type:'deleted'), not an INSERT — this list had no listener for
+      // that at all, so a preview kept showing a message's original text
+      // forever after it was edited or deleted, for both the person who
+      // changed it and the other participant. Same single-row-patch
+      // approach as the INSERT handler above, only actually applying the
+      // refetch when it's the conversation's current preview that
+      // changed, to skip the round trip for edits to older messages.
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'messages',
+      }, async (payload) => {
+        const convId = payload.new.conversation_id
+        const isCurrentPreview = conversationsRef.current.some(
+          c => c.conversation_id === convId && c.last_message?.id === payload.new.id
+        )
+        if (!isCurrentPreview) return
+        cache.invalidate('conversations')
+        const result = await getConversations()
+        const updated = result.data?.find(c => c.conversation_id === convId)
+        if (!updated) return
+        setConversations(prev => {
+          const next = prev.map(c => c.conversation_id === convId ? updated : c)
           cache.set('conversations', next, 10000)
           return next
         })

@@ -1,16 +1,45 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { storeSessionInfo } from '@/actions/sessions'
 import AuthShell from '@/components/auth/AuthShell'
+
+// sessionStorage alone doesn't survive a reload of this exact page (tab
+// closed and reopened from the verification email's own link, browser tab
+// restore, opening in a new tab) even though the pending signup is still
+// valid server-side — the ?email= query param set by signup/page.js is
+// the fallback for that case, and gets written back into sessionStorage
+// so a resend triggered later in the same tab uses the same primary path.
+function getVerifyEmail() {
+  const stored = sessionStorage.getItem('verifyEmail')
+  if (stored) return stored
+  const fromUrl = new URLSearchParams(window.location.search).get('email')
+  if (fromUrl) {
+    sessionStorage.setItem('verifyEmail', fromUrl)
+    return fromUrl
+  }
+  return null
+}
 
 export default function VerifyPage() {
   const [code, setCode] = useState('')
   const [loading, setLoading] = useState(false)
   const [resending, setResending] = useState(false)
   const [resent, setResent] = useState(false)
+  // Was `resent` alone — once true it disabled the button for the rest
+  // of the page's life with no way back, so a lost/delayed first email
+  // left the user with no path except reloading (which also wipes
+  // sessionStorage.verifyEmail, breaking the session entirely). A cooldown
+  // re-enables it instead of locking it forever.
+  const [cooldown, setCooldown] = useState(0)
   const [error, setError] = useState(null)
+
+  useEffect(() => {
+    if (cooldown <= 0) return
+    const timer = setTimeout(() => setCooldown(c => c - 1), 1000)
+    return () => clearTimeout(timer)
+  }, [cooldown])
 
   const handleVerify = async (e) => {
     e.preventDefault()
@@ -25,7 +54,7 @@ export default function VerifyPage() {
 
     try {
       const supabase = createClient()
-      const email = sessionStorage.getItem('verifyEmail')
+      const email = getVerifyEmail()
 
       if (!email) {
         setError('Session expired. Please sign up again.')
@@ -70,7 +99,7 @@ export default function VerifyPage() {
     setResent(false)
 
     try {
-      const email = sessionStorage.getItem('verifyEmail')
+      const email = getVerifyEmail()
 
       if (!email) {
         setError('Session expired. Please sign up again.')
@@ -88,6 +117,7 @@ export default function VerifyPage() {
         setError(error.message)
       } else {
         setResent(true)
+        setCooldown(30)
       }
     } catch {
       setError('Something went wrong. Please try again.')
@@ -179,19 +209,19 @@ export default function VerifyPage() {
 
         <button
           onClick={handleResend}
-          disabled={resending || resent}
+          disabled={resending || cooldown > 0}
           style={{
             background: 'none',
             border: 'none',
             fontSize: '13px',
             color: 'var(--text-secondary)',
-            cursor: resending || resent ? 'not-allowed' : 'pointer',
+            cursor: resending || cooldown > 0 ? 'not-allowed' : 'pointer',
             marginTop: '20px',
             fontFamily: 'inherit',
             textDecoration: 'underline',
           }}
         >
-          {resending ? 'Sending...' : resent ? 'Code sent' : 'Resend code'}
+          {resending ? 'Sending...' : cooldown > 0 ? `Resend code (${cooldown}s)` : 'Resend code'}
         </button>
 
         <p style={{ marginTop: '12px' }}>

@@ -362,6 +362,21 @@ export default function ConversationPage() {
     }
   }, [id])
 
+  // Picked up once per mount — set by NewConversationSheet when this
+  // group's creation succeeded but its avatar upload failed (a storage/
+  // network error slipping past that sheet's own client-side validation).
+  // The group already exists by then with nothing to roll back, so this
+  // is the only place left to actually tell the user it didn't save.
+  useEffect(() => {
+    if (!id) return
+    const key = `relay:group-avatar-failed:${id}`
+    let failed = false
+    try { failed = sessionStorage.getItem(key) === '1' } catch {}
+    if (!failed) return
+    try { sessionStorage.removeItem(key) } catch {}
+    showError("Group created, but the photo didn't upload — you can try again from group settings.")
+  }, [id])
+
   useEffect(() => {
     messagesRef.current = messages
   }, [messages])
@@ -1430,8 +1445,20 @@ export default function ConversationPage() {
 
   const handleBulkDelete = async () => {
     if (!canBulkDelete) return
-    await Promise.all(selectedMessages.map(m => deleteMessage(m.id)))
+    const results = await Promise.all(selectedMessages.map(m => deleteMessage(m.id)))
+    const failedCount = results.filter(r => r?.error).length
     handleExitSelectMode()
+    // Individual deletes can fail independently (an ownership/time-window
+    // check racing, a network blip) — Promise.all resolves regardless, so
+    // without this a failure was indistinguishable from success: select
+    // mode just closed and the message quietly stayed in the thread.
+    if (failedCount > 0) {
+      showError(
+        failedCount === selectedMessages.length
+          ? "Couldn't delete those messages — please try again."
+          : `${failedCount} message${failedCount > 1 ? 's' : ''} couldn't be deleted.`
+      )
+    }
   }
 
   const handleBulkCopy = async () => {
@@ -2254,20 +2281,26 @@ export default function ConversationPage() {
                         />
                       )}
                     </div>
-                    <MessageReactions
-                      messageId={msg.id}
-                      reactions={messageReactions[msg.id] || []}
-                      currentUserId={profile?.id}
-                      showPicker={activeReactionPicker === msg.id}
-                      onTogglePicker={() => setActiveReactionPicker(prev => prev === msg.id ? null : msg.id)}
-                      onReactionChange={async () => {
-                        setActiveReactionPicker(null)
-                        const result = await getReactions(msg.id)
-                        if (result.data) {
-                          setMessageReactions(prev => ({ ...prev, [msg.id]: result.data }))
-                        }
-                      }}
-                    />
+                    {/* Deleted content shouldn't stay reactable — every
+                        sibling element here (status indicator, forwarded
+                        badge, star, swipe-to-reply) already gates on
+                        isDeleted; this was the one left interactive. */}
+                    {!isDeleted && (
+                      <MessageReactions
+                        messageId={msg.id}
+                        reactions={messageReactions[msg.id] || []}
+                        currentUserId={profile?.id}
+                        showPicker={activeReactionPicker === msg.id}
+                        onTogglePicker={() => setActiveReactionPicker(prev => prev === msg.id ? null : msg.id)}
+                        onReactionChange={async () => {
+                          setActiveReactionPicker(null)
+                          const result = await getReactions(msg.id)
+                          if (result.data) {
+                            setMessageReactions(prev => ({ ...prev, [msg.id]: result.data }))
+                          }
+                        }}
+                      />
+                    )}
                   </div>
                   </div>
                 </div>

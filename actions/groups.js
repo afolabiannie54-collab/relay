@@ -325,6 +325,18 @@ export async function removeMember(conversationId, userId) {
     .eq('id', userId)
     .single()
 
+  const { data: group } = await supabase
+    .from('groups')
+    .select('name')
+    .eq('conversation_id', conversationId)
+    .single()
+
+  const { data: removerProfile } = await supabase
+    .from('users')
+    .select('display_name')
+    .eq('id', user.id)
+    .single()
+
   // conversation_participants' only DELETE policy is "auth.uid() = user_id"
   // — the admin's own session can't remove someone else's row via RLS, so
   // this silently deleted zero rows while still reporting success (same
@@ -350,6 +362,32 @@ export async function removeMember(conversationId, userId) {
     content: `${removedName.display_name} was removed from the group`,
     type: 'system',
   })
+
+  // Same problem deleteGroup() solves and the same reason: the removed
+  // user's own conversation_participants DELETE can't reach them over
+  // Realtime, because the RLS check that authorizes delivery re-queries
+  // a table this function has already emptied for them. A notifications
+  // row (via the service-role client, since RLS won't let this session
+  // insert a row addressed to someone else) is what ChatList.js and
+  // app/(main)/layout.js are already listening for on type
+  // 'group_removed' to drop the conversation and refresh instantly
+  // instead of leaving a ghost entry until next reload.
+  await serviceClient.from('notifications').insert({
+    user_id: userId,
+    type: 'group_removed',
+    reference_id: conversationId,
+    title: `You were removed from "${group?.name || 'a group'}"`,
+    body: `${removerProfile?.display_name || 'An admin'} removed you.`,
+  })
+
+  sendPushNotification(
+    userId,
+    'Removed from group',
+    `${removerProfile?.display_name || 'An admin'} removed you from "${group?.name || 'a group'}"`,
+    '/chat',
+    null,
+    'group_removed'
+  )
 
   return { success: true }
 }

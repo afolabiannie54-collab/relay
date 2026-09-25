@@ -45,6 +45,15 @@ export default function EditProfileForm({ initialProfile }) {
     setFormData(prev => ({ ...prev, [name]: value }))
   }
 
+  // This banner used to persist indefinitely (until the next save/error/
+  // unmount) while its siblings elsewhere in Settings — NotificationSettingsSheet,
+  // the Privacy form — auto-dismiss after 1.5s. Matching that instead of
+  // leaving it as the one outlier.
+  const showSuccess = (msg) => {
+    setSuccess(msg)
+    setTimeout(() => setSuccess(null), 1500)
+  }
+
   // Pushes a save straight into the shared profile cache and notifies the
   // app shell (app/(main)/layout.js), which stays mounted across every
   // /chat <-> /settings navigation and would otherwise keep showing the
@@ -75,7 +84,7 @@ export default function EditProfileForm({ initialProfile }) {
     if (result.error) {
       setError(result.error)
     } else {
-      setSuccess('Profile updated successfully.')
+      showSuccess('Profile updated successfully.')
       applyProfileUpdate(formData)
     }
     setSaving(false)
@@ -119,7 +128,7 @@ export default function EditProfileForm({ initialProfile }) {
       setError(result.error)
     } else {
       applyProfileUpdate({ avatar_url: result.url })
-      setSuccess('Avatar updated successfully.')
+      showSuccess('Avatar updated successfully.')
     }
     setUploadingAvatar(false)
   }
@@ -176,7 +185,7 @@ export default function EditProfileForm({ initialProfile }) {
       setShowUsernameChange(false)
       setNewUsername('')
       setUsernameState(null)
-      setSuccess('Username updated successfully.')
+      showSuccess('Username updated successfully.')
     }
     setSavingUsername(false)
   }

@@ -60,6 +60,7 @@ export default function SignupPage() {
     if (!formData.username.trim()) newErrors.username = 'Username is required'
     if (usernameState === 'taken') newErrors.username = 'Username is already taken'
     if (usernameState === 'invalid') newErrors.username = 'Invalid username format'
+    if (usernameState === 'checking') newErrors.username = 'Please wait for availability check'
     if (!formData.email.trim()) newErrors.email = 'Email is required'
     if (!formData.password.trim()) newErrors.password = 'Password is required'
     if (formData.password.length < 8) newErrors.password = 'Password must be at least 8 characters'
@@ -101,7 +102,13 @@ export default function SignupPage() {
       }
 
       sessionStorage.setItem('verifyEmail', formData.email)
-      window.location.href = '/verify'
+      // Belt-and-suspenders alongside sessionStorage: any reload of
+      // /verify (tab closed and reopened from the email's own link, the
+      // browser restoring tabs, opening it in a new tab) wiped
+      // sessionStorage and dead-ended into "Session expired. Please sign
+      // up again." even though the pending signup was still perfectly
+      // valid server-side. The query param survives all of that.
+      window.location.href = `/verify?email=${encodeURIComponent(formData.email)}`
     } catch {
       setServerError('Something went wrong. Please try again.')
       setLoading(false)

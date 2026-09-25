@@ -168,6 +168,11 @@ export default function ConversationSettingsSheet({
       const next = { muted: true, mutedUntil: mutedUntil ? new Date(mutedUntil).toISOString() : null }
       setMuteStatus(next)
       cache.set(`mute:${conversationId}`, next, 30000)
+      // ChatList primes its whole-list mute icons from this key (see
+      // ChatList.js:86/132) and only invalidates it after a *bulk* mute —
+      // a single-conversation mute/unmute here left it stale for up to
+      // 30s, so the list kept showing the old bell/no-bell state.
+      cache.invalidate('muted-ids')
       setShowMutePicker(false)
     }
     setMuting(false)
@@ -180,6 +185,7 @@ export default function ConversationSettingsSheet({
     if (!result.error) {
       setMuteStatus({ muted: false, mutedUntil: null })
       cache.invalidate(`mute:${conversationId}`)
+      cache.invalidate('muted-ids')
     }
     setMuting(false)
   }
@@ -737,7 +743,12 @@ export default function ConversationSettingsSheet({
                 <span>{acting === memberActionUser?.user_id ? 'Transferring...' : 'Make owner'}</span>
               </button>
             )}
-            {canManageGroup && memberActionUser?.role !== 'owner' && (
+            {/* Matches actions/groups.js's removeMember check exactly — an
+                admin (not owner) removing a fellow admin always gets
+                rejected server-side ("Only the owner can remove admins"),
+                so the control shouldn't be offered only to bounce back
+                with an error after a round trip. */}
+            {canManageGroup && memberActionUser?.role !== 'owner' && (isOwner || memberActionUser?.role !== 'admin') && (
               <button className="relay-menu-row" style={{ ...rowStyle, color: 'var(--error)', borderBottom: 'none' }} onClick={() => setConfirmAction('remove')}>
                 <UserX size={17} {...iconProps} />
                 <span>Remove from group</span>

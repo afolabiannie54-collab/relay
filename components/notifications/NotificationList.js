@@ -80,9 +80,20 @@ export default function NotificationList({ initialNotifications }) {
     return () => { if (channel) supabase.removeChannel(channel) }
   }, [])
 
+  const [markingAllRead, setMarkingAllRead] = useState(false)
+
   const handleMarkAllRead = async () => {
+    setMarkingAllRead(true)
+    // Snapshotting which ids this call actually covers (rather than an
+    // unconditional map over whatever `notifications` is when the
+    // response comes back) avoids marking read a brand-new notification
+    // that arrives via the realtime INSERT above in the gap between the
+    // server's UPDATE completing and this response landing — the server
+    // query already ran before that one existed, so it was never touched.
+    const idsAtRequestTime = new Set(notifications.map(n => n.id))
     await markAllNotificationsRead()
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })))
+    setNotifications(prev => prev.map(n => idsAtRequestTime.has(n.id) ? { ...n, read: true } : n))
+    setMarkingAllRead(false)
   }
 
   const handleNotificationClick = async (notification) => {
@@ -110,7 +121,11 @@ export default function NotificationList({ initialNotifications }) {
           router.push(`/chat/${notification.reference_id}`)
           break
         case 'group_invite':
-          router.push('/requests')
+          // Without the tab param this landed on the default "Received"
+          // tab, which shows "No requests" for anyone with a pending
+          // group invite and zero message requests — the invite this
+          // notification is actually about is one tab over.
+          router.push('/requests?tab=invites')
           break
         default:
           break
@@ -161,8 +176,8 @@ export default function NotificationList({ initialNotifications }) {
             )}
           </div>
           {unreadCount > 0 && (
-            <button onClick={handleMarkAllRead} className="relay-btn" style={{ flexShrink: 0 }}>
-              <Check size={15} {...iconProps} /> Mark all read
+            <button onClick={handleMarkAllRead} disabled={markingAllRead} className="relay-btn" style={{ flexShrink: 0, opacity: markingAllRead ? 0.6 : 1 }}>
+              <Check size={15} {...iconProps} /> {markingAllRead ? 'Marking...' : 'Mark all read'}
             </button>
           )}
         </div>

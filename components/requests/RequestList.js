@@ -50,10 +50,35 @@ function Spinner({ size = 14 }) {
 
 export default function RequestList({ initialReceived, initialSent, initialInvites, userId }) {
   const [tab, setTab] = useState('received')
+
+  // Applied post-mount rather than read synchronously during the initial
+  // render (matches app/(main)/layout.js's sidebar-collapsed default) —
+  // reading window.location here during render would make the server-
+  // rendered HTML and the client's first render disagree on which tab is
+  // active, a hydration mismatch. Plain browser API instead of
+  // next/navigation's useSearchParams(), which would force this whole
+  // component under a Suspense boundary just for this one deep link
+  // (?tab=invites, used by the group-invite notification).
+  useEffect(() => {
+    const param = new URLSearchParams(window.location.search).get('tab')
+    if (['received', 'sent', 'invites'].includes(param)) setTab(param)
+  }, [])
   const [received, setReceived] = useState(initialReceived)
   const [sent, setSent] = useState(initialSent)
   const [invites, setInvites] = useState(initialInvites || [])
-  const [acting, setActing] = useState(null)
+  // A Set of in-flight request/invite ids, not a single scalar — one
+  // shared "the current action" id meant starting a second action (even
+  // on a totally different row, or a different tab entirely) cleared the
+  // first row's disabled/spinner state while its own request was still
+  // in flight, letting a second tap fire a duplicate accept/cancel call.
+  const [acting, setActing] = useState(() => new Set())
+  const isActing = (id) => acting.has(id)
+  const startActing = (id) => setActing(prev => new Set(prev).add(id))
+  const stopActing = (id) => setActing(prev => {
+    const next = new Set(prev)
+    next.delete(id)
+    return next
+  })
   const [blockTarget, setBlockTarget] = useState(null)
   const [actionError, setActionError] = useState(null)
   const router = useRouter()
@@ -111,23 +136,25 @@ export default function RequestList({ initialReceived, initialSent, initialInvit
   }, [userId])
 
   const handleAccept = async (requestId) => {
-    setActing(requestId)
+    if (isActing(requestId)) return
+    startActing(requestId)
     const result = await acceptMessageRequest(requestId)
     if (result.success) {
       setReceived(prev => prev.filter(r => r.id !== requestId))
       router.push(`/chat/${result.conversationId}`)
       return
     }
-    setActing(null)
+    stopActing(requestId)
     showActionError(result.error)
   }
 
   const handleBlock = async () => {
     if (!blockTarget) return
     const { requestId, userId: blockedUserId } = blockTarget
-    setActing(requestId)
+    if (isActing(requestId)) return
+    startActing(requestId)
     const result = await blockUser(blockedUserId)
-    setActing(null)
+    stopActing(requestId)
     if (result?.error) return result
     setReceived(prev => prev.filter(r => r.id !== requestId))
     setBlockTarget(null)
@@ -135,37 +162,40 @@ export default function RequestList({ initialReceived, initialSent, initialInvit
   }
 
   const handleCancel = async (requestId) => {
-    setActing(requestId)
+    if (isActing(requestId)) return
+    startActing(requestId)
     const result = await cancelMessageRequest(requestId)
     if (result.success) {
       setSent(prev => prev.filter(r => r.id !== requestId))
     } else {
       showActionError(result.error)
     }
-    setActing(null)
+    stopActing(requestId)
   }
 
   const handleAcceptInvite = async (inviteId) => {
-    setActing(inviteId)
+    if (isActing(inviteId)) return
+    startActing(inviteId)
     const result = await acceptGroupInvite(inviteId)
     if (result.success) {
       setInvites(prev => prev.filter(i => i.id !== inviteId))
       router.push(`/chat/${result.conversationId}`)
       return
     }
-    setActing(null)
+    stopActing(inviteId)
     showActionError(result.error)
   }
 
   const handleDeclineInvite = async (inviteId) => {
-    setActing(inviteId)
+    if (isActing(inviteId)) return
+    startActing(inviteId)
     const result = await declineGroupInvite(inviteId)
     if (result.success) {
       setInvites(prev => prev.filter(i => i.id !== inviteId))
     } else {
       showActionError(result.error)
     }
-    setActing(null)
+    stopActing(inviteId)
   }
 
   const list = tab === 'received' ? received : tab === 'sent' ? sent : invites
@@ -294,16 +324,16 @@ export default function RequestList({ initialReceived, initialSent, initialInvit
                 <div style={{ display: 'flex', gap: '10px' }}>
                   <button
                     onClick={() => handleAccept(request.id)}
-                    disabled={acting === request.id}
+                    disabled={isActing(request.id)}
                     className="relay-btn relay-btn--filled"
                     style={{ flex: 1, padding: '10px', fontSize: '14px' }}
                   >
-                    {acting === request.id && <Spinner />}
-                    {acting === request.id ? 'Accepting...' : 'Accept'}
+                    {isActing(request.id) && <Spinner />}
+                    {isActing(request.id) ? 'Accepting...' : 'Accept'}
                   </button>
                   <button
                     onClick={() => setBlockTarget({ requestId: request.id, userId: request.sender?.id })}
-                    disabled={acting === request.id}
+                    disabled={isActing(request.id)}
                     className="relay-btn"
                     style={{ padding: '10px 16px', fontSize: '14px', color: 'var(--error)', borderColor: 'var(--error)' }}
                   >
@@ -349,11 +379,11 @@ export default function RequestList({ initialReceived, initialSent, initialInvit
                   </span>
                   <button
                     onClick={() => handleCancel(request.id)}
-                    disabled={acting === request.id}
+                    disabled={isActing(request.id)}
                     className="relay-btn"
                     style={{ padding: '8px 14px', fontSize: '13px' }}
                   >
-                    {acting === request.id ? 'Cancelling...' : 'Cancel'}
+                    {isActing(request.id) ? 'Cancelling...' : 'Cancel'}
                   </button>
                 </div>
               </div>
@@ -386,20 +416,20 @@ export default function RequestList({ initialReceived, initialSent, initialInvit
                 <div style={{ display: 'flex', gap: '10px' }}>
                   <button
                     onClick={() => handleAcceptInvite(invite.id)}
-                    disabled={acting === invite.id}
+                    disabled={isActing(invite.id)}
                     className="relay-btn relay-btn--filled"
                     style={{ flex: 1, padding: '10px', fontSize: '14px' }}
                   >
-                    {acting === invite.id && <Spinner />}
-                    {acting === invite.id ? 'Joining...' : 'Accept'}
+                    {isActing(invite.id) && <Spinner />}
+                    {isActing(invite.id) ? 'Joining...' : 'Accept'}
                   </button>
                   <button
                     onClick={() => handleDeclineInvite(invite.id)}
-                    disabled={acting === invite.id}
+                    disabled={isActing(invite.id)}
                     className="relay-btn"
                     style={{ padding: '10px 16px', fontSize: '14px' }}
                   >
-                    {acting === invite.id ? 'Declining...' : 'Decline'}
+                    {isActing(invite.id) ? 'Declining...' : 'Decline'}
                   </button>
                 </div>
               </div>

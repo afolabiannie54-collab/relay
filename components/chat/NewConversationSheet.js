@@ -183,6 +183,21 @@ function SheetBody({ onClose, initialMode }) {
   const handleAvatarChange = (e) => {
     const file = e.target.files?.[0]
     if (!file) return
+    // Matches uploadGroupAvatar's own validation (actions/groups.js) —
+    // catching this here means the common failure case never happens
+    // after the group is already created and un-undoable at that point.
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+    if (!allowedTypes.includes(file.type)) {
+      setError('Only images are allowed (JPEG, PNG, WebP, GIF)')
+      e.target.value = ''
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Image must be under 5MB')
+      e.target.value = ''
+      return
+    }
+    setError(null)
     setAvatarFile(file)
     setAvatarPreview(URL.createObjectURL(file))
   }
@@ -223,7 +238,17 @@ function SheetBody({ onClose, initialMode }) {
     if (avatarFile) {
       const avatarFormData = new FormData()
       avatarFormData.append('avatar', avatarFile)
-      await uploadGroupAvatar(result.conversationId, avatarFormData)
+      const avatarResult = await uploadGroupAvatar(result.conversationId, avatarFormData)
+      // The group itself already exists at this point — there's nothing
+      // to roll back, so this doesn't block navigation. It previously
+      // failed completely silently (client-side validation above now
+      // catches the common cases, but a storage/network error can still
+      // slip through); this flag is picked up once by the conversation
+      // page on mount to surface it via the existing showError banner
+      // instead of leaving the user thinking the photo saved.
+      if (avatarResult?.error) {
+        try { sessionStorage.setItem(`relay:group-avatar-failed:${result.conversationId}`, '1') } catch {}
+      }
     }
 
     try { window.navigator.vibrate?.(10) } catch {}

@@ -114,6 +114,13 @@ export default function AccountSecuritySheet({ isOpen, onClose }) {
 
     if (result.error) { setError(result.error); return }
 
+    // Without this, `account.hasPassword` stayed stale (false) for the
+    // rest of this sheet session — the menu kept reading "Set a
+    // password" after one was just set, and tapping it again rendered
+    // the form with no current-password field even though the server
+    // now expects one, a dead end short of closing and reopening the
+    // sheet (which refetches getAccountInfo).
+    if (result.wasSet) setAccount(prev => prev ? { ...prev, hasPassword: true } : prev)
     resetFields()
     setSuccess(result.wasSet
       ? 'Password set. You can now sign in with your email and password as well as with Google.'
@@ -136,6 +143,7 @@ export default function AccountSecuritySheet({ isOpen, onClose }) {
     if (result.error) { setError(result.error); return }
 
     const pending = result.pendingEmail
+    setAccount(prev => prev ? { ...prev, newEmailPending: pending } : prev)
     resetFields()
     // Not "changed" — Supabase only applies it once the emailed link is
     // followed, so saying it's done would be a lie the user discovers later
