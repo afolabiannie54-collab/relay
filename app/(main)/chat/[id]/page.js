@@ -202,7 +202,6 @@ export default function ConversationPage() {
   const [loading, setLoading] = useState(() => !Array.isArray(cache.peek(`messages:${id}`)))
   const [loadError, setLoadError] = useState(false)
   const [retryingLoad, setRetryingLoad] = useState(false)
-  const [sending, setSending] = useState(false)
   const [errorMsg, setErrorMsg] = useState(null)
   const errorTimeoutRef = useRef(null)
   const [acceptingRequest, setAcceptingRequest] = useState(false)
@@ -715,14 +714,19 @@ export default function ConversationPage() {
             ? prev.find(m =>
                 m._status === 'sending' &&
                 m.sender_id === newMsg.sender_id &&
+                m.type === newMsg.type &&
                 m.content === newMsg.content &&
                 (m.reply_to_id || null) === (newMsg.reply_to_id || null)
               )
             : null
           if (pendingTemp) {
-            // newMsg.reply is already populated above (a real fetch, not
-            // a snapshot) when this message replies to another — no need
-            // to fall back to the temp bubble's own reply snapshot.
+            // newMsg.reply/media_url/etc. are already populated above (a
+            // real fetch+join, not a snapshot) — no need to fall back to
+            // the temp bubble's own reply snapshot or local blob preview.
+            // The blob URL (image/audio temp bubbles only — see
+            // uploadMediaAndReconcile) is done being displayed as of this
+            // swap, so it's freed here rather than left for GC to notice.
+            if (pendingTemp.media_url?.startsWith('blob:')) URL.revokeObjectURL(pendingTemp.media_url)
             return prev.map(m => m.id === pendingTemp.id ? { ...newMsg, _clientKey: pendingTemp.id } : m)
           }
           return [...prev, newMsg]
@@ -1070,6 +1074,46 @@ export default function ConversationPage() {
     }
   }
 
+  // Media's counterpart to sendMessageAndReconcile above — an image/audio/
+  // file message previously had no optimistic bubble at all, so it only
+  // appeared once Realtime's echo of the INSERT landed, with zero instant
+  // feedback for what can be a genuinely slow upload. uploadMedia()'s own
+  // response is just the bare messages row (no joined media_url/filename/
+  // etc., same gap sendMessage() has for `reply`), so in the common case —
+  // an upload takes real time, easily long enough for Realtime's own
+  // fetch-and-join reconciliation (see the INSERT listener) to have
+  // already replaced the temp bubble by the time this resolves — this
+  // only needs to handle the failure path and the rare case where this
+  // response actually wins the race.
+  const uploadMediaAndReconcile = async (tempId, file, replyToId, replySnapshot) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    if (replyToId) formData.append('replyToId', replyToId)
+    try {
+      const result = await uploadMedia(id, formData)
+      if (result.error) {
+        setMessages(prev => prev.map(m => m.id === tempId ? { ...m, _status: 'failed' } : m))
+        showError(result.error)
+        return
+      }
+      setMessages(prev => {
+        const alreadyReconciled = prev.some(m => m.id === result.data.id)
+        if (alreadyReconciled) return prev
+        // No joined media fields here, so this keeps whatever the temp
+        // bubble already had (the local blob preview) rather than
+        // clearing it — good enough for this sender's own render; the
+        // realtime listener still supersedes it with the real URL if its
+        // event arrives after this (it won't, since `exists` will now
+        // match on id — the trade-off already accepted for `reply`
+        // snapshots above).
+        return prev.map(m => m.id === tempId ? { ...m, id: result.data.id, created_at: result.data.created_at, _status: undefined } : m)
+      })
+    } catch {
+      setMessages(prev => prev.map(m => m.id === tempId ? { ...m, _status: 'failed' } : m))
+      showError('Failed to send — please try again.')
+    }
+  }
+
   // Message appears instantly with a 'sending' status tick — no waiting
   // on the round-trip before it shows up at all. The composer clears
   // right away too, so a second message can be typed and sent while the
@@ -1131,7 +1175,11 @@ export default function ConversationPage() {
   const handleRetrySend = async (msg) => {
     if (msg._status !== 'failed') return
     setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, _status: 'sending' } : m))
-    await sendMessageAndReconcile(msg.id, msg.content, msg.reply_to_id || null, msg.reply || null)
+    if (msg._retryFile) {
+      await uploadMediaAndReconcile(msg.id, msg._retryFile, msg.reply_to_id || null, msg.reply || null)
+    } else {
+      await sendMessageAndReconcile(msg.id, msg.content, msg.reply_to_id || null, msg.reply || null)
+    }
   }
 
   const handleAcceptRequest = async () => {
@@ -1290,56 +1338,86 @@ export default function ConversationPage() {
     const imageTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
     const isImage = imageTypes.includes(file.type)
 
-    if (isImage) {
-      const previewUrl = URL.createObjectURL(file)
-      setMediaPreview({ file, previewUrl, isImage: true })
-    } else {
-      setMediaPreview({ file, isImage: false })
-    }
+    // Always created, not just for images — sendMediaOptimistic uses this
+    // as the optimistic bubble's media_url regardless of type, and
+    // MediaMessage renders the plain-text placeholder instead of a real
+    // file/audio bubble when media_url is falsy.
+    const previewUrl = URL.createObjectURL(file)
+    setMediaPreview({ file, previewUrl, isImage })
     e.target.value = ''
   }
 
-  const handleConfirmMediaUpload = async () => {
-    if (!mediaPreview) return
-    const formData = new FormData()
-    formData.append('file', mediaPreview.file)
-    if (replyTo?.id) formData.append('replyToId', replyTo.id)
-    setSending(true)
-    try {
-      const result = await uploadMedia(id, formData)
-      if (result.error) {
-        showError(result.error)
-      } else {
-        setReplyTo(null)
-      }
-    } catch (err) {
-      // A rejected/thrown call here (a request-size limit, a dropped
-      // connection mid-upload) used to skip straight past the cleanup
-      // below, leaving the preview stuck on "Sending..." forever with
-      // no error and no way out except discarding the attachment.
-      showError('Failed to send — please try again.')
-    } finally {
-      if (mediaPreview.previewUrl) URL.revokeObjectURL(mediaPreview.previewUrl)
-      setMediaPreview(null)
-      setSending(false)
-    }
+  // Only a rough client-side classification for which bubble UI to show
+  // optimistically — the server re-validates against its own precise
+  // allow-list in uploadMedia() and fails the message (same 'failed'
+  // path as everything else) if this guessed wrong.
+  const inferMediaType = (file) => {
+    if (file.type.startsWith('image/')) return 'image'
+    if (file.type.startsWith('audio/')) return 'audio'
+    return 'file'
   }
 
-  const handleRecordingComplete = async (file) => {
+  // Counterpart to handleSend's optimistic text bubble — image/audio/file
+  // messages previously had none at all, so nothing appeared in the
+  // thread until Realtime's echo of the eventual INSERT landed, with no
+  // feedback for what can be a genuinely slow upload. previewUrl (already
+  // a local blob URL by the time either caller below reaches this) is
+  // reused as the bubble's media_url so it renders instantly; it's freed
+  // once uploadMediaAndReconcile or the realtime listener supersedes it
+  // with the real one, not here.
+  const sendMediaOptimistic = (file, previewUrl, replyToId, replySnapshot) => {
+    const tempId = `temp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+    setMessages(prev => [...prev, {
+      id: tempId,
+      conversation_id: id,
+      sender_id: profile?.id,
+      sender_name_snapshot: profile?.display_name,
+      content: file.name,
+      type: inferMediaType(file),
+      reply_to_id: replyToId,
+      reply: replySnapshot,
+      is_edited: false,
+      created_at: new Date().toISOString(),
+      _status: 'sending',
+      media_url: previewUrl,
+      media_filename: file.name,
+      media_size: file.size,
+      media_mime_type: file.type,
+      media_transcript_status: 'none',
+      // Kept for handleRetrySend — a failed upload needs the original
+      // File object again, not just its (by-then-broken) preview URL.
+      _retryFile: file,
+    }])
+    uploadMediaAndReconcile(tempId, file, replyToId, replySnapshot)
+  }
+
+  const handleConfirmMediaUpload = () => {
+    if (!mediaPreview) return
+    const pendingReply = replyTo
+    const replySnapshot = pendingReply ? {
+      id: pendingReply.id,
+      content: pendingReply.content,
+      sender_id: pendingReply.sender_id,
+      sender_name_snapshot: pendingReply.sender_name_snapshot,
+      type: pendingReply.type,
+    } : null
+    sendMediaOptimistic(mediaPreview.file, mediaPreview.previewUrl, pendingReply?.id || null, replySnapshot)
+    setMediaPreview(null)
+    setReplyTo(null)
+  }
+
+  const handleRecordingComplete = (file) => {
     setShowRecorder(false)
-    const formData = new FormData()
-    formData.append('file', file)
-    if (replyTo?.id) formData.append('replyToId', replyTo.id)
-    setSending(true)
-    try {
-      const result = await uploadMedia(id, formData)
-      if (result.error) showError(result.error)
-      else setReplyTo(null)
-    } catch (err) {
-      showError('Failed to send — please try again.')
-    } finally {
-      setSending(false)
-    }
+    const pendingReply = replyTo
+    const replySnapshot = pendingReply ? {
+      id: pendingReply.id,
+      content: pendingReply.content,
+      sender_id: pendingReply.sender_id,
+      sender_name_snapshot: pendingReply.sender_name_snapshot,
+      type: pendingReply.type,
+    } : null
+    sendMediaOptimistic(file, URL.createObjectURL(file), pendingReply?.id || null, replySnapshot)
+    setReplyTo(null)
   }
 
   const handleCameraCapture = async (file) => {
@@ -2549,32 +2627,29 @@ export default function ConversationPage() {
                 {(mediaPreview.file.size / 1024).toFixed(1)} KB
               </p>
             </div>
+            {/* Both buttons below act instantly and close this panel —
+                handleConfirmMediaUpload posts an optimistic bubble into
+                the thread and kicks the upload off in the background
+                rather than waiting here, the same as the text composer's
+                Send. There's no more "upload in flight while this panel
+                is still open" window for Remove to race against. */}
             <button
               onClick={handleConfirmMediaUpload}
-              disabled={sending}
               className="relay-icon-btn relay-icon-btn--accent"
               style={{ width: 'auto', padding: '8px 16px', fontSize: '13px', fontWeight: '700' }}
             >
-              {sending ? 'Sending…' : 'Send'}
+              Send
             </button>
             <button
               onClick={() => {
                 if (mediaPreview.previewUrl) URL.revokeObjectURL(mediaPreview.previewUrl)
                 setMediaPreview(null)
               }}
-              // uploadMedia() has no abort — this used to stay clickable
-              // while an upload was in flight, so tapping it hid the
-              // preview and looked like the send was cancelled while the
-              // request kept running server-side and the message still
-              // showed up in the thread moments later anyway. Disabled
-              // for the same reason the Send button beside it already is.
-              disabled={sending}
               aria-label="Remove attachment"
               style={{
                 background: 'none',
                 border: 'none',
-                cursor: sending ? 'not-allowed' : 'pointer',
-                opacity: sending ? 0.5 : 1,
+                cursor: 'pointer',
                 color: 'var(--text-tertiary)',
                 display: 'flex',
                 padding: '4px',
