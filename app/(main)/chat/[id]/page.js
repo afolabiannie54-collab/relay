@@ -692,6 +692,33 @@ export default function ConversationPage() {
         setMessages(prev => {
           const exists = prev.find(m => m.id === newMsg.id)
           if (exists) return prev
+          // For a message THIS tab just sent, Realtime's echo of the
+          // INSERT it caused often reaches this same client before
+          // sendMessage()'s own HTTP response does (one extra network
+          // hop: client -> server action -> Supabase -> back, vs.
+          // Supabase -> realtime socket -> client directly). Appending
+          // it here unconditionally meant it briefly existed as a
+          // *second* bubble alongside the optimistic 'sending' one —
+          // sendMessageAndReconcile's own alreadyHasReal check (below in
+          // this file) only prevented a permanent duplicate by removing
+          // the temp bubble once it caught up, not the flash of both
+          // being on screen together in between. Reconciling the
+          // matching temp bubble in place here, the same way that
+          // function does, keeps this to one DOM node the whole time.
+          const pendingTemp = newMsg.sender_id === profile?.id
+            ? prev.find(m =>
+                m._status === 'sending' &&
+                m.sender_id === newMsg.sender_id &&
+                m.content === newMsg.content &&
+                (m.reply_to_id || null) === (newMsg.reply_to_id || null)
+              )
+            : null
+          if (pendingTemp) {
+            // newMsg.reply is already populated above (a real fetch, not
+            // a snapshot) when this message replies to another — no need
+            // to fall back to the temp bubble's own reply snapshot.
+            return prev.map(m => m.id === pendingTemp.id ? { ...newMsg, _clientKey: pendingTemp.id } : m)
+          }
           return [...prev, newMsg]
         })
         cache.invalidate(`messages:${id}`)
