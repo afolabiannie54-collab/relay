@@ -738,6 +738,28 @@ export default function ChatList({ onSelectConversation }) {
                     <Check size={15} {...iconProps} />
                     {unreadConversationCount > 0 ? `Read all (${unreadConversationCount})` : 'Read all'}
                   </button>
+                  {/* Standing access to Requests/Hidden regardless of
+                      whether either shelf below is currently showing —
+                      those shelves now hide themselves when empty, so
+                      this menu is what keeps both screens reachable
+                      (e.g. checking a sent request's status when nothing
+                      pending needs receiving). */}
+                  <button
+                    onClick={() => { setShowListMenu(false); router.push('/requests') }}
+                    className="relay-menu-row"
+                    style={{ color: 'var(--text)' }}
+                  >
+                    <Inbox size={15} {...iconProps} />
+                    {requestsCount > 0 ? `Message requests (${requestsCount})` : 'Message requests'}
+                  </button>
+                  <button
+                    onClick={() => { setShowListMenu(false); router.push('/chat/hidden') }}
+                    className="relay-menu-row"
+                    style={{ color: 'var(--text)' }}
+                  >
+                    <EyeOff size={15} {...iconProps} />
+                    {hiddenCount > 0 ? `Hidden chats (${hiddenCount})` : 'Hidden chats'}
+                  </button>
                 </div>
               </>
             )}
@@ -859,14 +881,16 @@ export default function ChatList({ onSelectConversation }) {
         overscrollBehaviorY: 'contain',
         WebkitOverflowScrolling: 'touch',
       }}>
-        {/* Always accessible — this used to only render when requestsCount
-            was > 0, which meant the Requests tab (both Received and Sent)
-            had no entry point at all once nothing was pending. The icon
-            still switches to the bold accent treatment when there's
-            something to act on, same idea as Hidden Chats' always-visible
-            row below. Held back during the true first load along with the
-            rest of this scroll area — its count isn't fetched yet either,
-            so showing it a beat early would just flash a wrong "0". */}
+        {/* Both shelves below only render once they actually have something
+            in them — an always-visible "Message Requests" row here used to
+            be the only way to reach /requests at all, so hiding it when
+            empty would have stranded anyone checking a sent request's
+            status. That access is preserved another way now: the kebab
+            menu above always lists both "Message requests" and "Hidden
+            chats" regardless of count. Held back during the true first
+            load along with the rest of this scroll area — the counts
+            aren't fetched yet either, so showing either a beat early
+            would just flash a wrong "0". */}
         {loading ? (
           <ChatListSkeleton />
         ) : loadError ? (
@@ -906,8 +930,12 @@ export default function ChatList({ onSelectConversation }) {
         ) : (
         <>
         {/* Shelves, not conversations — they'd be noise sitting on top of a
-            list the user has deliberately narrowed to unread or groups. */}
-        {!bulkSelectMode && activeFilter === 'all' && (
+            list the user has deliberately narrowed to unread or groups.
+            Both pinned above every conversation (not just Requests, as
+            before) so neither requires scrolling past however many chats
+            the user has to reach it — the whole point of surfacing them
+            here instead of leaving them kebab-menu-only. */}
+        {!bulkSelectMode && activeFilter === 'all' && requestsCount > 0 && (
           <div
             onClick={() => router.push('/requests')}
             style={{
@@ -927,36 +955,73 @@ export default function ChatList({ onSelectConversation }) {
               width: '42px',
               height: '42px',
               borderRadius: '50%',
-              background: requestsCount > 0 ? 'var(--accent)' : 'var(--gray-100)',
-              border: requestsCount > 0 ? '2px solid var(--border-strong)' : '1px solid var(--border)',
+              background: 'var(--accent)',
+              border: '2px solid var(--border-strong)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               flexShrink: 0,
-              color: requestsCount > 0 ? 'var(--on-accent)' : 'var(--text-secondary)',
+              color: 'var(--on-accent)',
             }}>
               <Inbox size={18} {...iconProps} />
             </div>
-            <p style={{ flex: 1, fontSize: '14px', fontWeight: requestsCount > 0 ? '700' : '600', color: requestsCount > 0 ? 'var(--text)' : 'var(--text-secondary)' }}>
+            <p style={{ flex: 1, fontSize: '14px', fontWeight: '700', color: 'var(--text)' }}>
               Message Requests
             </p>
-            {requestsCount > 0 && (
-              <div style={{
-                minWidth: '22px',
-                height: '22px',
-                padding: '0 6px',
-                background: 'var(--text)',
-                borderRadius: '100px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '12px',
-                fontWeight: '800',
-                color: 'var(--background)',
-              }}>
-                {requestsCount > 99 ? '99+' : requestsCount}
-              </div>
-            )}
+            <div style={{
+              minWidth: '22px',
+              height: '22px',
+              padding: '0 6px',
+              background: 'var(--text)',
+              borderRadius: '100px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '12px',
+              fontWeight: '800',
+              color: 'var(--background)',
+            }}>
+              {requestsCount > 99 ? '99+' : requestsCount}
+            </div>
+          </div>
+        )}
+
+        {!bulkSelectMode && activeFilter === 'all' && hiddenCount > 0 && (
+          <div
+            onClick={() => router.push('/chat/hidden')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              padding: '14px 20px',
+              borderBottom: '1px solid var(--border)',
+              cursor: 'pointer',
+              background: 'var(--surface)',
+              transition: 'background 0.12s ease',
+            }}
+            onMouseEnter={e => { if (canHover()) e.currentTarget.style.background = 'var(--surface-hover)' }}
+            onMouseLeave={e => e.currentTarget.style.background = 'var(--surface)'}
+          >
+            <div style={{
+              width: '42px',
+              height: '42px',
+              borderRadius: '50%',
+              background: 'var(--gray-100)',
+              border: '1px solid var(--border)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+              color: 'var(--text-secondary)',
+            }}>
+              <EyeOff size={17} {...iconProps} />
+            </div>
+            <p style={{ flex: 1, fontSize: '14px', fontWeight: '600', color: 'var(--text-secondary)' }}>
+              Hidden chats
+            </p>
+            <span style={{ fontSize: '13px', color: 'var(--text-tertiary)', fontWeight: '600' }}>
+              {hiddenCount > 99 ? '99+' : hiddenCount}
+            </span>
           </div>
         )}
 
@@ -1170,49 +1235,6 @@ export default function ChatList({ onSelectConversation }) {
           })
         )}
 
-        {/* A permanent shelf users should always be able to find, so it
-            stays regardless of unread state — but still only under "All",
-            since it isn't a conversation and a narrowed list shouldn't
-            carry navigation rows that ignore the narrowing. */}
-        {!bulkSelectMode && activeFilter === 'all' && (
-          <div
-            onClick={() => router.push('/chat/hidden')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              padding: '14px 20px',
-              cursor: 'pointer',
-              background: 'var(--surface)',
-              transition: 'background 0.12s ease',
-            }}
-            onMouseEnter={e => { if (canHover()) e.currentTarget.style.background = 'var(--surface-hover)' }}
-            onMouseLeave={e => e.currentTarget.style.background = 'var(--surface)'}
-          >
-            <div style={{
-              width: '42px',
-              height: '42px',
-              borderRadius: '50%',
-              background: 'var(--gray-100)',
-              border: '1px solid var(--border)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-              color: 'var(--text-secondary)',
-            }}>
-              <EyeOff size={17} {...iconProps} />
-            </div>
-            <p style={{ flex: 1, fontSize: '14px', fontWeight: '600', color: 'var(--text-secondary)' }}>
-              Hidden chats
-            </p>
-            {hiddenCount > 0 && (
-              <span style={{ fontSize: '13px', color: 'var(--text-tertiary)', fontWeight: '600' }}>
-                {hiddenCount > 99 ? '99+' : hiddenCount}
-              </span>
-            )}
-          </div>
-        )}
         </>
         )}
 

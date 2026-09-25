@@ -215,6 +215,7 @@ export default function ConversationSettingsSheet({
   }
 
   const handleShareProfile = async () => {
+    if (!otherParticipant) return
     const url = `${window.location.origin}/u/${otherParticipant.username}`
     if (navigator.share) {
       try { await navigator.share({ url }); return } catch { /* fall through to copy */ }

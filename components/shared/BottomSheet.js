@@ -180,6 +180,10 @@ export default function BottomSheet({ isOpen, onClose, children, title, maxHeigh
           overflow-y: auto;
           flex: 1;
           -webkit-overflow-scrolling: touch;
+          /* Mobile only — the panel's bottom edge sits flush against the
+             screen edge here (home indicator / gesture bar), unlike the
+             centered desktop modal below which isn't anchored to it. */
+          padding-bottom: var(--safe-bottom);
         }
 
         @keyframes relay-sheet-backdrop-in {
@@ -210,6 +214,9 @@ export default function BottomSheet({ isOpen, onClose, children, title, maxHeigh
           }
           .relay-sheet-drag-handle {
             display: none;
+          }
+          .relay-sheet-body {
+            padding-bottom: 0;
           }
         }
       `}</style>

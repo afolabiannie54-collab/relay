@@ -4,10 +4,12 @@ import { useState, useRef } from 'react'
 import Link from 'next/link'
 import { ChevronLeft, ChevronRight, User } from 'lucide-react'
 import Avatar from '@/components/shared/Avatar'
+import AvatarCropModal from '@/components/settings/AvatarCropModal'
 import { updateProfile, uploadAvatar, changeUsername } from '@/actions/users'
 import { checkUsernameAvailable } from '@/actions/auth'
 import { useProfileSheet } from '@/lib/profile-sheet-context'
 import { canHover } from '@/lib/hover'
+import { cache } from '@/lib/cache'
 
 const iconProps = { strokeWidth: 2, strokeLinecap: 'square', strokeLinejoin: 'miter' }
 
@@ -36,10 +38,22 @@ export default function EditProfileForm({ initialProfile }) {
   const [savingUsername, setSavingUsername] = useState(false)
   const usernameTimeout = useRef(null)
   const fileInputRef = useRef(null)
+  const [cropImageSrc, setCropImageSrc] = useState(null)
 
   const handleChange = (e) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
+  }
+
+  // Pushes a save straight into the shared profile cache and notifies the
+  // app shell (app/(main)/layout.js), which stays mounted across every
+  // /chat <-> /settings navigation and would otherwise keep showing the
+  // pre-edit name/avatar until its 5min cache TTL expired.
+  const applyProfileUpdate = (updates) => {
+    setProfile(prev => ({ ...prev, ...updates }))
+    const merged = { ...(cache.peek('profile') || {}), ...updates }
+    cache.set('profile', merged, 300000)
+    window.dispatchEvent(new CustomEvent('relay:profile-changed', { detail: updates }))
   }
 
   const handleSave = async (e) => {
@@ -62,7 +76,7 @@ export default function EditProfileForm({ initialProfile }) {
       setError(result.error)
     } else {
       setSuccess('Profile updated successfully.')
-      setProfile(prev => ({ ...prev, ...formData }))
+      applyProfileUpdate(formData)
     }
     setSaving(false)
   }
@@ -71,23 +85,40 @@ export default function EditProfileForm({ initialProfile }) {
     fileInputRef.current?.click()
   }
 
-  const handleAvatarChange = async (e) => {
+  // File selection no longer uploads directly — it opens the crop modal
+  // first. The actual upload happens in handleCropConfirm once the user
+  // picks what part of the photo to keep.
+  const handleAvatarChange = (e) => {
     const file = e.target.files?.[0]
     if (!file) return
+    setError(null)
+    setSuccess(null)
+    setCropImageSrc(URL.createObjectURL(file))
+  }
 
+  const closeCropModal = () => {
+    if (cropImageSrc) URL.revokeObjectURL(cropImageSrc)
+    setCropImageSrc(null)
+    // Clears the input value so re-selecting the same file still fires
+    // onChange (it wouldn't if the value were left unchanged).
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const handleCropConfirm = async (blob) => {
+    closeCropModal()
     setUploadingAvatar(true)
     setError(null)
     setSuccess(null)
 
     const data = new FormData()
-    data.append('avatar', file)
+    data.append('avatar', new File([blob], 'avatar.jpg', { type: 'image/jpeg' }))
 
     const result = await uploadAvatar(data)
 
     if (result.error) {
       setError(result.error)
     } else {
-      setProfile(prev => ({ ...prev, avatar_url: result.url }))
+      applyProfileUpdate({ avatar_url: result.url })
       setSuccess('Avatar updated successfully.')
     }
     setUploadingAvatar(false)
@@ -141,7 +172,7 @@ export default function EditProfileForm({ initialProfile }) {
     if (result.error) {
       setUsernameError(result.error)
     } else {
-      setProfile(prev => ({ ...prev, username: newUsername }))
+      applyProfileUpdate({ username: newUsername })
       setShowUsernameChange(false)
       setNewUsername('')
       setUsernameState(null)
@@ -274,6 +305,13 @@ export default function EditProfileForm({ initialProfile }) {
             onChange={handleAvatarChange}
             style={{ display: 'none' }}
           />
+          {cropImageSrc && (
+            <AvatarCropModal
+              imageSrc={cropImageSrc}
+              onCancel={closeCropModal}
+              onConfirm={handleCropConfirm}
+            />
+          )}
         </div>
 
         {/* Profile info */}

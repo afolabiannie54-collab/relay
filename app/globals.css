@@ -75,6 +75,14 @@
   --font: 'Inter', -apple-system, sans-serif;
 
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Shared safe-area tokens — every overlay anchored to a screen edge
+     (bottom sheets, fixed bars) should pad against these instead of each
+     hand-rolling its own env(safe-area-inset-*) calc, which is how the
+     shared BottomSheet.js ended up missing this entirely while the main
+     shell and chat composer got it individually. */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 /* Near-black, not the gray-wash a lot of dark modes lean on — dark surfaces

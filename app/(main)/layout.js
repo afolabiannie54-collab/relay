@@ -58,6 +58,20 @@ export default function MainLayout({ children }) {
     load()
   }, [])
 
+  // This layout stays mounted across every /chat <-> /settings navigation
+  // (see the comment on `profile` above), so it never remounts to pick up
+  // a profile edit made on /settings/profile — without this listener the
+  // sidebar avatar/name would show stale data for up to the cache's 5min
+  // TTL. EditProfileForm dispatches this after display name/avatar/
+  // username saves.
+  useEffect(() => {
+    const handleProfileChanged = (e) => {
+      setProfile(prev => ({ ...prev, ...e.detail }))
+    }
+    window.addEventListener('relay:profile-changed', handleProfileChanged)
+    return () => window.removeEventListener('relay:profile-changed', handleProfileChanged)
+  }, [])
+
   useEffect(() => {
     async function loadChatsUnread() {
       const result = await getUnreadChatsCount()
