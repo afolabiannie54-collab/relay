@@ -19,10 +19,21 @@ import { cache } from '@/lib/cache'
 // to stay closed. isHidden mirrors ConversationActionSheet's reduced
 // menu for /chat/hidden: Unhide, Delete conversation, Block user (DM
 // only).
+// Same focusable-elements query BottomSheet.js uses for its own trap.
+const FOCUSABLE_SELECTOR = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+
 export default function ConversationContextMenu({ conversation, isMuted, position, onClose, onChanged, isHidden = false }) {
   const router = useRouter()
   const pathname = usePathname()
   const [showAddMember, setShowAddMember] = useState(false)
+  const menuRef = useRef(null)
+  // Unlike the nested BottomSheet ("Add member") and ConfirmSheets below,
+  // which inherited BottomSheet.js's own focus trap/restore for free,
+  // this menu is a plain portalled popover with none of that — opening
+  // never moved focus in, closing never restored it, and Tab could leave
+  // it for background content still visible behind the click-to-close
+  // overlay.
+  const previouslyFocusedRef = useRef(null)
   const [confirmAction, setConfirmAction] = useState(null)
   const [memberQuery, setMemberQuery] = useState('')
   const [memberResults, setMemberResults] = useState([])
@@ -34,10 +45,39 @@ export default function ConversationContextMenu({ conversation, isMuted, positio
 
   useEffect(() => {
     if (!position) return
-    const handleKey = (e) => { if (e.key === 'Escape') onClose?.() }
+    const handleKey = (e) => {
+      if (e.key === 'Escape') {
+        onClose?.()
+        return
+      }
+      if (e.key !== 'Tab') return
+      const focusable = menuRef.current?.querySelectorAll(FOCUSABLE_SELECTOR)
+      if (!focusable || focusable.length === 0) return
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault()
+        first.focus()
+      }
+    }
     document.addEventListener('keydown', handleKey)
     return () => document.removeEventListener('keydown', handleKey)
   }, [position, onClose])
+
+  useEffect(() => {
+    if (position) {
+      previouslyFocusedRef.current = document.activeElement
+      const raf = requestAnimationFrame(() => {
+        const focusable = menuRef.current?.querySelectorAll(FOCUSABLE_SELECTOR)
+        focusable?.[0]?.focus()
+      })
+      return () => cancelAnimationFrame(raf)
+    }
+    previouslyFocusedRef.current?.focus?.()
+  }, [position])
 
   // No separate "mounted" gate needed for the createPortal(document.body)
   // call below — `position` is always null until a contextmenu event sets
@@ -173,6 +213,8 @@ export default function ConversationContextMenu({ conversation, isMuted, positio
         style={{ position: 'fixed', inset: 0, zIndex: 1000 }}
       />
       <div
+        ref={menuRef}
+        role="menu"
         className="relay-popover relay-context-menu"
         style={{
           position: 'fixed',
@@ -190,34 +232,34 @@ export default function ConversationContextMenu({ conversation, isMuted, positio
       >
         {isHidden ? (
           <>
-            <button className="relay-menu-row" style={rowStyle} onClick={handleUnhide}><Eye size={15} strokeWidth={2.25} /> Unhide</button>
-            <button className="relay-menu-row" style={dangerRowStyle} onClick={() => setConfirmAction('delete')}><Trash2 size={15} strokeWidth={2.25} /> Delete conversation</button>
+            <button className="relay-menu-row" role="menuitem" style={rowStyle} onClick={handleUnhide}><Eye size={15} strokeWidth={2.25} /> Unhide</button>
+            <button className="relay-menu-row" role="menuitem" style={dangerRowStyle} onClick={() => setConfirmAction('delete')}><Trash2 size={15} strokeWidth={2.25} /> Delete conversation</button>
             {!isGroup && (
-              <button className="relay-menu-row" style={dangerRowStyle} onClick={() => setConfirmAction('block')}><Ban size={15} strokeWidth={2.25} /> Block user</button>
+              <button className="relay-menu-row" role="menuitem" style={dangerRowStyle} onClick={() => setConfirmAction('block')}><Ban size={15} strokeWidth={2.25} /> Block user</button>
             )}
           </>
         ) : (
           <>
-            <button className="relay-menu-row" style={rowStyle} onClick={handleToggleMute}>
+            <button className="relay-menu-row" role="menuitem" style={rowStyle} onClick={handleToggleMute}>
               {isMuted ? <Bell size={15} strokeWidth={2.25} /> : <BellOff size={15} strokeWidth={2.25} />}
               {isMuted ? 'Unmute' : 'Mute'}
             </button>
-            <button className="relay-menu-row" style={rowStyle} onClick={handleToggleRead}>
+            <button className="relay-menu-row" role="menuitem" style={rowStyle} onClick={handleToggleRead}>
               {isUnread ? <Check size={15} strokeWidth={2.25} /> : <Circle size={9} strokeWidth={2.25} fill="currentColor" style={{ marginInline: '3px' }} />}
               {isUnread ? 'Mark as read' : 'Mark as unread'}
             </button>
-            <button className="relay-menu-row" style={rowStyle} onClick={handleHide}><EyeOff size={15} strokeWidth={2.25} /> Hide conversation</button>
+            <button className="relay-menu-row" role="menuitem" style={rowStyle} onClick={handleHide}><EyeOff size={15} strokeWidth={2.25} /> Hide conversation</button>
             {isGroup ? (
               <>
                 {canManageGroup && (
-                  <button className="relay-menu-row" style={rowStyle} onClick={() => setShowAddMember(true)}><UserPlus size={15} strokeWidth={2.25} /> Add member</button>
+                  <button className="relay-menu-row" role="menuitem" style={rowStyle} onClick={() => setShowAddMember(true)}><UserPlus size={15} strokeWidth={2.25} /> Add member</button>
                 )}
-                <button className="relay-menu-row" style={dangerRowStyle} onClick={() => setConfirmAction('leave')}><LogOut size={15} strokeWidth={2.25} /> Leave group</button>
+                <button className="relay-menu-row" role="menuitem" style={dangerRowStyle} onClick={() => setConfirmAction('leave')}><LogOut size={15} strokeWidth={2.25} /> Leave group</button>
               </>
             ) : (
               <>
-                <button className="relay-menu-row" style={dangerRowStyle} onClick={() => setConfirmAction('delete')}><Trash2 size={15} strokeWidth={2.25} /> Delete conversation</button>
-                <button className="relay-menu-row" style={dangerRowStyle} onClick={() => setConfirmAction('block')}><Ban size={15} strokeWidth={2.25} /> Block user</button>
+                <button className="relay-menu-row" role="menuitem" style={dangerRowStyle} onClick={() => setConfirmAction('delete')}><Trash2 size={15} strokeWidth={2.25} /> Delete conversation</button>
+                <button className="relay-menu-row" role="menuitem" style={dangerRowStyle} onClick={() => setConfirmAction('block')}><Ban size={15} strokeWidth={2.25} /> Block user</button>
               </>
             )}
           </>
