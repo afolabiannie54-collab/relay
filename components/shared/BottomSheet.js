@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 
@@ -11,11 +11,27 @@ import { X } from 'lucide-react'
 // from (chat shell, main layout, etc.).
 const CLOSE_ANIM_MS = 220
 
+// Standard focusable-elements query, used for both the initial focus
+// target on open and the Tab-trap below.
+const FOCUSABLE_SELECTOR = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+
 export default function BottomSheet({ isOpen, onClose, children, title, maxHeight }) {
   const [mounted, setMounted] = useState(false)
   const [dragY, setDragY] = useState(0)
   const draggingRef = useRef(false)
   const dragStartRef = useRef(0)
+  const panelRef = useRef(null)
+  // Nested sheets are a real pattern in this app (e.g. ConversationSettingsSheet's
+  // "Edit group"/"Add member" sub-sheets) — a hardcoded id here would
+  // collide (invalid duplicate DOM ids, aria-labelledby pointing at the
+  // wrong one) once more than one BottomSheet instance is mounted at once.
+  const titleId = useId()
+  // Nothing moved focus into an open sheet or restored it on close — a
+  // keyboard user tabbing through an open sheet could Tab straight into
+  // background content still visually covered by it, and closing left
+  // focus wherever it happened to be (often lost to document.body)
+  // instead of back on whatever opened the sheet.
+  const previouslyFocusedRef = useRef(null)
   // The open animation is a deliberate 0.2-0.3s slide/fade-in — closing
   // just unmounted instantly with no reverse animation at all, a real
   // inconsistency users would notice as an abrupt vanish right after a
@@ -56,7 +72,25 @@ export default function BottomSheet({ isOpen, onClose, children, title, maxHeigh
   useEffect(() => {
     if (!isOpen) return
     const handleKey = (e) => {
-      if (e.key === 'Escape') onClose?.()
+      if (e.key === 'Escape') {
+        onClose?.()
+        return
+      }
+      if (e.key !== 'Tab') return
+      // Focus trap — without this, Tab could leave the sheet entirely
+      // and land on background content still visually behind the
+      // backdrop, since nothing here previously constrained it.
+      const focusable = panelRef.current?.querySelectorAll(FOCUSABLE_SELECTOR)
+      if (!focusable || focusable.length === 0) return
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault()
+        first.focus()
+      }
     }
     document.addEventListener('keydown', handleKey)
     const prevOverflow = document.body.style.overflow
@@ -69,6 +103,23 @@ export default function BottomSheet({ isOpen, onClose, children, title, maxHeigh
 
   useEffect(() => {
     if (!isOpen) setDragY(0)
+  }, [isOpen])
+
+  // Moves focus into the sheet on open (first focusable element, or the
+  // panel itself as a fallback for sheets with no interactive content),
+  // and back to whatever triggered it on close — a real keyboard/screen-
+  // reader user loses their place otherwise. requestAnimationFrame gives
+  // the panel one tick to actually be in the DOM after shouldRender flips.
+  useEffect(() => {
+    if (isOpen) {
+      previouslyFocusedRef.current = document.activeElement
+      const raf = requestAnimationFrame(() => {
+        const focusable = panelRef.current?.querySelectorAll(FOCUSABLE_SELECTOR)
+        ;(focusable?.[0] || panelRef.current)?.focus()
+      })
+      return () => cancelAnimationFrame(raf)
+    }
+    previouslyFocusedRef.current?.focus?.()
   }, [isOpen])
 
   if (!mounted || !shouldRender) return null
@@ -95,12 +146,28 @@ export default function BottomSheet({ isOpen, onClose, children, title, maxHeigh
     }
   }
 
+  // touchend never fires if the OS/browser cancels the gesture mid-drag
+  // (incoming call, notification pull-down, the browser reclaiming it) —
+  // without this, draggingRef stayed true and dragY stayed at its last
+  // value, leaving the panel visibly stuck partway off-screen. Always
+  // snaps back rather than treating a cancelled gesture as a dismissal.
+  const handleTouchCancel = () => {
+    if (!draggingRef.current) return
+    draggingRef.current = false
+    setDragY(0)
+  }
+
   return createPortal(
     <div className="relay-sheet-overlay">
       <div className="relay-sheet-backdrop" data-closing={closing || undefined} onClick={onClose} />
       <div
+        ref={panelRef}
         className="relay-sheet-panel"
         data-closing={closing || undefined}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={title ? titleId : undefined}
+        tabIndex={-1}
         style={{
           transform: dragY ? `translateY(${dragY}px)` : undefined,
           transition: dragY ? 'none' : undefined,
@@ -116,13 +183,14 @@ export default function BottomSheet({ isOpen, onClose, children, title, maxHeigh
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
+          onTouchCancel={handleTouchCancel}
         >
           <div className="relay-sheet-drag-handle">
             <div className="relay-sheet-drag-bar" />
           </div>
           {title && (
             <div className="relay-sheet-title-row">
-              <h2 className="relay-sheet-title">{title}</h2>
+              <h2 id={titleId} className="relay-sheet-title">{title}</h2>
               <button onClick={onClose} className="relay-sheet-close" aria-label="Close">
                 <X size={18} strokeWidth={2.25} />
               </button>

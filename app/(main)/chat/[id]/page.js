@@ -380,6 +380,32 @@ export default function ConversationPage() {
     messagesRef.current = messages
   }, [messages])
 
+  // Best-effort cleanup for local blob previews (optimistic media
+  // bubbles) that never got reconciled or revoked — e.g. navigating away
+  // mid-upload, or a 'failed' media message left abandoned instead of
+  // retried. Freed on reload regardless, but there's no reason to hold
+  // onto them for the rest of the tab's lifetime once this conversation
+  // is no longer the one on screen. Runs once on unmount only (reads
+  // messagesRef rather than depending on `messages`, which changes on
+  // every keystroke/message).
+  useEffect(() => {
+    return () => {
+      for (const m of messagesRef.current) {
+        if (m.media_url?.startsWith('blob:')) URL.revokeObjectURL(m.media_url)
+      }
+    }
+  }, [])
+
+  // Only handleMessageTouchMove/End/Cancel clear this timer — if the
+  // component unmounts (switching conversations) while a long-press is
+  // still pending, nothing else cancels it and the callback fires
+  // afterward regardless.
+  useEffect(() => {
+    return () => {
+      if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current)
+    }
+  }, [])
+
   useEffect(() => {
     async function load() {
       // Reset identity-bearing header state immediately, before reading
@@ -710,12 +736,22 @@ export default function ConversationPage() {
           // being on screen together in between. Reconciling the
           // matching temp bubble in place here, the same way that
           // function does, keeps this to one DOM node the whole time.
+          // media_size disambiguates two still-pending uploads that
+          // happen to share a filename (content, for media, is just
+          // file.name) — genuinely possible since nothing blocks picking
+          // and sending a second file before the first one's upload has
+          // resolved. Without it, .find() could reconcile this event
+          // into the wrong one of two matching temp bubbles, swapping
+          // which message ends up showing which file's content (no
+          // duplicate/flash, just the wrong pairing). Harmless no-op for
+          // text (both sides are undefined).
           const pendingTemp = newMsg.sender_id === profile?.id
             ? prev.find(m =>
                 m._status === 'sending' &&
                 m.sender_id === newMsg.sender_id &&
                 m.type === newMsg.type &&
                 m.content === newMsg.content &&
+                m.media_size === newMsg.media_size &&
                 (m.reply_to_id || null) === (newMsg.reply_to_id || null)
               )
             : null
@@ -1077,14 +1113,18 @@ export default function ConversationPage() {
   // Media's counterpart to sendMessageAndReconcile above — an image/audio/
   // file message previously had no optimistic bubble at all, so it only
   // appeared once Realtime's echo of the INSERT landed, with zero instant
-  // feedback for what can be a genuinely slow upload. uploadMedia()'s own
-  // response is just the bare messages row (no joined media_url/filename/
-  // etc., same gap sendMessage() has for `reply`), so in the common case —
-  // an upload takes real time, easily long enough for Realtime's own
-  // fetch-and-join reconciliation (see the INSERT listener) to have
-  // already replaced the temp bubble by the time this resolves — this
-  // only needs to handle the failure path and the rare case where this
-  // response actually wins the race.
+  // feedback for what can be a genuinely slow upload. uploadMedia()'s
+  // response now includes the real media_url/filename/etc. (not just the
+  // bare message row), which turned out to matter more than expected: the
+  // realtime listener does its OWN extra async fetch+join of the media
+  // row after receiving the INSERT event, which routinely takes longer
+  // than this HTTP round trip already in flight — this response winning
+  // the race is the common case for media, not the rare one sendMessage()
+  // sees for text. Without the real media fields here, that meant the
+  // bubble got permanently stuck rendering the local blob preview (never
+  // revoked either) instead of the actual CDN URL, since the realtime
+  // listener's own `exists` check would then always find this message
+  // already present and skip its own reconciliation entirely.
   const uploadMediaAndReconcile = async (tempId, file, replyToId, replySnapshot) => {
     const formData = new FormData()
     formData.append('file', file)
@@ -1099,14 +1139,11 @@ export default function ConversationPage() {
       setMessages(prev => {
         const alreadyReconciled = prev.some(m => m.id === result.data.id)
         if (alreadyReconciled) return prev
-        // No joined media fields here, so this keeps whatever the temp
-        // bubble already had (the local blob preview) rather than
-        // clearing it — good enough for this sender's own render; the
-        // realtime listener still supersedes it with the real URL if its
-        // event arrives after this (it won't, since `exists` will now
-        // match on id — the trade-off already accepted for `reply`
-        // snapshots above).
-        return prev.map(m => m.id === tempId ? { ...m, id: result.data.id, created_at: result.data.created_at, _status: undefined } : m)
+        const temp = prev.find(m => m.id === tempId)
+        if (temp?.media_url?.startsWith('blob:')) URL.revokeObjectURL(temp.media_url)
+        return prev.map(m => m.id === tempId
+          ? { ...m, ...result.data, reply: replySnapshot || null, _status: undefined }
+          : m)
       })
     } catch {
       setMessages(prev => prev.map(m => m.id === tempId ? { ...m, _status: 'failed' } : m))
@@ -2267,6 +2304,15 @@ export default function ConversationPage() {
                         onTouchStart={isDeleted || selectMode ? undefined : handleMessageTouchStart(msg)}
                         onTouchMove={isDeleted || selectMode ? undefined : handleMessageTouchMove(msg)}
                         onTouchEnd={isDeleted || selectMode ? undefined : handleMessageTouchEnd}
+                        // Without this, a touch sequence interrupted by
+                        // the OS/browser (incoming call, notification
+                        // pull-down, the browser reclaiming the gesture)
+                        // never fires touchend — swipeActive/swipeMsgId/
+                        // swipeDx were left at their last mid-swipe
+                        // values indefinitely, leaving the bubble stuck
+                        // visibly offset with no snap-back until the user
+                        // touched it again. Same cleanup as touchend.
+                        onTouchCancel={isDeleted || selectMode ? undefined : handleMessageTouchEnd}
                         onContextMenu={e => {
                           if (isDeleted || selectMode) return
                           e.preventDefault()

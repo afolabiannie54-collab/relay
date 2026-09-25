@@ -36,20 +36,32 @@ export default function NotificationSettingsSheet({ isOpen, onClose }) {
   }, [isOpen])
 
   const handleToggle = async (key) => {
-    const previousSettings = settings
-    const updatedSettings = { ...settings, [key]: !settings[key] }
-    setSettings(updatedSettings)
+    // Read via the functional updater, not the `settings` closure — two
+    // toggles tapped in quick succession both closed over the same
+    // pre-toggle `settings`, so the second call's FormData omitted the
+    // first toggle's change entirely, and whichever request resolved
+    // last silently reverted the other in both the UI and the DB (each
+    // call POSTs the whole settings object). The updater runs
+    // synchronously against the latest queued state, so this reads
+    // correctly even if the previous toggle's own update is still
+    // in-flight.
+    let latestSettings
+    setSettings(prev => {
+      latestSettings = { ...prev, [key]: !prev[key] }
+      return latestSettings
+    })
 
     const data = new FormData()
-    Object.entries(updatedSettings).forEach(([k, value]) => {
+    Object.entries(latestSettings).forEach(([k, value]) => {
       data.append(k, String(value))
     })
     const result = await updatePrivacySettings(data)
     if (result.error) {
-      // Without this the toggle stayed flipped even though the save
-      // failed — the UI silently disagreed with the DB (which still had
-      // the old value) until the sheet was closed and reopened.
-      setSettings(previousSettings)
+      // Reverts only this key rather than the whole snapshot taken at
+      // the start of this call — a different toggle that started (and
+      // maybe already succeeded) after this one shouldn't be discarded
+      // by this rollback.
+      setSettings(prev => ({ ...prev, [key]: !latestSettings[key] }))
       setError(result.error)
     } else {
       setSuccess('Saved')

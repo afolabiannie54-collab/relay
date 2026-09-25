@@ -18,6 +18,7 @@ export default function MessageButton({ receiverId, displayName }) {
   const [error, setError] = useState(null)
   const [existingConvId, setExistingConvId] = useState(null)
   const [checking, setChecking] = useState(true)
+  const [whoCanMessage, setWhoCanMessage] = useState('everyone')
   const router = useRouter()
   const { closeProfile } = useProfileSheet()
 
@@ -41,6 +42,13 @@ export default function MessageButton({ receiverId, displayName }) {
       if (result.conversationId) {
         setExistingConvId(result.conversationId)
       }
+      // Not cached alongside conversationId above — that cache key/shape
+      // is shared with ChatList.js and the search page's own row menus,
+      // which only ever store/expect the scalar conversationId. Missing
+      // this on a cache-hit repeat visit just means the button doesn't
+      // know up front; sendMessageRequest's own server-side check is
+      // still what actually blocks it either way.
+      setWhoCanMessage(result.whoCanMessage || 'everyone')
       setChecking(false)
     }
     check()
@@ -150,6 +158,19 @@ export default function MessageButton({ receiverId, displayName }) {
           </button>
         </div>
       </div>
+    )
+  }
+
+  // "Who can message me" was being saved in Settings > Privacy but never
+  // actually enforced anywhere — this button showed "Send message" for
+  // every profile regardless. sendMessageRequest() still rejects this
+  // server-side either way; this just avoids showing an affordance that
+  // was always going to fail.
+  if (whoCanMessage === 'nobody') {
+    return (
+      <button disabled className="relay-btn" style={{ padding: '11px 22px', opacity: 0.6, cursor: 'default' }}>
+        Not accepting messages
+      </button>
     )
   }
 

@@ -41,6 +41,12 @@ export default function SearchPage() {
   // for a later query) — without this, whichever response happened to
   // arrive last would win regardless of which query was actually newest.
   const searchSeqRef = useRef(0)
+  // Same shape of guard as searchSeqRef above, for openMenu's own
+  // fetch-then-setState — tapping "..." on one user, then another before
+  // the first's getExistingConversation() resolves, used to let the
+  // stale response land after the menu had already moved on and
+  // overwrite menuConvId with the wrong user's conversation id.
+  const menuSeqRef = useRef(0)
   const router = useRouter()
   const { openProfile } = useProfileSheet()
 
@@ -81,6 +87,7 @@ export default function SearchPage() {
 
   const openMenu = async (user) => {
     setMenuUser(user)
+    const seq = ++menuSeqRef.current
 
     // Cached as the resolved conversationId, or `false` for "checked,
     // no DM exists" — distinct from `null`, which means never checked.
@@ -97,6 +104,7 @@ export default function SearchPage() {
     setMenuConvId(null)
     setCheckingConv(true)
     const result = await getExistingConversation(user.id)
+    if (seq !== menuSeqRef.current) return
     cache.set(cacheKey, result.conversationId || false, 30000)
     setMenuConvId(result.conversationId || null)
     setCheckingConv(false)

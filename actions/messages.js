@@ -76,6 +76,21 @@ export async function sendMessageRequest(receiverId, content) {
   const cleanContent = sanitizeText(content, 2000)
   if (!cleanContent) return { error: 'Message cannot be empty' }
 
+  // "Who can message me" was saved by the Privacy settings form but
+  // never actually enforced anywhere — MessageButton showed "Send
+  // message" regardless, and create_message_request (the RPC below)
+  // doesn't check it either. No row means the column's default
+  // ('everyone'), same fallback getPrivacySettings() uses.
+  const { data: receiverPrivacy } = await supabase
+    .from('privacy_settings')
+    .select('who_can_message')
+    .eq('user_id', receiverId)
+    .maybeSingle()
+
+  if (receiverPrivacy?.who_can_message === 'nobody') {
+    return { error: 'This user isn\'t accepting message requests right now.' }
+  }
+
   const { data, error } = await supabase.rpc('create_message_request', {
     p_receiver_id: receiverId,
     p_content: cleanContent,
@@ -862,13 +877,24 @@ export async function getExistingConversation(otherUserId) {
 
   if (!user) return { conversationId: null }
 
-  const { data, error } = await supabase.rpc('get_existing_dm', {
-    p_user_id: user.id,
-    p_other_user_id: otherUserId,
-  })
+  const [{ data, error }, { data: theirPrivacy }] = await Promise.all([
+    supabase.rpc('get_existing_dm', {
+      p_user_id: user.id,
+      p_other_user_id: otherUserId,
+    }),
+    // Folded in here rather than a separate call — MessageButton already
+    // awaits this exact function before deciding what to render, so this
+    // is what lets it show the real "not accepting requests" state
+    // up front instead of only finding out after Send is tapped (the
+    // server-side check in sendMessageRequest above still applies
+    // regardless of what this returns).
+    supabase.from('privacy_settings').select('who_can_message').eq('user_id', otherUserId).maybeSingle(),
+  ])
 
-  if (error || !data) return { conversationId: null }
-  return { conversationId: data }
+  return {
+    conversationId: error || !data ? null : data,
+    whoCanMessage: theirPrivacy?.who_can_message || 'everyone',
+  }
 }
 
 export async function uploadMedia(conversationId, formData) {
@@ -1019,7 +1045,22 @@ export async function uploadMedia(conversationId, formData) {
     })
   }
 
-  return { success: true, data: message }
+  // The message row alone doesn't tell the caller where the file actually
+  // ended up — folding the media fields in here (rather than requiring a
+  // second getMediaForMessage() round trip) is what lets the client's
+  // optimistic bubble reconcile straight to the real CDN URL without
+  // depending on Realtime's own separate fetch-and-join to ever supply it.
+  return {
+    success: true,
+    data: {
+      ...message,
+      media_url: publicUrl,
+      media_filename: file.name,
+      media_size: file.size,
+      media_mime_type: file.type,
+      media_transcript_status: transcriptStatus,
+    },
+  }
 }
 
 export async function getMediaForMessage(messageId) {

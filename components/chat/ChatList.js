@@ -53,6 +53,15 @@ export default function ChatList({ onSelectConversation }) {
   const longPressTimerRef = useRef(null)
   const longPressStartRef = useRef(null)
   const longPressFiredRef = useRef(false)
+
+  // Only handleRowTouchMove/End clear this timer — if the component
+  // unmounts (e.g. navigating away) while a long-press is still pending,
+  // nothing else cancels it and the callback fires afterward regardless.
+  useEffect(() => {
+    return () => {
+      if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current)
+    }
+  }, [])
   const [unreadNotifCount, setUnreadNotifCount] = useState(0)
   const [requestsCount, setRequestsCount] = useState(0)
   const [hiddenCount, setHiddenCount] = useState(0)
@@ -1170,6 +1179,12 @@ export default function ChatList({ onSelectConversation }) {
                     onTouchStart={(e) => { prefetchConversation(conv.conversation_id); handleRowTouchStart(conv)(e) }}
                     onTouchMove={handleRowTouchMove}
                     onTouchEnd={handleRowTouchEnd}
+                    // A cancelled touch (OS/browser interrupts the
+                    // gesture) never fires touchend — without this the
+                    // long-press timer stayed armed and could still pop
+                    // the action sheet open later even though the touch
+                    // itself was aborted.
+                    onTouchCancel={handleRowTouchEnd}
                     onContextMenu={handleRowContextMenu(conv)}
                   >
                   {bulkSelectMode && (
