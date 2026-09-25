@@ -9,15 +9,49 @@ import { X } from 'lucide-react'
 // desktop. Portalled to document.body so it always renders above the
 // app shell regardless of which overflow:hidden ancestor it's opened
 // from (chat shell, main layout, etc.).
+const CLOSE_ANIM_MS = 220
+
 export default function BottomSheet({ isOpen, onClose, children, title, maxHeight }) {
   const [mounted, setMounted] = useState(false)
   const [dragY, setDragY] = useState(0)
   const draggingRef = useRef(false)
   const dragStartRef = useRef(0)
+  // The open animation is a deliberate 0.2-0.3s slide/fade-in — closing
+  // just unmounted instantly with no reverse animation at all, a real
+  // inconsistency users would notice as an abrupt vanish right after a
+  // smooth entrance. This keeps the panel mounted for one more tick after
+  // isOpen flips false so a reverse keyframe (below) can play first.
+  const [shouldRender, setShouldRender] = useState(isOpen)
+  const [closing, setClosing] = useState(false)
+  const dismissedByDragRef = useRef(false)
 
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  useEffect(() => {
+    if (isOpen) {
+      setShouldRender(true)
+      setClosing(false)
+      return
+    }
+    if (!shouldRender) return
+    // A drag-dismiss is already visually animating the panel off-screen
+    // via its own inline transform (see handleTouchEnd) — layering the
+    // reverse CSS keyframe on top of that would fight it and jump.
+    if (dismissedByDragRef.current) {
+      dismissedByDragRef.current = false
+      setShouldRender(false)
+      return
+    }
+    setClosing(true)
+    const timer = setTimeout(() => {
+      setShouldRender(false)
+      setClosing(false)
+    }, CLOSE_ANIM_MS)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen])
 
   useEffect(() => {
     if (!isOpen) return
@@ -37,7 +71,7 @@ export default function BottomSheet({ isOpen, onClose, children, title, maxHeigh
     if (!isOpen) setDragY(0)
   }, [isOpen])
 
-  if (!mounted || !isOpen) return null
+  if (!mounted || !shouldRender) return null
 
   const handleTouchStart = (e) => {
     draggingRef.current = true
@@ -54,6 +88,7 @@ export default function BottomSheet({ isOpen, onClose, children, title, maxHeigh
     if (!draggingRef.current) return
     draggingRef.current = false
     if (dragY > 100) {
+      dismissedByDragRef.current = true
       onClose?.()
     } else {
       setDragY(0)
@@ -62,9 +97,10 @@ export default function BottomSheet({ isOpen, onClose, children, title, maxHeigh
 
   return createPortal(
     <div className="relay-sheet-overlay">
-      <div className="relay-sheet-backdrop" onClick={onClose} />
+      <div className="relay-sheet-backdrop" data-closing={closing || undefined} onClick={onClose} />
       <div
         className="relay-sheet-panel"
+        data-closing={closing || undefined}
         style={{
           transform: dragY ? `translateY(${dragY}px)` : undefined,
           transition: dragY ? 'none' : undefined,
@@ -186,17 +222,36 @@ export default function BottomSheet({ isOpen, onClose, children, title, maxHeigh
           padding-bottom: var(--safe-bottom);
         }
 
+        .relay-sheet-backdrop[data-closing] {
+          animation: relay-sheet-backdrop-out ${CLOSE_ANIM_MS}ms ease forwards;
+        }
+        .relay-sheet-panel[data-closing] {
+          animation: relay-sheet-out ${CLOSE_ANIM_MS}ms var(--ease-out) forwards;
+        }
+
         @keyframes relay-sheet-backdrop-in {
           from { opacity: 0; }
           to { opacity: 1; }
+        }
+        @keyframes relay-sheet-backdrop-out {
+          from { opacity: 1; }
+          to { opacity: 0; }
         }
         @keyframes relay-sheet-in {
           from { transform: translateY(100%); }
           to { transform: translateY(0); }
         }
+        @keyframes relay-sheet-out {
+          from { transform: translateY(0); }
+          to { transform: translateY(100%); }
+        }
         @keyframes relay-sheet-in-desktop {
           from { opacity: 0; transform: translateY(12px) scale(0.97); }
           to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes relay-sheet-out-desktop {
+          from { opacity: 1; transform: translateY(0) scale(1); }
+          to { opacity: 0; transform: translateY(12px) scale(0.97); }
         }
 
         @media (min-width: 769px) {
@@ -208,6 +263,9 @@ export default function BottomSheet({ isOpen, onClose, children, title, maxHeigh
             border-bottom: 1px solid var(--border);
             max-height: 80vh;
             animation: relay-sheet-in-desktop 0.22s var(--ease-out);
+          }
+          .relay-sheet-panel[data-closing] {
+            animation: relay-sheet-out-desktop ${CLOSE_ANIM_MS}ms var(--ease-out) forwards;
           }
           .relay-sheet-grab-area {
             touch-action: auto;

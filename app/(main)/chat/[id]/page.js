@@ -605,7 +605,13 @@ export default function ConversationPage() {
   // messaging app; only genuinely new messages after that animate in.
   useEffect(() => {
     if (messages.length === 0) return
-    const lastId = messages[messages.length - 1].id
+    // _clientKey (not .id) so a message reconciling from its temp id to
+    // its real one — same identity, same list position — doesn't read as
+    // "a new message arrived." Without this, sending a message while
+    // scrolled up incremented the new-messages badge for a message the
+    // user had just typed themselves, the instant it reconciled.
+    const lastMsg = messages[messages.length - 1]
+    const lastId = lastMsg._clientKey || lastMsg.id
     if (lastId === lastMessageIdRef.current) return
     const isInitial = lastMessageIdRef.current === null
     lastMessageIdRef.current = lastId
@@ -1096,6 +1102,13 @@ export default function ConversationPage() {
       _status: 'sending',
     }])
     setContent('')
+    // The textarea's height is grown imperatively in the onInput handler
+    // below (via e.target.style.height), which React's style prop never
+    // reasserts — clearing `content` here didn't touch that imperative
+    // style, so the now-empty composer stayed at whatever height the
+    // sent message had left it, only shrinking back once the user typed
+    // again and a fresh input event fired.
+    if (inputRef.current) inputRef.current.style.height = 'auto'
     setReplyTo(null)
 
     // Stop typing indicator
@@ -2549,11 +2562,19 @@ export default function ConversationPage() {
                 if (mediaPreview.previewUrl) URL.revokeObjectURL(mediaPreview.previewUrl)
                 setMediaPreview(null)
               }}
+              // uploadMedia() has no abort — this used to stay clickable
+              // while an upload was in flight, so tapping it hid the
+              // preview and looked like the send was cancelled while the
+              // request kept running server-side and the message still
+              // showed up in the thread moments later anyway. Disabled
+              // for the same reason the Send button beside it already is.
+              disabled={sending}
               aria-label="Remove attachment"
               style={{
                 background: 'none',
                 border: 'none',
-                cursor: 'pointer',
+                cursor: sending ? 'not-allowed' : 'pointer',
+                opacity: sending ? 0.5 : 1,
                 color: 'var(--text-tertiary)',
                 display: 'flex',
                 padding: '4px',
@@ -2729,7 +2750,7 @@ export default function ConversationPage() {
         flexShrink: 0,
       }}>
         {errorMsg && (
-          <p style={{
+          <p className="relay-fade-in" style={{
             fontSize: '12px',
             color: 'var(--error)',
             marginBottom: '6px',
