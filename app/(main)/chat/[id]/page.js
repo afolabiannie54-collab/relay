@@ -1179,7 +1179,7 @@ export default function ConversationPage() {
         const temp = prev.find(m => m.id === tempId)
         if (temp?.media_url?.startsWith('blob:')) URL.revokeObjectURL(temp.media_url)
         return prev.map(m => m.id === tempId
-          ? { ...m, ...result.data, reply: replySnapshot || null, _status: undefined }
+          ? { ...m, ...result.data, reply: replySnapshot || null, _status: undefined, _clientKey: tempId }
           : m)
       })
     } catch {

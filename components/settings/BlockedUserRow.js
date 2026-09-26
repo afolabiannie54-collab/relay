@@ -51,7 +51,7 @@ export default function BlockedUserRow({ user, isLast }) {
           onClick={handleUnblock}
           disabled={unblocking}
           className="relay-btn"
-          style={{ flexShrink: 0 }}
+          style={{ flexShrink: 0, borderRadius: 'var(--radius-pill)', minWidth: '96px', textAlign: 'center' }}
         >
           {unblocking ? 'Unblocking...' : 'Unblock'}
         </button>

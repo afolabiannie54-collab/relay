@@ -439,7 +439,8 @@ a, button, input, textarea, select {
    don't register :hover at all — otherwise the hard-shadow lift above
    would still fire on mouseover even though the click does nothing. */
 .relay-icon-btn:disabled,
-.relay-btn:disabled {
+.relay-btn:disabled,
+.relay-menu-row:disabled {
   opacity: 0.5;
   pointer-events: none;
 }

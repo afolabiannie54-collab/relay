@@ -224,26 +224,30 @@ export default function RequestList({ initialReceived, initialSent, initialInvit
         </div>
       </div>
 
-      {/* Pill toggle — its own row now, same bold divider as the header */}
-      <div style={{ display: 'flex', gap: '8px', padding: '12px 24px', borderBottom: '2px solid var(--border-strong)', background: 'var(--surface)' }}>
+      {/* Pill toggle — its own row now, same bold divider as the header.
+          Scrolls horizontally rather than wrapping/shrinking — three
+          labeled+counted pills ("Group invites (N)" is the long one)
+          don't reliably fit a 400px-wide screen, and .relay-btn has no
+          white-space handling of its own to fall back on. */}
+      <div style={{ display: 'flex', gap: '8px', padding: '12px 24px', borderBottom: '2px solid var(--border-strong)', background: 'var(--surface)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
         <button
           onClick={() => setTab('received')}
           className={tab === 'received' ? 'relay-btn relay-btn--filled' : 'relay-btn'}
-          style={{ borderRadius: 'var(--radius-pill)', padding: '8px 16px' }}
+          style={{ borderRadius: 'var(--radius-pill)', padding: '8px 16px', whiteSpace: 'nowrap', flexShrink: 0 }}
         >
           Received{received.length > 0 ? ` (${received.length})` : ''}
         </button>
         <button
           onClick={() => setTab('sent')}
           className={tab === 'sent' ? 'relay-btn relay-btn--filled' : 'relay-btn'}
-          style={{ borderRadius: 'var(--radius-pill)', padding: '8px 16px' }}
+          style={{ borderRadius: 'var(--radius-pill)', padding: '8px 16px', whiteSpace: 'nowrap', flexShrink: 0 }}
         >
           Sent{sent.length > 0 ? ` (${sent.length})` : ''}
         </button>
         <button
           onClick={() => setTab('invites')}
           className={tab === 'invites' ? 'relay-btn relay-btn--filled' : 'relay-btn'}
-          style={{ borderRadius: 'var(--radius-pill)', padding: '8px 16px' }}
+          style={{ borderRadius: 'var(--radius-pill)', padding: '8px 16px', whiteSpace: 'nowrap', flexShrink: 0 }}
         >
           Group invites{invites.length > 0 ? ` (${invites.length})` : ''}
         </button>

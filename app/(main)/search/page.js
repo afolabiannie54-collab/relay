@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  Search as SearchIcon, Users, MoreHorizontal, MessageCircle, Send, User, Share2, UserX,
+  Search as SearchIcon, Users, MoreHorizontal, MessageCircle, User, Share2, UserX,
 } from 'lucide-react'
 import Avatar from '@/components/shared/Avatar'
 import Skeleton from '@/components/shared/Skeleton'
@@ -77,6 +77,12 @@ export default function SearchPage() {
       if (result.error) {
         setError(result.error)
         setResults([])
+        // Without this, `searched` stayed false on an error (only the
+        // success branch set it) — the New Group row and the "Find
+        // people on Relay" default placeholder both key off !searched,
+        // so a failed search rendered them stacked on top of the error
+        // banner instead of just showing the error.
+        setSearched(true)
       } else {
         setResults(result.data || [])
         setSearched(true)
@@ -263,7 +269,7 @@ export default function SearchPage() {
 
         {/* No results — fills and centers in whatever space is left,
             rather than sitting at a fixed distance below the search bar. */}
-        {!loading && searched && results.length === 0 && (
+        {!loading && searched && !error && results.length === 0 && (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '24px' }}>
             <div style={{ marginBottom: '16px' }}>
               <NotionDoodle d={USER_SLASH_PATH} />
@@ -366,15 +372,25 @@ export default function SearchPage() {
             </div>
           </div>
           <div style={{ padding: '8px 0' }}>
-            <button
-              className="relay-menu-row"
-              style={{ padding: '14px 20px', fontSize: '15px', color: 'var(--text)', borderRadius: 0 }}
-              onClick={handleOpenOrRequest}
-              disabled={checkingConv}
-            >
-              {checkingConv ? <span style={{ width: 17 }}>···</span> : menuConvId ? <MessageCircle size={17} {...iconProps} /> : <Send size={17} {...iconProps} />}
-              {checkingConv ? 'Checking...' : menuConvId ? 'Open chat' : 'Send message request'}
-            </button>
+            {/* Hidden once resolved to "no DM exists" rather than showing
+                a "Send message request" row that did the exact same
+                thing as "View profile" below it (both just opened the
+                profile — nothing about actually sending a request
+                happened here, only via that profile's own Message
+                button). Still shown while checking (unknown yet) and
+                once resolved to an existing DM (a real distinct action:
+                jump straight to that chat). */}
+            {(checkingConv || menuConvId) && (
+              <button
+                className="relay-menu-row"
+                style={{ padding: '14px 20px', fontSize: '15px', color: 'var(--text)', borderRadius: 0 }}
+                onClick={handleOpenOrRequest}
+                disabled={checkingConv}
+              >
+                {checkingConv ? <span style={{ width: 17 }}>···</span> : <MessageCircle size={17} {...iconProps} />}
+                {checkingConv ? 'Checking...' : 'Open chat'}
+              </button>
+            )}
             <button className="relay-menu-row" style={{ padding: '14px 20px', fontSize: '15px', color: 'var(--text)', borderRadius: 0 }} onClick={handleViewProfile}>
               <User size={17} {...iconProps} /> View profile
             </button>
