@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { resetPasswordRequest, resetPassword } from '@/actions/auth'
 import AuthShell from '@/components/auth/AuthShell'
@@ -12,15 +12,28 @@ export default function ResetPasswordPage() {
   const [loading, setLoading] = useState(false)
   const [serverError, setServerError] = useState(null)
 
-  // Check if we're in reset mode (came from email link)
-  useState(() => {
-    if (typeof window !== 'undefined') {
-      const hash = window.location.hash
-      if (hash.includes('type=recovery')) {
-        setStep('reset')
-      }
+  // Check if we're in reset mode (came from email link). Supabase puts
+  // both the success case (#access_token=...&type=recovery) and the
+  // failure case (#error=access_denied&error_code=otp_expired&...) in
+  // this same hash — an expired, already-used, or otherwise invalid link
+  // previously matched neither branch here, so `step` just stayed
+  // 'request' with zero indication anything had gone wrong; the user
+  // silently landed back on the plain email-entry screen.
+  useEffect(() => {
+    const hash = window.location.hash
+    if (hash.includes('type=recovery')) {
+      setStep('reset')
+      return
     }
-  })
+    const params = new URLSearchParams(hash.replace(/^#/, ''))
+    if (params.get('error')) {
+      setServerError(
+        params.get('error_code') === 'otp_expired'
+          ? 'This reset link has expired. Enter your email below to get a new one.'
+          : 'This reset link is no longer valid. Enter your email below to get a new one.'
+      )
+    }
+  }, [])
 
   const handleChange = (e) => {
     const { name, value } = e.target

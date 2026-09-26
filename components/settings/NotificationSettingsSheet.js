@@ -18,6 +18,11 @@ export default function NotificationSettingsSheet({ isOpen, onClose }) {
   const [loading, setLoading] = useState(true)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState(null)
+  // Matches PrivacySettingsForm's identical toggles, which dim/disable
+  // while saving — these had no such affordance at all, so tapping one
+  // gave zero feedback until the shared success/error banner appeared
+  // after the fact.
+  const [savingKey, setSavingKey] = useState(null)
 
   const { permission, subscribed, loading: pushLoading, subscribe, unsubscribe } = usePushNotifications(userId)
 
@@ -36,6 +41,7 @@ export default function NotificationSettingsSheet({ isOpen, onClose }) {
   }, [isOpen])
 
   const handleToggle = async (key) => {
+    setSavingKey(key)
     // Read via the functional updater, not the `settings` closure — two
     // toggles tapped in quick succession both closed over the same
     // pre-toggle `settings`, so the second call's FormData omitted the
@@ -67,6 +73,7 @@ export default function NotificationSettingsSheet({ isOpen, onClose }) {
       setSuccess('Saved')
       setTimeout(() => setSuccess(null), 1500)
     }
+    setSavingKey(null)
   }
 
   const handlePushSubscribe = async () => {
@@ -81,16 +88,17 @@ export default function NotificationSettingsSheet({ isOpen, onClose }) {
     if (result?.error) setError(result.error)
   }
 
-  const Toggle = ({ value, onChange }) => (
+  const Toggle = ({ value, onChange, saving }) => (
     <div
-      onClick={onChange}
+      onClick={saving ? undefined : onChange}
       style={{
         width: '44px',
         height: '24px',
         background: value ? 'var(--border-strong)' : 'var(--border)',
         borderRadius: 'var(--radius-pill)',
         border: '1.5px solid var(--border-strong)',
-        cursor: 'pointer',
+        cursor: saving ? 'default' : 'pointer',
+        opacity: saving ? 0.6 : 1,
         position: 'relative',
         transition: 'background 0.2s',
         flexShrink: 0,
@@ -266,24 +274,28 @@ export default function NotificationSettingsSheet({ isOpen, onClose }) {
                 <Toggle
                   value={settings?.message_notifications}
                   onChange={() => handleToggle('message_notifications')}
+                  saving={savingKey === 'message_notifications'}
                 />
               </SettingRow>
               <SettingRow label="Group messages">
                 <Toggle
                   value={settings?.group_notifications}
                   onChange={() => handleToggle('group_notifications')}
+                  saving={savingKey === 'group_notifications'}
                 />
               </SettingRow>
               <SettingRow label="Mentions">
                 <Toggle
                   value={settings?.mention_notifications}
                   onChange={() => handleToggle('mention_notifications')}
+                  saving={savingKey === 'mention_notifications'}
                 />
               </SettingRow>
               <SettingRow label="Reactions" last>
                 <Toggle
                   value={settings?.reaction_notifications}
                   onChange={() => handleToggle('reaction_notifications')}
+                  saving={savingKey === 'reaction_notifications'}
                 />
               </SettingRow>
             </div>

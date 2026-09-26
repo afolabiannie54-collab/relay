@@ -679,7 +679,38 @@ export async function getGroupInvites() {
     .order('created_at', { ascending: false })
 
   if (error) return { error: error.message }
-  return { data }
+
+  // Member count wasn't fetched at all before, so the invite card could
+  // only ever show name/avatar/inviter — never how big the group
+  // actually is. conversation_participants' RLS is scoped to existing
+  // members, which an invitee isn't yet, so this session's own client
+  // can't read it (would silently come back empty, reading as "0
+  // members" — actively misleading, not just missing). The service role
+  // is used only to count rows, never to expose who's in them.
+  const conversationIds = [...new Set((data || []).map(inv => inv.groups?.conversation_id).filter(Boolean))]
+  const counts = {}
+  if (conversationIds.length > 0) {
+    const { createClient: createServiceClient } = await import('@supabase/supabase-js')
+    const serviceClient = createServiceClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    )
+    const { data: participantRows } = await serviceClient
+      .from('conversation_participants')
+      .select('conversation_id')
+      .in('conversation_id', conversationIds)
+
+    for (const row of participantRows || []) {
+      counts[row.conversation_id] = (counts[row.conversation_id] || 0) + 1
+    }
+  }
+
+  const withCounts = (data || []).map(inv => ({
+    ...inv,
+    groups: inv.groups ? { ...inv.groups, member_count: counts[inv.groups.conversation_id] || 0 } : inv.groups,
+  }))
+
+  return { data: withCounts }
 }
 
 export async function acceptGroupInvite(inviteId) {

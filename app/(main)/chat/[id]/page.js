@@ -2607,7 +2607,12 @@ export default function ConversationPage() {
             }}>
               {typingUsers.length === 1
                 ? `${typingUsers[0].displayName} is typing…`
-                : 'Several people are typing…'}
+                : typingUsers.length === 2
+                  ? `${typingUsers[0].displayName} and ${typingUsers[1].displayName} are typing…`
+                  // "Several people" gave no way to tell 2 typers from 20 —
+                  // matches the same "name, name, and N others" pattern
+                  // most chat apps use once a full name list stops fitting.
+                  : `${typingUsers[0].displayName}, ${typingUsers[1].displayName}, and ${typingUsers.length - 2} other${typingUsers.length - 2 === 1 ? '' : 's'} are typing…`}
             </div>
           </div>
         )}

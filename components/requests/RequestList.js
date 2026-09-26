@@ -414,6 +414,9 @@ export default function RequestList({ initialReceived, initialSent, initialInvit
                     </p>
                     <p style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>
                       Invited by @{invite.inviter?.username}
+                      {typeof invite.groups?.member_count === 'number' && (
+                        <> · {invite.groups.member_count} member{invite.groups.member_count === 1 ? '' : 's'}</>
+                      )}
                     </p>
                   </div>
                   <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', flexShrink: 0 }}>
