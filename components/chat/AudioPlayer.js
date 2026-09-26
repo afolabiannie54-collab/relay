@@ -136,7 +136,12 @@ export default function AudioPlayer({ src, light = false }) {
 
   const progress = duration ? (currentTime / duration) * 100 : 0
   const fg = light ? 'var(--background)' : 'var(--text)'
-  const track = light ? 'rgba(255,255,255,0.3)' : 'var(--border)'
+  // Was a hardcoded white — fine in light theme, where an own-message
+  // bubble's background (var(--text)) is dark, but --text flips to
+  // near-white in dark theme, making a hardcoded-white track nearly
+  // invisible against its own bubble. color-mix keeps this tracking
+  // whatever --background actually resolves to, same as `fg` above.
+  const track = light ? 'color-mix(in srgb, var(--background) 35%, transparent)' : 'var(--border)'
   const showTime = currentTime > 0 ? currentTime : duration
 
   return (

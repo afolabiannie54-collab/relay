@@ -96,6 +96,11 @@ export default function ConversationSettingsSheet({
   // of onGroupChanged's server refetch — keyed by user_id, only ever
   // holds entries this sheet itself just changed.
   const [roleOverrides, setRoleOverrides] = useState({})
+  // Same idea as roleOverrides but for membership itself — removeMember
+  // succeeding used to just close the per-member sheet and wait on
+  // onGroupChanged's async refetch, so the removed member's row stayed
+  // visible in this same list for however long that took.
+  const [removedMemberIds, setRemovedMemberIds] = useState(new Set())
   // myRole is a prop from the parent's own conversation.role state, which
   // onGroupChanged (a groupInfo-only refetch) never touches — without
   // this, transferring ownership away would leave the ex-owner seeing
@@ -109,6 +114,13 @@ export default function ConversationSettingsSheet({
   const [editSaving, setEditSaving] = useState(false)
   const [editError, setEditError] = useState(null)
   const [avatarUploading, setAvatarUploading] = useState(false)
+  // Was a regression to the exact "no crop, no feedback" pattern already
+  // fixed for the personal profile photo and NewConversationSheet's own
+  // group-creation avatar — this sub-sheet's Avatar kept rendering the
+  // OLD photo for the entire upload (avatarUploading only disabled the
+  // camera button), and a bad file round-tripped to the server before
+  // the user learned anything.
+  const [avatarPreview, setAvatarPreview] = useState(null)
   const avatarInputRef = useRef(null)
 
   // groupInfo only exists once loaded, and this sheet can be opened
@@ -158,6 +170,11 @@ export default function ConversationSettingsSheet({
   const name = isGroup ? groupInfo?.name : otherParticipant?.display_name
 
   const getMemberRole = (member) => roleOverrides[member.user_id] ?? member.role
+  // Matches the removedMemberIds-filtered list below — without this, the
+  // header counts kept reading the pre-removal total for as long as
+  // onGroupChanged's refetch took, disagreeing with the rows actually
+  // shown underneath them.
+  const visibleMemberCount = (groupInfo?.members?.length || 0) - removedMemberIds.size
 
   const handleMute = async (hours, label) => {
     setMuting(true)
@@ -287,14 +304,52 @@ export default function ConversationSettingsSheet({
   const handleAvatarChange = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
+    // Matches uploadGroupAvatar's own server-side validation exactly —
+    // catching this here means a bad file gets an immediate inline
+    // error instead of a wasted round trip.
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+    if (!allowedTypes.includes(file.type)) {
+      setEditError('Only images are allowed (JPEG, PNG, WebP, GIF)')
+      e.target.value = ''
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setEditError('Image must be under 5MB')
+      e.target.value = ''
+      return
+    }
+    setEditError(null)
+    const previewUrl = URL.createObjectURL(file)
+    setAvatarPreview(previewUrl)
     setAvatarUploading(true)
     const data = new FormData()
     data.append('avatar', file)
     const result = await uploadGroupAvatar(conversationId, data)
-    if (result.error) setEditError(result.error)
-    else onGroupChanged?.()
+    if (result.error) {
+      setEditError(result.error)
+      URL.revokeObjectURL(previewUrl)
+      setAvatarPreview(null)
+    } else {
+      // Left showing (not revoked here) until the effect below sees
+      // groupInfo.avatar_url actually change to the real uploaded URL —
+      // revoking immediately would leave a gap back to the old photo for
+      // however long onGroupChanged's refetch takes to land.
+      onGroupChanged?.()
+    }
     setAvatarUploading(false)
   }
+
+  // Bridges that gap: once the parent's refetch lands a new avatar_url,
+  // the preview has done its job and can be swapped out for the real one.
+  useEffect(() => {
+    if (!avatarPreview) return
+    setAvatarPreview(null)
+    URL.revokeObjectURL(avatarPreview)
+    // Only ever meant to fire once groupInfo?.avatar_url itself changes —
+    // re-running on every avatarPreview change would revoke it the
+    // instant it's set, which is exactly what this exists to avoid.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupInfo?.avatar_url])
 
   const handleAddMember = async (userId) => {
     setActing(userId)
@@ -319,11 +374,13 @@ export default function ConversationSettingsSheet({
 
   const handleRemoveMember = async () => {
     if (!memberActionUser) return
-    setActing(memberActionUser.user_id)
-    const result = await removeMember(conversationId, memberActionUser.user_id)
+    const targetId = memberActionUser.user_id
+    setActing(targetId)
+    const result = await removeMember(conversationId, targetId)
     setActing(null)
     if (result?.error) return result
     setMemberActionUser(null)
+    setRemovedMemberIds(prev => new Set(prev).add(targetId))
     onGroupChanged?.()
     return result
   }
@@ -339,6 +396,11 @@ export default function ConversationSettingsSheet({
     setActing(null)
     if (result?.error) { showMenuError(result.error); return }
     setMemberActionUser(null)
+    // Same roleOverrides mechanism handleTransferOwnership already uses
+    // below — without it, the member list's role badge stayed stale
+    // ("Member") until onGroupChanged's async refetch caught up, even
+    // though this action sheet had already closed as if it were done.
+    setRoleOverrides(prev => ({ ...prev, [userId]: 'admin' }))
     onGroupChanged?.()
   }
 
@@ -348,6 +410,7 @@ export default function ConversationSettingsSheet({
     setActing(null)
     if (result?.error) { showMenuError(result.error); return }
     setMemberActionUser(null)
+    setRoleOverrides(prev => ({ ...prev, [userId]: 'member' }))
     onGroupChanged?.()
   }
 
@@ -416,7 +479,7 @@ export default function ConversationSettingsSheet({
             <Avatar src={isGroup ? groupInfo?.avatar_url : otherParticipant?.avatar_url} name={name} size={72} />
             <p style={{ fontSize: '18px', fontWeight: '800', color: 'var(--text)', marginTop: '12px' }}>{name}</p>
             {isGroup ? (
-              <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginTop: '2px' }}>{groupInfo?.members?.length || 0} members</p>
+              <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginTop: '2px' }}>{visibleMemberCount} members</p>
             ) : (
               <>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
@@ -507,7 +570,7 @@ export default function ConversationSettingsSheet({
               <div style={{ padding: '16px 20px 8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                   <p style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    Members ({groupInfo?.members?.length || 0})
+                    Members ({visibleMemberCount})
                   </p>
                   {canManageGroup && (
                     <button onClick={() => setShowAddMember(true)} style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '700', color: 'var(--text)', fontFamily: 'inherit' }}>
@@ -517,7 +580,7 @@ export default function ConversationSettingsSheet({
                 </div>
               </div>
               <div style={{ maxHeight: '240px', overflowY: 'auto', borderBottom: '1px solid var(--border-light)' }}>
-                {groupInfo?.members?.map(member => {
+                {groupInfo?.members?.filter(m => !removedMemberIds.has(m.user_id)).map(member => {
                   const role = getMemberRole(member)
                   return (
                     <button
@@ -529,7 +592,13 @@ export default function ConversationSettingsSheet({
                       <Avatar src={member.avatar_url} name={member.display_name} size={36} />
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <p style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{member.display_name}</p>
+                          {/* flex+minWidth:0 (missing before) is required
+                              for the ellipsis to actually engage — a flex
+                              child otherwise refuses to shrink below its
+                              own text's natural width, so a long name next
+                              to a role badge could overflow/crowd it
+                              instead of truncating. */}
+                          <p style={{ flex: 1, minWidth: 0, fontSize: '14px', fontWeight: '600', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{member.display_name}</p>
                           {getRoleBadge(role)}
                         </div>
                         <p style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>@{member.username}</p>
@@ -601,7 +670,23 @@ export default function ConversationSettingsSheet({
           )}
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
             <div style={{ position: 'relative' }}>
-              <Avatar src={groupInfo?.avatar_url} name={groupInfo?.name} size={64} />
+              <Avatar src={avatarPreview || groupInfo?.avatar_url} name={groupInfo?.name} size={64} />
+              {avatarUploading && (
+                <div style={{
+                  position: 'absolute',
+                  inset: 0,
+                  background: 'rgba(0,0,0,0.5)',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '10px',
+                  color: '#fff',
+                  fontWeight: '700',
+                }}>
+                  ...
+                </div>
+              )}
               <button
                 onClick={() => avatarInputRef.current?.click()}
                 disabled={avatarUploading}
@@ -619,7 +704,7 @@ export default function ConversationSettingsSheet({
             </div>
             <div>
               <p style={{ fontSize: '16px', fontWeight: '800', color: 'var(--text)' }}>{groupInfo?.name}</p>
-              <p style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>{groupInfo?.members?.length || 0} members</p>
+              <p style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>{visibleMemberCount} members</p>
             </div>
           </div>
 
@@ -634,6 +719,15 @@ export default function ConversationSettingsSheet({
                 className="relay-input"
                 style={{ width: '100%', padding: '10px 12px', fontSize: '16px', boxSizing: 'border-box' }}
               />
+              {/* Same "only once within 20% of the cap" threshold
+                  NewConversationSheet's own group-creation step and
+                  EditProfileForm already use — this sibling edit flow
+                  silently truncated with no warning before it. */}
+              {editFormData.name.length >= GROUP_NAME_MAX * 0.8 && (
+                <p style={{ fontSize: '11px', color: editFormData.name.length >= GROUP_NAME_MAX ? 'var(--error)' : 'var(--text-tertiary)', textAlign: 'right', marginTop: '4px' }}>
+                  {editFormData.name.length}/{GROUP_NAME_MAX}
+                </p>
+              )}
             </div>
             <div>
               <label style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text)', display: 'block', marginBottom: '6px' }}>Description</label>
@@ -646,6 +740,11 @@ export default function ConversationSettingsSheet({
                 className="relay-input"
                 style={{ width: '100%', padding: '10px 12px', fontSize: '16px', boxSizing: 'border-box' }}
               />
+              {editFormData.description.length >= GROUP_DESCRIPTION_MAX * 0.8 && (
+                <p style={{ fontSize: '11px', color: editFormData.description.length >= GROUP_DESCRIPTION_MAX ? 'var(--error)' : 'var(--text-tertiary)', textAlign: 'right', marginTop: '4px' }}>
+                  {editFormData.description.length}/{GROUP_DESCRIPTION_MAX}
+                </p>
+              )}
             </div>
             <button
               className="relay-btn relay-btn--filled"

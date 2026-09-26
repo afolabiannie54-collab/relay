@@ -735,7 +735,13 @@ function MemberSelectRow({ user, selected, onTap }) {
 // (background var(--text)) — needs light strokes to read against it,
 // the inverse of the default neutral-row spinner.
 function Spinner({ size = 14, variant = 'default' }) {
-  const trackColor = variant === 'onDark' ? 'rgba(255,255,255,0.3)' : 'var(--border)'
+  // 'onDark' is a hardcoded-white track — reads fine on the light theme's
+  // dark var(--text) filled-button surface, but that surface flips to
+  // near-white in dark theme (--text itself flips), making a fixed white
+  // track nearly invisible right when it's meant to stand out most.
+  // color-mix keeps this tracking whatever --background actually
+  // resolves to, matching headColor's own already-adaptive behavior.
+  const trackColor = variant === 'onDark' ? 'color-mix(in srgb, var(--background) 35%, transparent)' : 'var(--border)'
   const headColor = variant === 'onDark' ? 'var(--background)' : 'var(--text-secondary)'
   return (
     <div style={{

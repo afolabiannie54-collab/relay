@@ -29,7 +29,20 @@ export default function CameraCapture({ onCapture, onCancel }) {
         videoRef.current.srcObject = stream
       }
     } catch (err) {
-      setError('Could not access camera. Please grant permission.')
+      // Every getUserMedia failure used to show the same "grant
+      // permission" copy — actively wrong advice for a camera that's
+      // simply missing or already in use by another app, where no
+      // permission prompt would ever appear no matter how many times the
+      // user re-grants it.
+      if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        setError('No camera found on this device.')
+      } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+        setError('Camera is already in use by another app.')
+      } else if (err.name === 'OverconstrainedError') {
+        setError('This camera isn\'t available. Try the other camera.')
+      } else {
+        setError('Could not access camera. Please grant permission.')
+      }
     }
   }
 
@@ -39,15 +52,24 @@ export default function CameraCapture({ onCapture, onCancel }) {
     }
   }
 
+  // A modern rear camera's native sensor resolution (often 4K+) was being
+  // sent as-is with zero downscaling — inconsistent with this app's own
+  // established pattern for the profile-photo crop (capped at 512x512
+  // before upload) and a real cost on a mobile data connection for what's
+  // just going to render at chat-bubble size anyway. 1920px on the long
+  // edge is still comfortably more detail than a phone screen shows.
+  const MAX_DIMENSION = 1920
+
   const handleCapture = () => {
     const video = videoRef.current
     const canvas = canvasRef.current
     if (!video || !canvas) return
 
-    canvas.width = video.videoWidth
-    canvas.height = video.videoHeight
+    const scale = Math.min(1, MAX_DIMENSION / Math.max(video.videoWidth, video.videoHeight))
+    canvas.width = Math.round(video.videoWidth * scale)
+    canvas.height = Math.round(video.videoHeight * scale)
     const ctx = canvas.getContext('2d')
-    ctx.drawImage(video, 0, 0)
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
 
     canvas.toBlob((blob) => {
       const url = URL.createObjectURL(blob)

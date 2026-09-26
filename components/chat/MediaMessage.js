@@ -1,10 +1,35 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Download, X, Mic, FileText } from 'lucide-react'
 import AudioPlayer from '@/components/chat/AudioPlayer'
 
 const iconProps = { strokeWidth: 2, strokeLinecap: 'square', strokeLinejoin: 'miter' }
+
+// media.url is a Supabase Storage public URL — a different origin from
+// this app — and browsers silently ignore the `download` attribute on a
+// cross-origin <a href>, so tapping "Download" just opened/navigated to
+// the file instead of actually saving it. Fetching it as a blob first
+// gives a same-origin (blob:) URL that the browser will actually save.
+// Falls back to opening it directly only if the fetch itself fails (e.g.
+// a network blip, or a storage CORS policy stricter than the standard
+// public-bucket default).
+async function downloadFile(url, filename) {
+  try {
+    const response = await fetch(url)
+    const blob = await response.blob()
+    const blobUrl = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = blobUrl
+    a.download = filename || 'download'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(blobUrl)
+  } catch {
+    window.open(url, '_blank', 'noopener,noreferrer')
+  }
+}
 
 // Collapsed by default: a voice note is still primarily something you
 // play, and expanding every transcript inline would turn a compact bubble
@@ -74,6 +99,23 @@ function AudioTranscript({ status, transcript, isOwn }) {
 export default function MediaMessage({ message, isOwn }) {
   const [imageError, setImageError] = useState(false)
   const [lightboxOpen, setLightboxOpen] = useState(false)
+  const [lightboxImageError, setLightboxImageError] = useState(false)
+
+  // Matches BottomSheet.js's own conventions for a full-screen overlay
+  // (Escape to dismiss, background scroll locked while open) — this
+  // lightbox previously had neither, unlike every other overlay in the
+  // app.
+  useEffect(() => {
+    if (!lightboxOpen) return
+    const handleKey = (e) => { if (e.key === 'Escape') setLightboxOpen(false) }
+    document.addEventListener('keydown', handleKey)
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.removeEventListener('keydown', handleKey)
+      document.body.style.overflow = prevOverflow
+    }
+  }, [lightboxOpen])
 
   const media = message.media_url
     ? {
@@ -109,7 +151,7 @@ export default function MediaMessage({ message, isOwn }) {
           maxWidth: '280px',
           cursor: 'pointer',
         }}
-          onClick={() => setLightboxOpen(true)}
+          onClick={() => { setLightboxImageError(false); setLightboxOpen(true) }}
         >
           {!imageError ? (
             <img
@@ -158,26 +200,25 @@ export default function MediaMessage({ message, isOwn }) {
               display: 'flex',
               gap: '12px',
             }}>
-              <a
-                href={media.url}
-                download={media.filename}
-                onClick={e => e.stopPropagation()}
+              <button
+                onClick={e => { e.stopPropagation(); downloadFile(media.url, media.filename) }}
                 style={{
                   width: '40px',
                   height: '40px',
                   background: 'rgba(255,255,255,0.15)',
+                  border: 'none',
                   borderRadius: '8px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  textDecoration: 'none',
-                  fontSize: '18px',
+                  cursor: 'pointer',
                   color: '#fff',
                 }}
+                aria-label="Download"
                 title="Download"
               >
                 <Download size={18} {...iconProps} />
-              </a>
+              </button>
               <button
                 onClick={() => setLightboxOpen(false)}
                 aria-label="Close"
@@ -197,18 +238,31 @@ export default function MediaMessage({ message, isOwn }) {
                 <X size={20} {...iconProps} />
               </button>
             </div>
-            <img
-              src={media.url}
-              alt={media.filename}
-              loading="lazy"
-              onClick={e => e.stopPropagation()}
-              style={{
-                maxWidth: '100%',
-                maxHeight: '85vh',
-                objectFit: 'contain',
-                borderRadius: '8px',
-              }}
-            />
+            {/* The thumbnail has its own onError fallback (imageError,
+                above) — the full-resolution request here had none, so a
+                thumbnail that loaded fine (often smaller/cached) but a
+                since-expired signed URL or network blip on the full
+                image left the user staring at a bare broken-image icon
+                with no explanation. */}
+            {!lightboxImageError ? (
+              <img
+                src={media.url}
+                alt={media.filename}
+                loading="lazy"
+                onClick={e => e.stopPropagation()}
+                onError={() => setLightboxImageError(true)}
+                style={{
+                  maxWidth: '100%',
+                  maxHeight: '85vh',
+                  objectFit: 'contain',
+                  borderRadius: '8px',
+                }}
+              />
+            ) : (
+              <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '14px' }} onClick={e => e.stopPropagation()}>
+                Could not load image
+              </p>
+            )}
             <p style={{
               color: 'rgba(255,255,255,0.6)',
               fontSize: '12px',
@@ -302,28 +356,26 @@ export default function MediaMessage({ message, isOwn }) {
           {formatSize(media.size)}
         </p>
       </div>
-      <a
-        href={media.url}
-        download={media.filename}
-        target="_blank"
-        rel="noopener noreferrer"
+      <button
+        onClick={() => downloadFile(media.url, media.filename)}
         aria-label="Download"
         style={{
           width: '30px',
           height: '30px',
           background: isOwn ? 'rgba(255,255,255,0.12)' : 'var(--gray-200)',
+          border: 'none',
           borderRadius: '6px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          textDecoration: 'none',
+          cursor: 'pointer',
           color: isOwn ? 'var(--background)' : 'var(--text-secondary)',
           flexShrink: 0,
         }}
         title="Download"
       >
         <Download size={14} {...iconProps} />
-      </a>
+      </button>
     </div>
   )
 }

@@ -262,6 +262,7 @@ export default function ConversationPage() {
   const [mentionQuery, setMentionQuery] = useState('')
   const [mentionResults, setMentionResults] = useState([])
   const [showMentions, setShowMentions] = useState(false)
+  const [mentionActiveIndex, setMentionActiveIndex] = useState(0)
   const [mentionStartIndex, setMentionStartIndex] = useState(-1)
   const [showSettingsSheet, setShowSettingsSheet] = useState(false)
   const [actionSheetMsg, setActionSheetMsg] = useState(null)
@@ -1297,6 +1298,34 @@ export default function ConversationPage() {
   }
 
   const handleKeyDown = (e) => {
+    // While the @mention dropdown is open, it owns Enter/arrows/Escape —
+    // without this, Enter fell straight through to "send message" and
+    // sent the raw, unfinished "@jo" text instead of completing the
+    // mention, and there was no way to browse matches from the keyboard
+    // at all (only mouse/touch on each row).
+    if (showMentions && mentionResults.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        setMentionActiveIndex(i => (i + 1) % mentionResults.length)
+        return
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        setMentionActiveIndex(i => (i - 1 + mentionResults.length) % mentionResults.length)
+        return
+      }
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault()
+        handleMentionSelect(mentionResults[mentionActiveIndex])
+        return
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        setShowMentions(false)
+        setMentionResults([])
+        return
+      }
+    }
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSend()
@@ -1777,6 +1806,13 @@ export default function ConversationPage() {
     // state rather than racing this timeout.
     setTimeout(() => setSwipeMsgId(null), 300)
   }
+
+  // Keeps the keyboard-highlighted row in bounds whenever the match list
+  // changes (typing narrows/widens it) — without this, an index left
+  // over from a longer list could point past the end of a shorter one.
+  useEffect(() => {
+    setMentionActiveIndex(0)
+  }, [mentionResults])
 
   const handleMentionSelect = (member) => {
     const before = content.slice(0, mentionStartIndex)
@@ -2788,38 +2824,53 @@ export default function ConversationPage() {
       )}
 
       {showMentions && (
-        <div className="relay-popover" style={{
-          background: 'var(--surface)',
-          border: '2px solid var(--border-strong)',
-          borderRadius: '12px',
-          margin: '0 16px 8px',
-          overflow: 'hidden',
-          boxShadow: 'var(--shadow-hard-sm)',
-          flexShrink: 0,
-          transformOrigin: 'bottom left',
-        }}>
-          {mentionResults.map(member => (
-            <div
-              key={member.user_id || member.id}
-              onClick={() => handleMentionSelect(member)}
-              className="relay-menu-row"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-                padding: '10px 14px',
-                borderRadius: 0,
-                borderBottom: '1px solid var(--border-light)',
-              }}
-            >
-              <Avatar src={member.avatar_url} name={member.display_name} size={32} userId={member.user_id || member.id} />
-              <div>
-                <p style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text)' }}>{member.display_name}</p>
-                <p style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>@{member.username}</p>
+        <>
+          {/* Tapping anywhere else used to leave this open indefinitely
+              (only closed by picking a row or typing past the point the
+              @query regex stops matching) — matches the same fixed
+              inset:0 dismiss-overlay pattern MessageReactions/
+              MessageActionBar's own popovers already use. */}
+          <div
+            onClick={() => { setShowMentions(false); setMentionResults([]) }}
+            style={{ position: 'fixed', inset: 0, zIndex: 40 }}
+          />
+          <div className="relay-popover" style={{
+            position: 'relative',
+            zIndex: 41,
+            background: 'var(--surface)',
+            border: '2px solid var(--border-strong)',
+            borderRadius: '12px',
+            margin: '0 16px 8px',
+            overflow: 'hidden',
+            boxShadow: 'var(--shadow-hard-sm)',
+            flexShrink: 0,
+            transformOrigin: 'bottom left',
+          }}>
+            {mentionResults.map((member, i) => (
+              <div
+                key={member.user_id || member.id}
+                onClick={() => handleMentionSelect(member)}
+                onMouseEnter={() => setMentionActiveIndex(i)}
+                className="relay-menu-row"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  padding: '10px 14px',
+                  borderRadius: 0,
+                  borderBottom: '1px solid var(--border-light)',
+                  background: i === mentionActiveIndex ? 'var(--surface-hover)' : 'none',
+                }}
+              >
+                <Avatar src={member.avatar_url} name={member.display_name} size={32} userId={member.user_id || member.id} />
+                <div>
+                  <p style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text)' }}>{member.display_name}</p>
+                  <p style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>@{member.username}</p>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </>
       )}
 
       {/* Input */}

@@ -33,11 +33,15 @@ function formatTime(timestamp) {
 }
 
 function Spinner({ size = 14 }) {
+  // Same dark-mode fix as the identical spinners in NewConversationSheet.js
+  // and AudioPlayer.js — a hardcoded white track goes nearly invisible once
+  // --text (this spinner's filled-button surface) flips to near-white in
+  // dark theme. color-mix tracks --background instead, same as borderTopColor.
   return (
     <div style={{
       width: size,
       height: size,
-      border: '2px solid rgba(255,255,255,0.3)',
+      border: '2px solid color-mix(in srgb, var(--background) 35%, transparent)',
       borderTopColor: 'var(--background)',
       borderRadius: '50%',
       animation: 'relay-req-spin 0.7s linear infinite',
