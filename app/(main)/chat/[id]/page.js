@@ -1717,6 +1717,12 @@ export default function ConversationPage() {
   // share one set of touch handlers since they start the same way and
   // diverge based on how the touch actually moves.
   const handleMessageTouchStart = (msg) => (e) => {
+    // AudioPlayer's scrub bar (inside a voice-message bubble) is itself a
+    // sustained horizontal drag — without this, dragging its thumb also
+    // bubbled up as a swipe-to-reply gesture on the bubble underneath it,
+    // showing the reply arrow (and past 40px, actually setting replyTo)
+    // partway through what the user meant as scrubbing, not replying.
+    if (e.target.closest?.('[data-no-message-swipe]')) return
     const touch = e.touches[0]
     if (!touch) return
     longPressFiredRef.current = false

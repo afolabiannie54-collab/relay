@@ -20,9 +20,15 @@ function formatTime(seconds) {
 // bubble), same idea as MediaMessage's own isOwn color branches.
 export default function AudioPlayer({ src, light = false }) {
   const audioRef = useRef(null)
+  const trackRef = useRef(null)
   const [playing, setPlaying] = useState(false)
   const [duration, setDuration] = useState(0)
   const [currentTime, setCurrentTime] = useState(0)
+  // Only a single tap-to-jump existed before (onClick on the track) —
+  // no drag/scrub, and no visible thumb to grab, so the bar didn't read
+  // as something you could actually control the position with, just a
+  // static progress indicator that happened to also respond to a tap.
+  const [dragging, setDragging] = useState(false)
 
   useEffect(() => {
     const audio = audioRef.current
@@ -94,13 +100,38 @@ export default function AudioPlayer({ src, light = false }) {
     }
   }
 
-  const handleSeek = (e) => {
+  const seekToClientX = (clientX) => {
     const audio = audioRef.current
-    if (!audio || !duration) return
-    const rect = e.currentTarget.getBoundingClientRect()
-    const ratio = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width))
+    const track = trackRef.current
+    if (!audio || !track || !duration) return
+    const rect = track.getBoundingClientRect()
+    const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width))
+    // Set optimistically rather than waiting on the audio element's own
+    // timeupdate event — that only fires a few times a second, which
+    // reads as laggy while actively dragging the thumb.
     audio.currentTime = ratio * duration
     setCurrentTime(ratio * duration)
+  }
+
+  // Pointer Events (not separate mouse/touch handlers) so mouse and touch
+  // drags share one code path. setPointerCapture keeps this element
+  // receiving move/up events even once the pointer leaves its bounds —
+  // required for a natural drag gesture; without it, dragging past the
+  // bar's edges would silently stop tracking.
+  const handlePointerDown = (e) => {
+    if (!duration) return
+    e.currentTarget.setPointerCapture(e.pointerId)
+    setDragging(true)
+    seekToClientX(e.clientX)
+  }
+
+  const handlePointerMove = (e) => {
+    if (!dragging) return
+    seekToClientX(e.clientX)
+  }
+
+  const handlePointerUp = () => {
+    setDragging(false)
   }
 
   const progress = duration ? (currentTime / duration) * 100 : 0
@@ -109,7 +140,12 @@ export default function AudioPlayer({ src, light = false }) {
   const showTime = currentTime > 0 ? currentTime : duration
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%' }}>
+    // data-no-message-swipe: read by the conversation page's swipe-to-
+    // reply handler on the message bubble this sits inside — scrubbing
+    // the track below is itself a sustained horizontal drag, which would
+    // otherwise also bubble up and arm/trigger a reply swipe on the
+    // bubble underneath it.
+    <div data-no-message-swipe style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%' }}>
       <audio ref={audioRef} src={src} preload="metadata" style={{ display: 'none' }} />
       <button
         onClick={togglePlay}
@@ -133,11 +169,37 @@ export default function AudioPlayer({ src, light = false }) {
           : <Play size={13} fill={fg} strokeWidth={0} style={{ marginLeft: '2px' }} />}
       </button>
       <div style={{ flex: 1, minWidth: 0 }}>
+        {/* Padded above/below (negative margin cancels the layout impact)
+            so the actual draggable hit target is taller than the 4px
+            visual bar — dragging a 4px-tall line by touch is unreliable. */}
         <div
-          onClick={handleSeek}
-          style={{ height: '4px', borderRadius: '2px', background: track, cursor: 'pointer', position: 'relative' }}
+          ref={trackRef}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
+          style={{
+            padding: '10px 0',
+            margin: '-10px 0',
+            cursor: 'pointer',
+            touchAction: 'none',
+          }}
         >
-          <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${progress}%`, background: fg, borderRadius: '2px' }} />
+          <div style={{ height: '4px', borderRadius: '2px', background: track, position: 'relative' }}>
+            <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${progress}%`, background: fg, borderRadius: '2px' }} />
+            <div style={{
+              position: 'absolute',
+              left: `${progress}%`,
+              top: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: dragging ? '14px' : '10px',
+              height: dragging ? '14px' : '10px',
+              borderRadius: '50%',
+              background: fg,
+              boxShadow: '0 1px 3px rgba(0,0,0,0.35)',
+              transition: dragging ? 'none' : 'width 0.12s ease, height 0.12s ease',
+            }} />
+          </div>
         </div>
       </div>
       <span style={{ fontSize: '11px', fontWeight: '600', fontVariantNumeric: 'tabular-nums', color: fg, flexShrink: 0 }}>
