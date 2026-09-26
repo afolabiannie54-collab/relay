@@ -560,6 +560,21 @@ export default function ConversationPage() {
 
       markReadIfVisible()
 
+      // Deep link from a mention notification (push or in-app) — read
+      // once per conversation mount, then stripped from the URL so
+      // re-rendering (or navigating back into this same conversation
+      // later) doesn't re-trigger the jump. Only after `messages` above
+      // has actually settled with the fresh fetch, not the cached
+      // placeholder — scrollToMessageWithLoad's own pagination loop reads
+      // hasMoreMessagesRef/messagesRef, which this call just set.
+      const highlightId = new URLSearchParams(window.location.search).get('highlight')
+      if (highlightId) {
+        const url = new URL(window.location.href)
+        url.searchParams.delete('highlight')
+        window.history.replaceState({}, '', url)
+        scrollToMessageWithLoad(highlightId)
+      }
+
       // Everything past this point is secondary chrome (the pinned-messages
       // panel, the reciprocity setting) — none of it gates the ticks, so a
       // failure here must not take the rest of the load down with it the
@@ -1597,6 +1612,32 @@ export default function ConversationPage() {
     el.scrollIntoView({ behavior: 'smooth', block: 'center' })
     el.style.background = 'var(--accent-light)'
     setTimeout(() => { el.style.background = '' }, 2000)
+  }
+
+  // Used for a deep link into a specific message (currently: a mention
+  // notification) rather than one the user is already looking at —
+  // unlike handleJumpToMessage's other callers (search results, pinned
+  // messages), the target here is very often NOT among the most recent
+  // 50 messages the conversation loads by default, so this repeats the
+  // same backward pagination the scroll-up-to-load-older gesture already
+  // does, capped so a message that genuinely isn't in this conversation
+  // (or was deleted) can't spin forever.
+  const scrollToMessageWithLoad = async (messageId) => {
+    const isLoaded = () => document.getElementById(`msg-${messageId}`)
+    if (isLoaded()) {
+      handleJumpToMessage(messageId)
+      return
+    }
+    let attempts = 0
+    while (hasMoreMessagesRef.current && attempts < 40 && !isLoaded()) {
+      attempts++
+      await loadOlderMessages()
+      // loadOlderMessages's setMessages call is queued, not necessarily
+      // painted yet — one frame is enough for React to commit it before
+      // this checks the DOM again.
+      await new Promise(resolve => requestAnimationFrame(resolve))
+    }
+    handleJumpToMessage(messageId)
   }
 
   const handleCopyMessage = async (msg) => {

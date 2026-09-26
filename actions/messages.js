@@ -573,7 +573,12 @@ export async function sendMessage(conversationId, content, replyToId = null) {
           mentionedUser.id,
           `${profile.display_name} mentioned you`,
           content.trim().slice(0, 100),
-          `/chat/${conversationId}`,
+          // `data` is this exact message (already inserted above), so
+          // this is the real message id — no need to guess it back out
+          // later. The conversation page picks up ?highlight= on load
+          // and scrolls/highlights it, paginating backward first if it
+          // isn't among the most recent 50 messages.
+          `/chat/${conversationId}?highlight=${data.id}`,
           conversationId,
           'mention'
         )
@@ -1469,4 +1474,58 @@ export async function searchMessages(conversationId, query) {
 
   if (error) return { error: error.message }
   return { data }
+}
+
+// The in-app counterpart to the push-notification mention deep link
+// above — that one already knows the exact message id at insert time,
+// but the `notifications` table row itself only ever stored
+// reference_id: conversationId (unchanged here deliberately: its exact
+// column type/constraints aren't verifiable from this codebase alone —
+// e.g. deleteGroup's cleanup matches other notification rows by
+// `reference_id = conversationId`, which a composite value would quietly
+// break — so this resolves the target via a content match against
+// `messages` instead of touching that table's shape). `bodyPrefix` is
+// exactly what the mention notification's own `body` was set to
+// (content.trim().slice(0, 100)), so it's a genuine, non-fuzzy prefix of
+// the real message's content — the time window is only there to
+// disambiguate two matching messages, not to loosely fuzzy-match.
+export async function findMentionMessage(conversationId, bodyPrefix, aroundTimestamp) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) return { messageId: null }
+  if (!bodyPrefix) return { messageId: null }
+
+  const around = new Date(aroundTimestamp).getTime()
+  if (Number.isNaN(around)) return { messageId: null }
+
+  const { data: participant } = await supabase
+    .from('conversation_participants')
+    .select('role')
+    .eq('conversation_id', conversationId)
+    .eq('user_id', user.id)
+    .single()
+
+  if (!participant) return { messageId: null }
+
+  const windowMs = 5 * 60 * 1000
+  const { data, error } = await supabase
+    .from('messages')
+    .select('id, content, created_at')
+    .eq('conversation_id', conversationId)
+    .gte('created_at', new Date(around - windowMs).toISOString())
+    .lte('created_at', new Date(around + windowMs).toISOString())
+    .order('created_at', { ascending: true })
+    .limit(50)
+
+  if (error || !data?.length) return { messageId: null }
+
+  const candidates = data.filter(m => m.content && m.content.startsWith(bodyPrefix))
+  if (candidates.length === 0) return { messageId: null }
+
+  candidates.sort((a, b) =>
+    Math.abs(new Date(a.created_at).getTime() - around) -
+    Math.abs(new Date(b.created_at).getTime() - around)
+  )
+  return { messageId: candidates[0].id }
 }

@@ -6,6 +6,7 @@ import {
   ChevronLeft, Check, Bell, MessageSquare, Users, AtSign, Mail, UserPlus, Heart,
 } from 'lucide-react'
 import { markNotificationRead, markAllNotificationsRead } from '@/actions/notifications'
+import { findMentionMessage } from '@/actions/messages'
 import NotionDoodle from '@/components/shared/illustrations/NotionDoodle'
 import { createClient } from '@/lib/supabase/client'
 import { canHover } from '@/lib/hover'
@@ -108,10 +109,26 @@ export default function NotificationList({ initialNotifications }) {
       switch (notification.type) {
         case 'message':
         case 'group_message':
-        case 'mention':
         case 'reaction':
           router.push(`/chat/${notification.reference_id}`)
           break
+        case 'mention': {
+          // The push-notification version of this same click already
+          // knows the exact message id (set at insert time in
+          // sendMessage) and passes it as ?highlight= directly — this is
+          // the in-app list's own click, which only ever had
+          // reference_id (the conversation) to go on. body is an exact
+          // prefix of the real message's content (see
+          // findMentionMessage's own comment for why this isn't stored
+          // more directly), so this is a real match, not a fuzzy guess.
+          const result = await findMentionMessage(notification.reference_id, notification.body, notification.created_at)
+          router.push(
+            result.messageId
+              ? `/chat/${notification.reference_id}?highlight=${result.messageId}`
+              : `/chat/${notification.reference_id}`
+          )
+          break
+        }
         case 'message_request':
           // The only producer of this type is acceptMessageRequest(),
           // which sets reference_id to the resulting conversation — a
