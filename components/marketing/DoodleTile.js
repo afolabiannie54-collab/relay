@@ -18,6 +18,12 @@ export default function DoodleTile({
     <div
       className="marketing-doodle-tile"
       title={label}
+      // title alone isn't reliably exposed by screen readers on a <div>
+      // (it's a sighted-hover tooltip, not an accessible name) — with the
+      // inner doodle now aria-hidden, this was the only thing that could
+      // give these tiles a real accessible name at all.
+      aria-label={label}
+      role="img"
       // display/alignment deliberately live in .marketing-doodle-tile, not
       // here: an inline `display` outranks every stylesheet rule, so the
       // media query that drops the last two tiles on mobile could never

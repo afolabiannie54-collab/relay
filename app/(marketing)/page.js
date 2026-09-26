@@ -6,7 +6,6 @@ import Logo from '@/components/marketing/Logo'
 import Signpost from '@/components/marketing/Signpost'
 import NotionDoodle from '@/components/shared/illustrations/NotionDoodle'
 import { BELL, USERS, INBOX } from '@/lib/doodles'
-// ChatPreview moves to a later section (not the hero) — see LandingPage.
 
 const iconProps = { strokeWidth: 2, strokeLinecap: 'square', strokeLinejoin: 'miter' }
 
@@ -74,8 +73,8 @@ function FeatureCard({ eyebrow, title, body, wide = false, children }) {
   )
 }
 
-// Small in-page product fragments. Same reasoning as ChatPreview: built
-// from the real tokens so they can't go stale and work in both themes.
+// Small in-page product fragments, built from the real tokens so they
+// can't go stale and work in both themes.
 function HandleDemo() {
   return (
     <div style={{
@@ -163,8 +162,8 @@ function RequestDemo() {
 // signup/login rather than illustrating what accepting a request looks
 // like. Reusing the product's own UI as the hero's CTA does double duty
 // as both the conversion action and a piece of product illustration,
-// instead of a plain button pair or a second preview competing with
-// ChatPreview's spot later on the page.
+// instead of a plain button pair or a second preview competing with the
+// feature grid's own product mockups further down the page.
 function HeroRequestCTA() {
   return (
     <div style={{
@@ -375,7 +374,8 @@ export default async function LandingPage() {
               plain buttons — it's a real, recognizable piece of the
               product (see the matching mockup in the feature grid below)
               doing double duty as the hero's CTA, not a second, unrelated
-              preview competing with ChatPreview's spot later on the page. */}
+              preview competing with the feature grid's own mockups
+              further down the page. */}
           {!signedIn && <HeroRequestCTA />}
         </div>
       </section>

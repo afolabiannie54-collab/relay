@@ -22,6 +22,17 @@ export default function InstallRelay() {
   const [deferredPrompt, setDeferredPrompt] = useState(null)
   const [installed, setInstalled] = useState(false)
   const [platform, setPlatform] = useState('ios')
+  // OS alone isn't enough: only Safari can "Add to Home Screen" on iOS
+  // (Chrome/Firefox/other iOS browsers are WebKit wrappers Apple requires,
+  // but their own share menus don't expose that option — it's tied to
+  // Safari specifically, not the OS), and only Chromium-based browsers
+  // fire beforeinstallprompt on Android/desktop (Firefox everywhere, and
+  // desktop Safari, never do). Without this, a visitor on iOS Chrome saw
+  // "Tap Share in Safari" instructions for a share sheet they don't have,
+  // and a Firefox visitor saw a permanently-disabled button captioned
+  // "your browser enables this after a moment" — a promise that's simply
+  // false for that browser.
+  const [browser, setBrowser] = useState('safari')
 
   // Detected in an effect, not a lazy useState initializer: this renders
   // on the server first (no `window`), so the first client render has to
@@ -34,6 +45,20 @@ export default function InstallRelay() {
       (ua.includes('Mac') && typeof document !== 'undefined' && navigator.maxTouchPoints > 1)
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setPlatform(iOSLike ? 'ios' : /Android/.test(ua) ? 'android' : 'desktop')
+
+    // Order matters: Chrome/Firefox/Edge on iOS all include "Safari" in
+    // their UA string (WebKit requirement), so their own name has to be
+    // checked first. crios/fxios/edgios are iOS-specific Chrome/Firefox/
+    // Edge UA tokens; SamsungBrowser and the bare "Edg" token cover their
+    // desktop/Android equivalents.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setBrowser(
+      /crios|fxios|edgios/i.test(ua) ? 'other'
+        : /firefox/i.test(ua) ? 'firefox'
+        : /chrome|edg|samsungbrowser/i.test(ua) ? 'chromium'
+        : /safari/i.test(ua) ? 'safari'
+        : 'other'
+    )
 
     const standalone = window.matchMedia('(display-mode: standalone)').matches ||
       window.navigator.standalone === true
@@ -109,14 +134,14 @@ export default function InstallRelay() {
           mockups' worth of room while Android/desktop is a single button,
           so without it the whole page jumps every time you switch. */}
       <div className="marketing-install-panel">
-        {platform === 'ios' && <IOSSteps />}
+        {platform === 'ios' && (browser === 'safari' ? <IOSSteps /> : <OpenInSafari />)}
         {platform === 'android' && (
-          <OneTapInstall deferredPrompt={deferredPrompt} onInstall={handleInstall}>
+          <OneTapInstall deferredPrompt={deferredPrompt} onInstall={handleInstall} browser={browser}>
             <HomeScreenMock />
           </OneTapInstall>
         )}
         {platform === 'desktop' && (
-          <OneTapInstall deferredPrompt={deferredPrompt} onInstall={handleInstall}>
+          <OneTapInstall deferredPrompt={deferredPrompt} onInstall={handleInstall} browser={browser}>
             <AppWindowMock />
           </OneTapInstall>
         )}
@@ -130,7 +155,13 @@ export default function InstallRelay() {
 // what you actually end up with. iOS answers "what do I do", these
 // answer "what do I get", and both do it with a real picture rather
 // than a sentence.
-function OneTapInstall({ deferredPrompt, onInstall, children }) {
+function OneTapInstall({ deferredPrompt, onInstall, browser, children }) {
+  // Firefox (and desktop Safari, which only reaches this tab from the
+  // Desktop pill, not Android) never fires beforeinstallprompt at all —
+  // "enables this after a moment" is a promise the button can't keep
+  // there, so those get their browser's own manual steps instead of a
+  // permanently-disabled button and a lie.
+  const noPromptEvent = browser === 'firefox' || browser === 'safari'
   return (
     <div style={{
       display: 'flex',
@@ -161,7 +192,9 @@ function OneTapInstall({ deferredPrompt, onInstall, children }) {
         </button>
         {!deferredPrompt && (
           <p style={{ fontSize: '14px', color: 'var(--text-tertiary)', maxWidth: '320px', lineHeight: 1.5 }}>
-            Your browser enables this after a moment on the site.
+            {noPromptEvent
+              ? 'Look for "Install" or "Add to Home Screen" in your browser’s menu.'
+              : 'Your browser enables this after a moment on the site.'}
           </p>
         )}
       </div>
@@ -306,6 +339,37 @@ function IOSSteps() {
       <Step n="2" label="Pick Add to Home Screen">
         <ShareSheet />
       </Step>
+    </div>
+  )
+}
+
+// Chrome/Firefox/Edge on iOS are WebKit wrappers Apple requires — their
+// share sheets don't carry "Add to Home Screen" at all, since that's tied
+// to Safari specifically. No amount of in-app instruction fixes that; the
+// only real fix is opening the same URL in Safari itself.
+function OpenInSafari() {
+  return (
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '10px',
+      alignItems: 'flex-start',
+      justifyContent: 'center',
+      maxWidth: '380px',
+      padding: '22px 24px',
+      background: 'var(--bg-subtle)',
+      border: '3px solid var(--border-strong)',
+      borderRadius: 'var(--radius-lg)',
+      boxShadow: 'var(--shadow-hard-md)',
+    }}>
+      <p style={{ fontSize: '16px', fontWeight: '800', color: 'var(--text)', letterSpacing: '-0.01em' }}>
+        Open this page in Safari
+      </p>
+      <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+        On iPhone and iPad, only Safari can add Relay to your home screen —
+        other browsers here don&apos;t have that option, even though they
+        look the same. Copy this link and open it in Safari to install.
+      </p>
     </div>
   )
 }

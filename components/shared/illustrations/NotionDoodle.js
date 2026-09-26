@@ -6,7 +6,12 @@
 // preserved deliberately — this is a doodle/illustration, not a control.
 export default function NotionDoodle({ d, viewBox = '0 0 24 24', size = 140, color = 'var(--text)' }) {
   return (
-    <svg width={size} height={size} viewBox={viewBox} fill="none" xmlns="http://www.w3.org/2000/svg">
+    // Purely decorative everywhere it's used — every empty-state caller
+    // already has its own adjacent heading/description, and DoodleTile
+    // (the footer icon strip) carries its own accessible label on the
+    // wrapping tile — so this was an unlabeled, un-hidden graphic with no
+    // accessible name of its own, announced as blank by a screen reader.
+    <svg aria-hidden="true" width={size} height={size} viewBox={viewBox} fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d={d} stroke={color} strokeLinecap="round" />
     </svg>
   )
