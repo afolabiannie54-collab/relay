@@ -101,6 +101,18 @@ export default function ConversationSettingsSheet({
   // onGroupChanged's async refetch, so the removed member's row stayed
   // visible in this same list for however long that took.
   const [removedMemberIds, setRemovedMemberIds] = useState(new Set())
+  // Same idea again but for a member just added — addMember's search
+  // result already carries the full profile (avatar/name/username), so
+  // there's enough to render a real row immediately instead of waiting
+  // on the refetch. Cleared once that refetch's groupInfo.members
+  // actually contains this user_id, so it doesn't end up duplicated.
+  const [addedMembers, setAddedMembers] = useState([])
+  useEffect(() => {
+    if (addedMembers.length === 0) return
+    const realIds = new Set(groupInfo?.members?.map(m => m.user_id) || [])
+    setAddedMembers(prev => prev.filter(m => !realIds.has(m.user_id)))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupInfo?.members])
   // myRole is a prop from the parent's own conversation.role state, which
   // onGroupChanged (a groupInfo-only refetch) never touches — without
   // this, transferring ownership away would leave the ex-owner seeing
@@ -170,11 +182,22 @@ export default function ConversationSettingsSheet({
   const name = isGroup ? groupInfo?.name : otherParticipant?.display_name
 
   const getMemberRole = (member) => roleOverrides[member.user_id] ?? member.role
-  // Matches the removedMemberIds-filtered list below — without this, the
-  // header counts kept reading the pre-removal total for as long as
-  // onGroupChanged's refetch took, disagreeing with the rows actually
-  // shown underneath them.
-  const visibleMemberCount = (groupInfo?.members?.length || 0) - removedMemberIds.size
+  // Single source of truth for what the member list (and its header
+  // counts) actually shows — folds in both optimistic mechanisms above
+  // so a remove/add is reflected immediately instead of waiting on
+  // onGroupChanged's refetch. addedMembers is already known not to
+  // overlap groupInfo.members (the clearing effect above removes an
+  // entry the moment it does), so no dedupe needed here.
+  const visibleMembers = [
+    ...(groupInfo?.members?.filter(m => !removedMemberIds.has(m.user_id)) || []),
+    // Also filtered by removedMemberIds — handles the narrow case of
+    // adding someone then removing them again before onGroupChanged's
+    // refetch had a chance to land, where they'd otherwise still only
+    // exist in this array (not yet in groupInfo.members) and show up
+    // despite having just been removed.
+    ...addedMembers.filter(m => !removedMemberIds.has(m.user_id)),
+  ]
+  const visibleMemberCount = visibleMembers.length
 
   const handleMute = async (hours, label) => {
     setMuting(true)
@@ -351,10 +374,14 @@ export default function ConversationSettingsSheet({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [groupInfo?.avatar_url])
 
-  const handleAddMember = async (userId) => {
-    setActing(userId)
+  // Takes the full search-result user object (not just the id) — it
+  // already carries avatar_url/display_name/username, enough to render
+  // a real member row immediately via addedMembers rather than the
+  // member list staying one short until onGroupChanged's refetch lands.
+  const handleAddMember = async (user) => {
+    setActing(user.id)
     setAddMemberFeedback(null)
-    const result = await addMember(conversationId, userId)
+    const result = await addMember(conversationId, user.id)
     setActing(null)
 
     if (result.error) {
@@ -367,6 +394,13 @@ export default function ConversationSettingsSheet({
     if (result.invited) {
       setAddMemberFeedback({ type: 'invited', text: 'Invite sent — they\'ll join once they accept it.' })
     } else {
+      setAddedMembers(prev => [...prev, {
+        user_id: user.id,
+        avatar_url: user.avatar_url,
+        display_name: user.display_name,
+        username: user.username,
+        role: 'member',
+      }])
       setShowAddMember(false)
       onGroupChanged?.()
     }
@@ -580,7 +614,7 @@ export default function ConversationSettingsSheet({
                 </div>
               </div>
               <div style={{ maxHeight: '240px', overflowY: 'auto', borderBottom: '1px solid var(--border-light)' }}>
-                {groupInfo?.members?.filter(m => !removedMemberIds.has(m.user_id)).map(member => {
+                {visibleMembers.map(member => {
                   const role = getMemberRole(member)
                   return (
                     <button
@@ -796,7 +830,7 @@ export default function ConversationSettingsSheet({
                 </div>
                 <button
                   className="relay-btn relay-btn--filled"
-                  onClick={() => handleAddMember(u.id)}
+                  onClick={() => handleAddMember(u)}
                   disabled={acting === u.id}
                   style={{ padding: '6px 14px', borderRadius: 'var(--radius-pill)', fontSize: '12px' }}
                 >

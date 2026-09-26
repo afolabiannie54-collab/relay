@@ -113,16 +113,33 @@ export default function CameraCapture({ onCapture, onCancel }) {
         textAlign: 'center',
       }}>
         <p style={{ color: '#fff', fontSize: '16px' }}>{error}</p>
-        <button onClick={handleCancel} style={{
-          padding: '10px 20px',
-          background: '#fff',
-          border: 'none',
-          borderRadius: '8px',
-          fontSize: '14px',
-          fontWeight: '600',
-          cursor: 'pointer',
-          fontFamily: 'inherit',
-        }}>Close</button>
+        {/* Only "Close" existed before — some of these failures are
+            transient (another app briefly holding the camera, a
+            permission prompt the user just hadn't answered yet), so
+            forcing a full exit-and-reopen was the only way to retry. */}
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <button onClick={handleCancel} style={{
+            padding: '10px 20px',
+            background: 'rgba(255,255,255,0.15)',
+            border: '1.5px solid rgba(255,255,255,0.3)',
+            borderRadius: '8px',
+            color: '#fff',
+            fontSize: '14px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+          }}>Close</button>
+          <button onClick={() => { setError(null); startCamera() }} style={{
+            padding: '10px 20px',
+            background: '#fff',
+            border: 'none',
+            borderRadius: '8px',
+            fontSize: '14px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+          }}>Try again</button>
+        </div>
       </div>
     )
   }

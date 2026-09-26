@@ -96,10 +96,41 @@ function AudioTranscript({ status, transcript, isOwn }) {
   )
 }
 
+// Fit-to-screen was the only option — no way to actually inspect detail
+// in a dense photo or a tall screenshot beyond what already fits on
+// screen shrunk down. Pinch (two pointers) and double-tap/double-click
+// both zoom; a single pointer pans once zoomed in. Pointer Events (not
+// separate touch/mouse handlers) so the same code handles mouse and
+// touch, same approach as AudioPlayer's drag-to-scrub.
+const MAX_ZOOM = 4
+const DOUBLE_TAP_ZOOM = 2.5
+
 export default function MediaMessage({ message, isOwn }) {
   const [imageError, setImageError] = useState(false)
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [lightboxImageError, setLightboxImageError] = useState(false)
+  const [zoomScale, setZoomScale] = useState(1)
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 })
+  // Mirrors "a pinch or pan is in progress" as real state rather than
+  // reading pinchStartRef/panStartRef directly during render — refs are
+  // meant for values event handlers/effects read, not something the
+  // render function itself depends on (React can't tell it needs to
+  // re-render when a ref changes, so reading one there risks the style
+  // silently not updating in sync with the actual gesture).
+  const [isInteracting, setIsInteracting] = useState(false)
+  const pointersRef = useRef(new Map())
+  const pinchStartRef = useRef(null)
+  const panStartRef = useRef(null)
+
+  const resetZoom = () => {
+    setZoomScale(1)
+    setPanOffset({ x: 0, y: 0 })
+  }
+
+  const closeLightbox = () => {
+    setLightboxOpen(false)
+    resetZoom()
+  }
 
   // Matches BottomSheet.js's own conventions for a full-screen overlay
   // (Escape to dismiss, background scroll locked while open) — this
@@ -107,7 +138,7 @@ export default function MediaMessage({ message, isOwn }) {
   // app.
   useEffect(() => {
     if (!lightboxOpen) return
-    const handleKey = (e) => { if (e.key === 'Escape') setLightboxOpen(false) }
+    const handleKey = (e) => { if (e.key === 'Escape') closeLightbox() }
     document.addEventListener('keydown', handleKey)
     const prevOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
@@ -115,7 +146,57 @@ export default function MediaMessage({ message, isOwn }) {
       document.removeEventListener('keydown', handleKey)
       document.body.style.overflow = prevOverflow
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lightboxOpen])
+
+  const getDistance = (p1, p2) => Math.hypot(p1.x - p2.x, p1.y - p2.y)
+
+  const handleImagePointerDown = (e) => {
+    e.stopPropagation()
+    e.currentTarget.setPointerCapture(e.pointerId)
+    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    setIsInteracting(true)
+    if (pointersRef.current.size === 2) {
+      const [p1, p2] = [...pointersRef.current.values()]
+      pinchStartRef.current = { distance: getDistance(p1, p2), scale: zoomScale }
+      panStartRef.current = null
+    } else if (pointersRef.current.size === 1 && zoomScale > 1) {
+      panStartRef.current = { x: e.clientX, y: e.clientY, panX: panOffset.x, panY: panOffset.y }
+    }
+  }
+
+  const handleImagePointerMove = (e) => {
+    if (!pointersRef.current.has(e.pointerId)) return
+    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+
+    if (pointersRef.current.size === 2 && pinchStartRef.current) {
+      const [p1, p2] = [...pointersRef.current.values()]
+      const distance = getDistance(p1, p2)
+      const next = Math.min(MAX_ZOOM, Math.max(1, pinchStartRef.current.scale * (distance / pinchStartRef.current.distance)))
+      setZoomScale(next)
+    } else if (pointersRef.current.size === 1 && panStartRef.current) {
+      setPanOffset({
+        x: panStartRef.current.panX + (e.clientX - panStartRef.current.x),
+        y: panStartRef.current.panY + (e.clientY - panStartRef.current.y),
+      })
+    }
+  }
+
+  const handleImagePointerUp = (e) => {
+    pointersRef.current.delete(e.pointerId)
+    if (pointersRef.current.size < 2) pinchStartRef.current = null
+    if (pointersRef.current.size === 0) {
+      panStartRef.current = null
+      setIsInteracting(false)
+      if (zoomScale <= 1) resetZoom()
+    }
+  }
+
+  const handleImageDoubleClick = (e) => {
+    e.stopPropagation()
+    if (zoomScale > 1) resetZoom()
+    else setZoomScale(DOUBLE_TAP_ZOOM)
+  }
 
   const media = message.media_url
     ? {
@@ -180,7 +261,17 @@ export default function MediaMessage({ message, isOwn }) {
 
         {lightboxOpen && (
           <div
-            onClick={() => setLightboxOpen(false)}
+            // Not portalled, so this is still a DOM descendant of the
+            // .message-bubble div it's rendered inside of even though
+            // position:fixed puts it elsewhere on screen — a touch here
+            // still bubbles up through that real DOM ancestry regardless
+            // of visual stacking, which would otherwise arm/trigger the
+            // bubble's swipe-to-reply gesture (or its long-press menu)
+            // while the user thinks they're only interacting with a
+            // separate full-screen viewer. Same exclusion mechanism
+            // AudioPlayer's own scrub-drag needed for the same reason.
+            data-no-message-swipe
+            onClick={closeLightbox}
             style={{
               position: 'fixed',
               inset: 0,
@@ -191,6 +282,7 @@ export default function MediaMessage({ message, isOwn }) {
               alignItems: 'center',
               justifyContent: 'center',
               padding: '20px',
+              overflow: 'hidden',
             }}
           >
             <div style={{
@@ -220,7 +312,7 @@ export default function MediaMessage({ message, isOwn }) {
                 <Download size={18} {...iconProps} />
               </button>
               <button
-                onClick={() => setLightboxOpen(false)}
+                onClick={closeLightbox}
                 aria-label="Close"
                 style={{
                   width: '40px',
@@ -250,12 +342,21 @@ export default function MediaMessage({ message, isOwn }) {
                 alt={media.filename}
                 loading="lazy"
                 onClick={e => e.stopPropagation()}
+                onDoubleClick={handleImageDoubleClick}
                 onError={() => setLightboxImageError(true)}
+                onPointerDown={handleImagePointerDown}
+                onPointerMove={handleImagePointerMove}
+                onPointerUp={handleImagePointerUp}
+                onPointerCancel={handleImagePointerUp}
                 style={{
                   maxWidth: '100%',
                   maxHeight: '85vh',
                   objectFit: 'contain',
                   borderRadius: '8px',
+                  touchAction: 'none',
+                  transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoomScale})`,
+                  transition: isInteracting ? 'none' : 'transform 0.2s ease',
+                  cursor: zoomScale > 1 ? 'grab' : 'zoom-in',
                 }}
               />
             ) : (
