@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Download, X, Mic, FileText } from 'lucide-react'
 import AudioPlayer from '@/components/chat/AudioPlayer'
 
