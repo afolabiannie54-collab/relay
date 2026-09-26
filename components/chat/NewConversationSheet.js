@@ -33,14 +33,35 @@ const iconProps = { strokeWidth: 2, strokeLinecap: 'square', strokeLinejoin: 'mi
 // no reset effect required.
 export default function NewConversationSheet({ isOpen, onClose, initialMode = 'search' }) {
   const [openGen, setOpenGen] = useState(0)
+  // SheetBody's own isCreating state can't reach BottomSheet's close
+  // triggers directly (backdrop click, Escape, drag-to-dismiss) — those
+  // call this raw `onClose` prop straight through, bypassing SheetBody
+  // entirely. A ref (not state) is enough here since this only needs to
+  // be read at close time, not drive a render.
+  const isCreatingRef = useRef(false)
 
   useEffect(() => {
     if (isOpen) setOpenGen(g => g + 1)
   }, [isOpen])
 
+  // Without this, dismissing the sheet mid-createGroup()/
+  // uploadGroupAvatar() let that request keep running after the sheet
+  // (and its error banner) was already gone: on success it still
+  // silently navigated into a group the user thought they'd cancelled
+  // creating, and on failure the error had nowhere left to show.
+  const guardedClose = () => {
+    if (isCreatingRef.current) return
+    onClose?.()
+  }
+
   return (
-    <BottomSheet isOpen={isOpen} onClose={onClose} maxHeight="90dvh">
-      <SheetBody key={openGen} onClose={onClose} initialMode={initialMode} />
+    <BottomSheet isOpen={isOpen} onClose={guardedClose} maxHeight="90dvh">
+      <SheetBody
+        key={openGen}
+        onClose={guardedClose}
+        initialMode={initialMode}
+        onCreatingChange={(v) => { isCreatingRef.current = v }}
+      />
     </BottomSheet>
   )
 }
@@ -51,7 +72,7 @@ export default function NewConversationSheet({ isOpen, onClose, initialMode = 's
 // earlier in this project), since these three panels are fixed, not
 // keyed by any changing id. screenIndex: 0 = search/discovery,
 // 1 = group step 1 (members), 2 = group step 2 (details).
-function SheetBody({ onClose, initialMode }) {
+function SheetBody({ onClose, initialMode, onCreatingChange }) {
   const router = useRouter()
   const { openProfile } = useProfileSheet()
   const [mode, setMode] = useState(initialMode === 'group' ? 'group' : 'search') // 'search' | 'group'
@@ -78,6 +99,10 @@ function SheetBody({ onClose, initialMode }) {
   const [avatarPreview, setAvatarPreview] = useState(null)
   const [isCreating, setIsCreating] = useState(false)
   const [error, setError] = useState(null)
+
+  useEffect(() => {
+    onCreatingChange?.(isCreating)
+  }, [isCreating, onCreatingChange])
 
   // Row-level ⋯ menu, Mode 1 (search/discovery) results only — same
   // shape as search/page.js's menu, including the cache-based
@@ -348,13 +373,18 @@ function SheetBody({ onClose, initialMode }) {
           <div style={headerStyle}>
             <button
               onClick={groupStep === 1 ? backToSearch : backToMembers}
+              disabled={isCreating}
               className="relay-plain-icon-btn"
               aria-label="Back"
+              style={{ opacity: isCreating ? 0.4 : 1, cursor: isCreating ? 'default' : 'pointer' }}
             >
               <ChevronLeft size={22} {...iconProps} />
             </button>
             <h2 style={{ ...headerTitleStyle, flex: 1 }}>New Group</h2>
-            <button onClick={onClose} className="relay-plain-icon-btn" aria-label="Close">
+            {/* Disabled (not just relying on guardedClose's silent no-op
+                in the parent) so a tap while creating visibly does
+                nothing instead of looking broken/unresponsive. */}
+            <button onClick={onClose} disabled={isCreating} className="relay-plain-icon-btn" aria-label="Close" style={{ opacity: isCreating ? 0.4 : 1, cursor: isCreating ? 'default' : 'pointer' }}>
               <X size={20} {...iconProps} />
             </button>
           </div>

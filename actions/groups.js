@@ -264,7 +264,13 @@ export async function addMember(conversationId, userId) {
       userId,
       'Group invite',
       `${senderName.display_name} invited you to join "${group.name}"`,
-      '/requests',
+      // Matches NotificationList.js's own group_invite click handler —
+      // that one got the ?tab=invites fix earlier, this push URL (what
+      // the service worker actually navigates to when the OS
+      // notification itself is tapped, not the in-app list) didn't,
+      // so tapping the real push still landed on the empty default
+      // "Received" tab.
+      '/requests?tab=invites',
       null,
       'group_invite'
     )

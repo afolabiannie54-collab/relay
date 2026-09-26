@@ -31,7 +31,7 @@ function previewOf(message) {
 // Per-conversation list of the current user's starred messages. Tapping a
 // row jumps to that message in the thread (onJumpTo), same affordance the
 // pinned-messages panel already uses, so the two read as siblings.
-export default function StarredMessagesSheet({ isOpen, onClose, conversationId, onJumpTo }) {
+export default function StarredMessagesSheet({ isOpen, onClose, conversationId, onJumpTo, onUnstar }) {
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -57,6 +57,13 @@ export default function StarredMessagesSheet({ isOpen, onClose, conversationId, 
       return
     }
     setRows(prev => prev.filter(r => r.id !== row.id))
+    // Without this, the message's own bubble in the open thread (and
+    // MessageActionBar/Sheet's "Unstar" option there) kept showing the
+    // stale starred state — this sheet only ever updated its own local
+    // `rows`, with no way to tell the conversation page's
+    // starredMessageIds Set (the actual source of truth for the
+    // thread's own star badges) that anything changed.
+    onUnstar?.(row.message_id)
   }
 
   return (

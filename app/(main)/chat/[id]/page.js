@@ -206,6 +206,11 @@ export default function ConversationPage() {
   const errorTimeoutRef = useRef(null)
   const [acceptingRequest, setAcceptingRequest] = useState(false)
   const [editingId, setEditingId] = useState(null)
+  // Mirrors editingId for the realtime UPDATE handler below, which is
+  // set up in an effect with a limited dependency array and would
+  // otherwise close over whatever editingId was at mount time.
+  const editingIdRef = useRef(null)
+  useEffect(() => { editingIdRef.current = editingId }, [editingId])
   const [confirmDeleteId, setConfirmDeleteId] = useState(null)
   const [editContent, setEditContent] = useState('')
   const [replyTo, setReplyTo] = useState(null)
@@ -240,6 +245,13 @@ export default function ConversationPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState([])
   const [searching, setSearching] = useState(false)
+  // Same debounce + stale-response guard app/(main)/search/page.js
+  // already has for the global search — this in-conversation search had
+  // neither, so a fast query firing a request that resolves before a
+  // slower earlier one could have its results overwritten by that
+  // stale response landing after it.
+  const searchTimeoutRef = useRef(null)
+  const searchSeqRef = useRef(0)
   const [activeReactionPicker, setActiveReactionPicker] = useState(null)
   const [pinnedMessageIds, setPinnedMessageIds] = useState(new Set())
   const [starredMessageIds, setStarredMessageIds] = useState(new Set())
@@ -780,6 +792,16 @@ export default function ConversationPage() {
           m.id === payload.new.id ? { ...m, ...payload.new } : m
         ))
         cache.invalidate(`messages:${id}`)
+        // A delete is an UPDATE (type:'deleted') that flows through this
+        // same handler — without this, deleting a message while it was
+        // still open for editing left the textarea/Save/Cancel rendered
+        // indefinitely (the edit-mode render branch is checked before
+        // isDeleted), and hitting Save just errored forever with no way
+        // out except Cancel.
+        if (payload.new.type === 'deleted' && editingIdRef.current === payload.new.id) {
+          setEditingId(null)
+          setEditContent('')
+        }
       })
       .on('broadcast', { event: 'typing' }, (payload) => {
         if (payload.payload.userId === profile?.id) return
@@ -1463,13 +1485,24 @@ export default function ConversationPage() {
     setMediaPreview({ file, previewUrl, isImage: true })
   }
 
-  const handleSearch = async (query) => {
+  const handleSearch = (query) => {
     setSearchQuery(query)
-    if (query.length < 2) { setSearchResults([]); return }
+    const seq = ++searchSeqRef.current
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current)
+
+    if (query.length < 2) {
+      setSearchResults([])
+      setSearching(false)
+      return
+    }
+
     setSearching(true)
-    const result = await searchMessages(id, query)
-    if (result.data) setSearchResults(result.data)
-    setSearching(false)
+    searchTimeoutRef.current = setTimeout(async () => {
+      const result = await searchMessages(id, query)
+      if (seq !== searchSeqRef.current) return
+      if (result.data) setSearchResults(result.data)
+      setSearching(false)
+    }, 400)
   }
 
   const handleLoadPinned = async () => {
@@ -1915,12 +1948,13 @@ export default function ConversationPage() {
                   cursor: 'pointer',
                 }}
                 onClick={() => {
-                  const el = document.getElementById(`msg-${msg.id}`)
-                  if (el) {
-                    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-                    el.style.background = 'var(--accent-light)'
-                    setTimeout(() => el.style.background = '', 2000)
-                  }
+                  // Matches StarredMessagesSheet's onJumpTo/onClose order
+                  // — handleJumpToMessage already shows "not loaded,
+                  // scroll up first" when the target isn't in the
+                  // currently loaded window (a real, common case, since
+                  // older messages only load via scroll-up pagination).
+                  // This used to just silently close with no feedback.
+                  handleJumpToMessage(msg.id)
                   setShowSearch(false)
                 }}
               >
@@ -1977,12 +2011,10 @@ export default function ConversationPage() {
                 cursor: 'pointer',
               }}
               onClick={() => {
-                const el = document.getElementById(`msg-${pin.messages?.id}`)
-                if (el) {
-                  el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-                  el.style.background = 'var(--accent-light)'
-                  setTimeout(() => el.style.background = '', 2000)
-                }
+                // Same "not loaded, scroll up first" feedback
+                // handleJumpToMessage already gives StarredMessagesSheet
+                // — this silently closed with no indication otherwise.
+                handleJumpToMessage(pin.messages?.id)
                 setShowPinnedPanel(false)
               }}
             >
@@ -3085,6 +3117,13 @@ export default function ConversationPage() {
         onClose={() => setShowStarredSheet(false)}
         conversationId={id}
         onJumpTo={handleJumpToMessage}
+        onUnstar={(messageId) => {
+          setStarredMessageIds(prev => {
+            const next = new Set(prev)
+            next.delete(messageId)
+            return next
+          })
+        }}
       />
 
       <ConfirmSheet
