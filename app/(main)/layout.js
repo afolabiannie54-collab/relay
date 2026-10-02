@@ -37,6 +37,27 @@ export default function MainLayout({ children }) {
     if (stored === 'false') setSidebarCollapsed(false)
   }, [])
 
+  // Locks the actual document from ever scrolling — every scrollable
+  // region in this app shell is one of the inner overflowY:auto divs
+  // below, not body itself. Without this, standalone PWA mode on iOS
+  // would sometimes scroll body instead (its own focus-into-view
+  // heuristic landing on the wrong ancestor, or a dvh recalculation
+  // during a viewport-chrome transition), visibly shoving the whole
+  // shell down and pushing the bottom nav off-screen below the fold.
+  // Same lock BottomSheet.js already uses while a sheet is open, just
+  // scoped to this layout's entire lifetime instead of toggled.
+  useEffect(() => {
+    const { body, documentElement: html } = document
+    const prevBodyOverflow = body.style.overflow
+    const prevHtmlOverflow = html.style.overflow
+    body.style.overflow = 'hidden'
+    html.style.overflow = 'hidden'
+    return () => {
+      body.style.overflow = prevBodyOverflow
+      html.style.overflow = prevHtmlOverflow
+    }
+  }, [])
+
   const toggleSidebar = () => {
     setSidebarCollapsed(prev => {
       const next = !prev
