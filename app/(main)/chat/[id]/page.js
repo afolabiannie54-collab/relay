@@ -17,6 +17,7 @@ import { cache } from '@/lib/cache'
 import { useReadReceipts } from '@/hooks/useReadReceipts'
 import { useOnlineUsers } from '@/lib/presence-context'
 import MediaMessage from '@/components/chat/MediaMessage'
+import MediaLightbox from '@/components/chat/MediaLightbox'
 import MessagesSkeleton from '@/components/chat/MessagesSkeleton'
 import AudioRecorder from '@/components/chat/MediaRecorder'
 import CameraCapture from '@/components/chat/CameraCapture'
@@ -189,6 +190,11 @@ export default function ConversationPage() {
     const cached = cache.peek(`messages:${id}`)
     return Array.isArray(cached) ? cached : []
   })
+  // Which image message the gallery lightbox has open, if any — shared
+  // across the whole conversation's images rather than per-bubble, so
+  // clicking one lets you navigate to the others instead of only ever
+  // seeing that single photo full-screen.
+  const [lightboxMessageId, setLightboxMessageId] = useState(null)
   const [conversation, setConversation] = useState(() => cache.peek(`conversation:${id}`))
   const [groupInfo, setGroupInfo] = useState(() => {
     const cachedConv = cache.peek(`conversation:${id}`)
@@ -2453,7 +2459,7 @@ export default function ConversationPage() {
                           transition: (swipeActive && swipeMsgId === msg.id) ? 'none' : 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
                         }}>
                           {(msg.type === 'image' || msg.type === 'audio' || msg.type === 'file') ? (
-                            <MediaMessage message={msg} isOwn={isOwn} />
+                            <MediaMessage message={msg} isOwn={isOwn} onOpenLightbox={setLightboxMessageId} />
                           ) : (
                             <div
                               style={{
@@ -3237,6 +3243,13 @@ export default function ConversationPage() {
         confirmLabel="Delete"
         confirmStyle="danger"
         onConfirm={confirmDeleteMessage}
+      />
+
+      <MediaLightbox
+        items={messages.filter(m => m.type === 'image' && m.media_url)}
+        activeId={lightboxMessageId}
+        onClose={() => setLightboxMessageId(null)}
+        onNavigate={setLightboxMessageId}
       />
     </div>
   )
