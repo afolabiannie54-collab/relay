@@ -793,10 +793,10 @@ export default function ConversationPage() {
             // newMsg.reply/media_url/etc. are already populated above (a
             // real fetch+join, not a snapshot) — no need to fall back to
             // the temp bubble's own reply snapshot or local blob preview.
-            // The blob URL (image/audio temp bubbles only — see
-            // uploadMediaAndReconcile) is done being displayed as of this
-            // swap, so it's freed here rather than left for GC to notice.
-            if (pendingTemp.media_url?.startsWith('blob:')) URL.revokeObjectURL(pendingTemp.media_url)
+            // Images skip the revoke here — see the matching note in
+            // uploadMediaAndReconcile; MediaMessage owns that one once
+            // it's actually done being displayed, not this swap.
+            if (pendingTemp.type !== 'image' && pendingTemp.media_url?.startsWith('blob:')) URL.revokeObjectURL(pendingTemp.media_url)
             return prev.map(m => m.id === pendingTemp.id ? { ...newMsg, _clientKey: pendingTemp.id } : m)
           }
           return [...prev, newMsg]
@@ -1184,7 +1184,15 @@ export default function ConversationPage() {
         const alreadyReconciled = prev.some(m => m.id === result.data.id)
         if (alreadyReconciled) return prev
         const temp = prev.find(m => m.id === tempId)
-        if (temp?.media_url?.startsWith('blob:')) URL.revokeObjectURL(temp.media_url)
+        // Images are the exception: MediaMessage preloads the real
+        // media_url in the background and only swaps its displayed
+        // <img> (and revokes the old blob) once that's cached, so the
+        // thumbnail never has a gap with nothing decoded to show.
+        // Revoking it here the instant this prop changes raced that
+        // preload and blanked the thumbnail before the new one was
+        // ready. Audio/file have no such in-place image to flash, so
+        // they're still revoked immediately as before.
+        if (temp?.type !== 'image' && temp?.media_url?.startsWith('blob:')) URL.revokeObjectURL(temp.media_url)
         return prev.map(m => m.id === tempId
           ? { ...m, ...result.data, reply: replySnapshot || null, _status: undefined, _clientKey: tempId }
           : m)

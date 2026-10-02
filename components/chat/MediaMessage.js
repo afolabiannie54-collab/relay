@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Download, Mic, FileText } from 'lucide-react'
 import AudioPlayer from '@/components/chat/AudioPlayer'
 
@@ -98,10 +98,44 @@ function AudioTranscript({ status, transcript, isOwn }) {
 
 export default function MediaMessage({ message, isOwn, onOpenLightbox }) {
   const [imageError, setImageError] = useState(false)
+  const [displayUrl, setDisplayUrl] = useState(message.media_url)
+
+  // An optimistic send swaps media_url from a local blob: (already
+  // decoded, on screen instantly) to the real CDN URL once the upload
+  // reconciles. Pointing the <img> straight at that new URL made the
+  // thumbnail go blank for a beat while the browser fetched it fresh —
+  // changing `src` doesn't keep showing the old image during the load.
+  // Preloading the new URL in a detached Image() and only swapping
+  // `displayUrl` once it's actually loaded keeps something on screen
+  // the whole time instead.
+  useEffect(() => {
+    if (message.type !== 'image' || !message.media_url || message.media_url === displayUrl) return
+    let cancelled = false
+    const preload = new window.Image()
+    const swap = () => { if (!cancelled) setDisplayUrl(message.media_url) }
+    preload.onload = swap
+    preload.onerror = swap
+    preload.src = message.media_url
+    return () => { cancelled = true }
+  }, [message.type, message.media_url, displayUrl])
+
+  // Revokes displayUrl's *previous* blob: value, but only once it's
+  // actually stopped being shown — either because a newer one just
+  // swapped in above (this cleanup runs right before that re-render) or
+  // because the component unmounted while still displaying it.
+  useEffect(() => {
+    return () => {
+      if (displayUrl?.startsWith('blob:')) URL.revokeObjectURL(displayUrl)
+    }
+  }, [displayUrl])
 
   const media = message.media_url
     ? {
-        url: message.media_url,
+        // Only images get the preload-then-swap treatment above — audio
+        // and file rows don't show an in-place image that can flash, so
+        // they mirror message.media_url directly and page.js keeps
+        // owning (and revoking) their blob: URL as before.
+        url: message.type === 'image' ? displayUrl : message.media_url,
         filename: message.media_filename,
         size: message.media_size,
         mimeType: message.media_mime_type,
